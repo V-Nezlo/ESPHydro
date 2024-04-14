@@ -19,7 +19,7 @@ enum class EventType {
     SetCurrentTime,
     UpdateSensorData,
     ErrorCaused,
-    ActionRequest
+    ActionRequest,
 };
 
 enum class EventResult {
@@ -32,6 +32,7 @@ struct SensorData {
     float temp;
     float ph;
     float ppm;
+    bool upperState;
 };
 
 enum class ErrorType {
@@ -69,10 +70,10 @@ public:
     {
         for (auto &pos : observers) {
             auto result = pos->handleEvent(aEvent);
+            // If result == PASS_ON or IGNORED - continue
             if (result == EventResult::HANDLED) {
                 break;
             }
-            // If result == PASS_ON or IGNORED - continue
         }
     }
 
@@ -83,28 +84,6 @@ public:
 
 private:
     static std::vector<AbstractEventObserver *> observers;
-};
-
-class TimeHandler : public AbstractEventObserver {
-public:
-    EventResult handleEvent(Event *e) override
-    {
-        switch (e->type) {
-            case EventType::SetCurrentTime:
-                setCurrentTime(e->data.time);
-                return EventResult::HANDLED;
-                break;
-            default:
-                return EventResult::IGNORED;
-                break;
-        }
-    }
-
-private:
-    void setCurrentTime(CurrentTime time)
-    {
-
-    }
 };
 
 #endif

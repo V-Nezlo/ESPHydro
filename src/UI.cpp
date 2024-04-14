@@ -81,7 +81,10 @@ lv_theme_t *mainTheme;
 // Клавиатура
 lv_obj_t *keyboardPanel;
 lv_obj_t *keyboardPanelInputTA;
-lv_obj_t *keyboard;
+lv_obj_t *pumpKeyboard;
+lv_obj_t *lampKeyboard;
+lv_obj_t *timeKeyboard;
+
 // Панели
 lv_obj_t *panel1;
 lv_obj_t *panel2;
@@ -216,7 +219,7 @@ void uiInit(void)
 
 	main_page_create(mainPage);
 	menu_create(settingsPage);
-	keyboard_create(pumpSettingsScr);
+	keyboard_create();
 	createAdditionalPanels();
 
 	// Test filling
@@ -339,6 +342,17 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 	lv_event_code_t code = lv_event_get_code(aEvent);
 	lv_obj_t *ta = lv_event_get_target(aEvent);
 	uint8_t *editedSpec = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+
+	lv_obj_t *keyboard = pumpKeyboard;
+	if (*editedSpec == EditScrs::PumpSettingsScrNumber) {
+		keyboard = pumpKeyboard;
+	} else if (*editedSpec == EditScrs::LampSettingsScrNumber) {
+		keyboard = lampKeyboard;
+	} else if (*editedSpec == EditScrs::CurrentTimeSettingsScrNumber) {
+		keyboard = timeKeyboard;
+	} else {
+		return;
+	}
 
 	if (code == LV_EVENT_CLICKED) {
 		ESP_LOGI("TAG", "CLICKED");
@@ -674,12 +688,19 @@ struct Settings *saveParameters()
 void loading_screen_create(lv_obj_t *parent)
 { }
 
-void keyboard_create(lv_obj_t *parent)
+void keyboard_create()
 {
-	keyboard = lv_keyboard_create(parent);
-	//lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
-	lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);
-	lv_obj_set_size(keyboard, lv_disp_get_hor_res(NULL), 230);
+	pumpKeyboard = lv_keyboard_create(pumpSettingsScr);
+	lv_keyboard_set_mode(pumpKeyboard, LV_KEYBOARD_MODE_NUMBER);
+	lv_obj_set_size(pumpKeyboard, lv_disp_get_hor_res(NULL), 230);
+
+	lampKeyboard = lv_keyboard_create(lampSettingsScr);
+	lv_keyboard_set_mode(lampKeyboard, LV_KEYBOARD_MODE_NUMBER);
+	lv_obj_set_size(lampKeyboard, lv_disp_get_hor_res(NULL), 230);
+
+	timeKeyboard = lv_keyboard_create(curTimeSettingsScr);
+	lv_keyboard_set_mode(timeKeyboard, LV_KEYBOARD_MODE_NUMBER);
+	lv_obj_set_size(timeKeyboard, lv_disp_get_hor_res(NULL), 230);
 }
 
 void style_initialize()
@@ -917,7 +938,7 @@ void createAdditionalPanels()
 	lv_textarea_set_text(pumpOnTa, "");
 	lv_textarea_set_placeholder_text(pumpOnTa, "123");
 	lv_obj_set_size(pumpOnTa, 200, 40);
-	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_CLICKED, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
 
 	// Панель для установки времени PumpOff
 	pumpOffTa = lv_textarea_create(pumpSettingsScr);
@@ -927,7 +948,7 @@ void createAdditionalPanels()
 	lv_textarea_set_text(pumpOffTa, "");
 	lv_textarea_set_placeholder_text(pumpOffTa, "456");
 	lv_obj_set_size(pumpOffTa, 200, 40);
-	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_CLICKED, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
 
 	lv_obj_t *pumpOnSetText = lv_label_create(pumpSettingsScr);
 	lv_label_set_text(pumpOnSetText, "Pump on time: ");
@@ -948,105 +969,105 @@ void createAdditionalPanels()
 #define CLOCK_SET_TA_WIDHT 45
 #define CLOCK_SET_TA_HEIGH 45
 
-// 	// Панель часов
-// 	lampOnHourTa = lv_textarea_create(lampSettingsScr);
-// 	lv_textarea_set_accepted_chars(lampOnHourTa, "0123456789");
-// 	lv_textarea_set_max_length(lampOnHourTa, 2);
-// 	lv_textarea_set_one_line(lampOnHourTa, true);
-// 	lv_textarea_set_text(lampOnHourTa, "");
-// 	lv_textarea_set_placeholder_text(lampOnHourTa, "00");
+	// Панель часов
+	lampOnHourTa = lv_textarea_create(lampSettingsScr);
+	lv_textarea_set_accepted_chars(lampOnHourTa, "0123456789");
+	lv_textarea_set_max_length(lampOnHourTa, 2);
+	lv_textarea_set_one_line(lampOnHourTa, true);
+	lv_textarea_set_text(lampOnHourTa, "");
+	lv_textarea_set_placeholder_text(lampOnHourTa, "00");
 
-// 	lv_obj_set_size(lampOnHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-// 	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-// 	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
-// 	// Панель минут
-// 	lampOnMinTa = lv_textarea_create(lampSettingsScr);
-// 	lv_textarea_set_accepted_chars(lampOnMinTa, "0123456789");
-// 	lv_textarea_set_max_length(lampOnMinTa, 2);
-// 	lv_textarea_set_one_line(lampOnMinTa, true);
-// 	lv_textarea_set_text(lampOnMinTa, "");
-// 	lv_textarea_set_placeholder_text(lampOnMinTa, "00");
+	lv_obj_set_size(lampOnHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	// Панель минут
+	lampOnMinTa = lv_textarea_create(lampSettingsScr);
+	lv_textarea_set_accepted_chars(lampOnMinTa, "0123456789");
+	lv_textarea_set_max_length(lampOnMinTa, 2);
+	lv_textarea_set_one_line(lampOnMinTa, true);
+	lv_textarea_set_text(lampOnMinTa, "");
+	lv_textarea_set_placeholder_text(lampOnMinTa, "00");
 
-// 	lv_obj_set_size(lampOnMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-// 	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-// 	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_set_size(lampOnMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
 
-// 	lampOffHourTa = lv_textarea_create(lampSettingsScr);
-// 	lv_textarea_set_accepted_chars(lampOffHourTa, "0123456789");
-// 	lv_textarea_set_max_length(lampOffHourTa, 2);
-// 	lv_textarea_set_one_line(lampOffHourTa, true);
-// 	lv_textarea_set_text(lampOffHourTa, "");
-// 	lv_textarea_set_placeholder_text(lampOffHourTa, "00");
+	lampOffHourTa = lv_textarea_create(lampSettingsScr);
+	lv_textarea_set_accepted_chars(lampOffHourTa, "0123456789");
+	lv_textarea_set_max_length(lampOffHourTa, 2);
+	lv_textarea_set_one_line(lampOffHourTa, true);
+	lv_textarea_set_text(lampOffHourTa, "");
+	lv_textarea_set_placeholder_text(lampOffHourTa, "00");
 
-// 	lv_obj_set_size(lampOffHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-// 	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-// 	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_set_size(lampOffHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
 
-// 	lampOffMinTa = lv_textarea_create(lampSettingsScr);
-// 	lv_textarea_set_accepted_chars(lampOffMinTa, "0123456789");
-// 	lv_textarea_set_max_length(lampOffMinTa, 2);
-// 	lv_textarea_set_one_line(lampOffMinTa, true);
-// 	lv_textarea_set_text(lampOffMinTa, "");
-// 	lv_textarea_set_placeholder_text(lampOffMinTa, "00");
+	lampOffMinTa = lv_textarea_create(lampSettingsScr);
+	lv_textarea_set_accepted_chars(lampOffMinTa, "0123456789");
+	lv_textarea_set_max_length(lampOffMinTa, 2);
+	lv_textarea_set_one_line(lampOffMinTa, true);
+	lv_textarea_set_text(lampOffMinTa, "");
+	lv_textarea_set_placeholder_text(lampOffMinTa, "00");
 
-// 	lv_obj_set_size(lampOffMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-// 	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-// 	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_set_size(lampOffMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
 
-// 	// Align для всех элементов
-// 	lv_obj_align_to(lampSettingsOnLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 12);
-// 	lv_obj_align_to(lampSettingsOffLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 57);
-// 	lv_obj_align_to(lampOnHourTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -280, 2);
-// 	lv_obj_align_to(lampOffHourTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -280, 47);
-// 	lv_obj_align_to(lampOnMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 2);
-// 	lv_obj_align_to(lampOffMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 47);
+	// Align для всех элементов
+	lv_obj_align_to(lampSettingsOnLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 12);
+	lv_obj_align_to(lampSettingsOffLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 57);
+	lv_obj_align_to(lampOnHourTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -280, 2);
+	lv_obj_align_to(lampOffHourTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -280, 47);
+	lv_obj_align_to(lampOnMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 2);
+	lv_obj_align_to(lampOffMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 47);
 
-	// // Панель установки времени
-	// setTimeHourTa = lv_textarea_create(curTimeSettingsScr);
-	// lv_textarea_set_accepted_chars(setTimeHourTa, "0123456789");
-	// lv_textarea_set_max_length(setTimeHourTa, 2);
-	// lv_textarea_set_one_line(setTimeHourTa, true);
-	// lv_textarea_set_text(setTimeHourTa, "");
-	// lv_textarea_set_placeholder_text(setTimeHourTa, "00");
+	// Панель установки времени
+	setTimeHourTa = lv_textarea_create(curTimeSettingsScr);
+	lv_textarea_set_accepted_chars(setTimeHourTa, "0123456789");
+	lv_textarea_set_max_length(setTimeHourTa, 2);
+	lv_textarea_set_one_line(setTimeHourTa, true);
+	lv_textarea_set_text(setTimeHourTa, "");
+	lv_textarea_set_placeholder_text(setTimeHourTa, "00");
 
-	// lv_obj_set_size(setTimeHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	// lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	// lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_set_size(setTimeHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
+	lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
 
-	// setTimeMinTa = lv_textarea_create(curTimeSettingsScr);
-	// lv_textarea_set_accepted_chars(setTimeMinTa, "0123456789");
-	// lv_textarea_set_max_length(setTimeMinTa, 2);
-	// lv_textarea_set_one_line(setTimeMinTa, true);
-	// lv_textarea_set_text(setTimeMinTa, "");
-	// lv_textarea_set_placeholder_text(setTimeMinTa, "00");
+	setTimeMinTa = lv_textarea_create(curTimeSettingsScr);
+	lv_textarea_set_accepted_chars(setTimeMinTa, "0123456789");
+	lv_textarea_set_max_length(setTimeMinTa, 2);
+	lv_textarea_set_one_line(setTimeMinTa, true);
+	lv_textarea_set_text(setTimeMinTa, "");
+	lv_textarea_set_placeholder_text(setTimeMinTa, "00");
 
-	// lv_obj_set_size(setTimeMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	// lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	// lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_set_size(setTimeMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
+	lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
 
-	// setTimeSecTa = lv_textarea_create(curTimeSettingsScr);
-	// lv_textarea_set_accepted_chars(setTimeSecTa, "0123456789");
-	// lv_textarea_set_max_length(setTimeSecTa, 2);
-	// lv_textarea_set_one_line(setTimeSecTa, true);
-	// lv_textarea_set_text(setTimeSecTa, "");
-	// lv_textarea_set_placeholder_text(setTimeSecTa, "00");
+	setTimeSecTa = lv_textarea_create(curTimeSettingsScr);
+	lv_textarea_set_accepted_chars(setTimeSecTa, "0123456789");
+	lv_textarea_set_max_length(setTimeSecTa, 2);
+	lv_textarea_set_one_line(setTimeSecTa, true);
+	lv_textarea_set_text(setTimeSecTa, "");
+	lv_textarea_set_placeholder_text(setTimeSecTa, "00");
 
-	// lv_obj_set_size(setTimeSecTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	// lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	// lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_set_size(setTimeSecTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
+	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
+	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
 
-	// setTimeButton = lv_btn_create(curTimeSettingsScr);
-	// lv_obj_set_size(setTimeButton, 120, 40);
-	// lv_obj_add_event_cb(setTimeButton, setTimeButtonEventHandler, LV_EVENT_CLICKED, NULL);
-	// lv_obj_t *setTimeButtonLabel = lv_label_create(setTimeButton);
-	// lv_obj_align_to(setTimeButtonLabel, setTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
-	// lv_label_set_text(setTimeButtonLabel, "Send to RTC");
+	setTimeButton = lv_btn_create(curTimeSettingsScr);
+	lv_obj_set_size(setTimeButton, 120, 40);
+	lv_obj_add_event_cb(setTimeButton, setTimeButtonEventHandler, LV_EVENT_CLICKED, NULL);
+	lv_obj_t *setTimeButtonLabel = lv_label_create(setTimeButton);
+	lv_obj_align_to(setTimeButtonLabel, setTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
+	lv_label_set_text(setTimeButtonLabel, "Send to RTC");
 
-	// // Алигним
-	// lv_obj_align_to(setTimeHourTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 20, 20);
-	// lv_obj_align_to(setTimeMinTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 70, 20);
-	// lv_obj_align_to(setTimeSecTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 120, 20);
-	// lv_obj_align_to(setTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
+	// Алигним
+	lv_obj_align_to(setTimeHourTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 20, 20);
+	lv_obj_align_to(setTimeMinTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 70, 20);
+	lv_obj_align_to(setTimeSecTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 120, 20);
+	lv_obj_align_to(setTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
 }
 
 void menu_create(lv_obj_t *parent)

@@ -6,13 +6,13 @@
 #ifndef LV_HYDROPONIC_H
 #define LV_HYDROPONIC_H
 
+#include <lvgl.h>
+#include "Types.hpp"
+#include "EventBus.hpp"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <lvgl.h>
-#include "Types.hpp"
-//#include "EventBus.hpp"
 
 typedef uint8_t lv_menu_builder_variant_t;
 
@@ -20,7 +20,7 @@ void style_initialize();
 void menu_create(lv_obj_t *parent);
 void main_page_create(lv_obj_t * parent);
 void loading_screen_create(lv_obj_t * parent);
-void keyboard_create(lv_obj_t *parent);
+void keyboard_create();
 
 lv_obj_t * create_switch(lv_obj_t * parent, const char * icon, const char * txt, bool chk);
 lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
@@ -42,24 +42,6 @@ void applyNewCurrentTime(struct CurrentTime *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
 
-// class UiEventObserver : public AbstractEventObserver {
-// public:
-//     EventResult handleEvent(Event *e) override
-//     {
-//         switch (e->type)
-//         {
-//         case EventType::UpdateSensorData : 
-//             // Update main page
-//             return EventResult::HANDLED;
-//             break;
-        
-//         default:
-//             return EventResult::IGNORED;
-//             break;
-//         }
-//     }
-// };
-
 enum {
     LV_MENU_ITEM_BUILDER_VARIANT_1,
     LV_MENU_ITEM_BUILDER_VARIANT_2
@@ -68,5 +50,25 @@ enum {
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
+
+/// @brief Приемная сторона шины событий-данных для графического интерфейса
+class UiEventObserver : public AbstractEventObserver {
+public:
+    EventResult handleEvent(Event *e) override
+    {
+        switch (e->type)
+        {
+        case EventType::UpdateSensorData:
+            // Update main page
+            
+            return EventResult::HANDLED;
+            break;
+        
+        default:
+            return EventResult::IGNORED;
+            break;
+        }
+    }
+};
 
 #endif /*LV_DEMO_WIDGETS_H*/
