@@ -1,5 +1,13 @@
-#ifndef TIMERWRAPPER
-#define TIMERWRAPPER
+/*!
+@file
+@brief Обертка для получения времени chrono
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 17.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_TIMERWRAPPER_HPP_
+#define INCLUDE_TIMERWRAPPER_HPP_
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

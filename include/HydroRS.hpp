@@ -1,3 +1,14 @@
+/*!
+@file
+@brief Клиентская сторона RsHandler
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 09.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_HYDRORS_HPP_
+#define INCLUDE_HYDRORS_HPP_
+
 #include <Lib/RsHandler.hpp>
 #include <EventBus.hpp>
 
@@ -28,8 +39,10 @@ public:
 	{
 		switch(pending.node) {
 			case Recipient::Lower:
-				sendRequest(1, 1, sizeof(int));
-				
+				BaseType::sendRequest(1, 1, sizeof(int));
+				break;
+			default:
+				break;
 		}
 
 	}
@@ -40,7 +53,7 @@ public:
 		return 0;
 	}
 
-	void handleAck(uint8_t aReturnCode) override
+	void handleAck(uint8_t aTranceiverUID, uint8_t aReturnCode) override
 	{
 		
 	}
@@ -69,21 +82,28 @@ public:
 					case Action::TurnPumpOn:
 						sendCommand(1, 1, 1);
 						return EventResult::HANDLED;
-					break;
+						break;
 					case Action::TurnPumpOff:
 						sendCommand(1, 1, 0);
 						return EventResult::HANDLED;
-					break;
+						break;
 					case Action::TurnLampOn:
 						sendCommand(2, 1, 1);
 						return EventResult::HANDLED;
-					break;
+						break;
 					case Action::TurnLampOff:
 						sendCommand(2, 1, 0);
 						return EventResult::HANDLED;
-					break;
+						break;
 				}
 			} break;
+
+			default:
+				break;
 		}
+
+		return EventResult::IGNORED;
 	}
 };
+
+#endif

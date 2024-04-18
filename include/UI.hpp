@@ -1,10 +1,14 @@
-/**
- * @file lv_demo_widgets.h
- *
- */
+/*!
+@file
+@brief Сишный код, отвечающий за создание графического интерфейса
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 17.04.2024
+@version 1.0
+*/
 
-#ifndef LV_HYDROPONIC_H
-#define LV_HYDROPONIC_H
+
+#ifndef INCLUDE_UI_HPP_
+#define INCLUDE_UI_HPP_
 
 #include <lvgl.h>
 #include "Types.hpp"
@@ -33,7 +37,7 @@ void create_misc_tab(lv_obj_t *aParent);
 
 void createAdditionalPanels();
 void settingsButtonEvent(lv_event_t * e);
-void uiInit(void);
+void uiInit(bool aDarkTheme);
 
 void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
@@ -41,6 +45,7 @@ void updateMainPage(struct SystemData *aData);
 void applyNewCurrentTime(struct CurrentTime *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
+bool getLoggingState();
 
 enum {
     LV_MENU_ITEM_BUILDER_VARIANT_1,
@@ -70,5 +75,9 @@ public:
         }
     }
 };
+
+void sendParametersToEventBus(Settings *aSettings);
+void sendActionCommandToEventBus(Action aAction);
+void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec);
 
 #endif /*LV_DEMO_WIDGETS_H*/

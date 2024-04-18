@@ -1,5 +1,13 @@
-#ifndef TYPES_HPP
-#define TYPES_HPP
+/*!
+@file
+@brief Компиляция типов
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 17.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_TYPES_HPP_
+#define INCLUDE_TYPES_HPP_
 
 #include <stdint.h>
 
@@ -30,6 +38,7 @@ struct LampConfiguration {
 struct CommonConfiguration {
     bool tapSoundEnabled;
     bool alarmSoundEnabled;
+    bool loggingEnabled;
 };
 
 struct Settings {

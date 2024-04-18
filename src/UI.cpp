@@ -2,14 +2,13 @@
  *      INCLUDES
  *********************/
 
-#include "Types.hpp"
 #include <EventBus.hpp>
+#include "Types.hpp"
 #include "UI.hpp"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "esp_log.h"
 
 /**********************
  *      Типы
@@ -22,6 +21,7 @@ typedef enum {
 } disp_size_t;
 
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
+enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff }; 
 
 enum DeviceFlags {
 	PumpDeviceWorking = 0x01,
@@ -118,6 +118,8 @@ lv_obj_t *root_page;
 lv_obj_t *subPumpPage;
 lv_obj_t *subLampPage;
 lv_obj_t *subCommonPage;
+lv_obj_t *subManualPage;
+lv_obj_t *subAboutPage;
 lv_obj_t *subExitPage;
 // Всякие штуки для настроек
 lv_obj_t *pumpEnableButton;
@@ -148,10 +150,23 @@ lv_obj_t *settingsPageTime;
 // Общие настройки
 lv_obj_t *alarmSoundEnableButton;
 lv_obj_t *tapSountEnableButton;
+// Штуки для сервиса
+lv_obj_t *loggingTextarea;
+lv_obj_t *loggingSwitch;
 // Энумератор для колбеков
 uint8_t editScrSelectorPumpSetttins = PumpSettingsScrNumber;
 uint8_t editScrSelectorLampSettings = LampSettingsScrNumber;
 uint8_t editScrSelectorSetTime = CurrentTimeSettingsScrNumber;
+// Энумератор для панели сервиса
+uint8_t manualActionPumpOnEnum = ManualActionPumpOn;
+uint8_t manualActionPumpOffEnum = ManualActionPumpOff;
+uint8_t manualActionLampOnEnum = ManualActionLampOn;
+uint8_t manualActionLampOffEnum = ManualActionLampOff;
+// Обьекты для текстового вывода версий и статусов
+lv_obj_t *aboutVersionFiller;
+lv_obj_t *aboutWifiPresentFiller;
+lv_obj_t *aboutMqttPresentFiller;
+
 uint8_t editScrFormattedHourEnum = 1;
 uint8_t editScrFormattedMinSecEnum = 2;
 uint8_t exitWithSaveButtonCallbackData = 1;
@@ -162,11 +177,37 @@ lv_obj_t *activeMessageBox;
 struct Settings params;
 Settings globalSettings;
 
+void sendParametersToEventBus(Settings *aSettings)
+{
+    Event ev;
+    ev.type = EventType::SettingsUpdated;
+    ev.data.settings = *aSettings;
+    EventBus::throwEvent(&ev);
+}
+
+void sendActionCommandToEventBus(Action aAction)
+{
+    Event ev;
+    ev.type = EventType::ActionRequest;
+    ev.data.action = aAction;
+    EventBus::throwEvent(&ev);
+}
+
+void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec)
+{
+    Event ev;
+    ev.type = EventType::SetCurrentTime;
+    ev.data.time.currentHour = hour;
+    ev.data.time.currentMinutes = min;
+    ev.data.time.currentSeconds = sec;
+    EventBus::throwEvent(&ev);
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void uiInit(void)
+void uiInit(bool aDarkTheme)
 {
 	// Выбираем размер экрана, у нас будет 320х480
 	if (LV_HOR_RES <= 320)
@@ -180,8 +221,7 @@ void uiInit(void)
 	font_large = LV_FONT_DEFAULT;
 	font_normal = LV_FONT_DEFAULT;
 
-	bool darkTheme = true;
-	if (darkTheme) {
+	if (aDarkTheme) {
 		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_GREEN), lv_palette_main(LV_PALETTE_GREEN),
 			LV_THEME_DEFAULT_TRANSITION_TIME, font_large);
 	} else {
@@ -258,6 +298,24 @@ void uiInit(void)
  * Обработчики событий
  **********************/
 
+void manualActionEvent(lv_event_t *aEvent)
+{
+	const uint8_t *data = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	const uint8_t action = *data;
+
+	if (action == manualActionPumpOnEnum) {
+		sendActionCommandToEventBus(Action::TurnPumpOn);
+	} else if (action == manualActionPumpOffEnum) {
+		sendActionCommandToEventBus(Action::TurnPumpOff);
+	} else if (action == manualActionLampOnEnum) {
+		sendActionCommandToEventBus(Action::TurnLampOn);
+	} else if (action == manualActionLampOffEnum) {
+		sendActionCommandToEventBus(Action::TurnLampOff);
+	} else {
+		return;
+	}
+}
+
 void customTextAreaEvent(lv_event_t *aEvent)
 {
 	uint8_t *data = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
@@ -278,6 +336,8 @@ void customTextAreaEvent(lv_event_t *aEvent)
 void settingsButtonEvent(lv_event_t *e)
 {
 	lv_scr_load(settingsPage);
+	// Откроет первую вкладку при повторных открытиях меню настройки
+	lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(menu), 0), 0), LV_EVENT_CLICKED, NULL);
 }
 
 void msgBoxCallback(lv_event_t *aEvent)
@@ -355,20 +415,15 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 	}
 
 	if (code == LV_EVENT_CLICKED) {
-		ESP_LOGI("TAG", "CLICKED");
-
 		if (lv_indev_get_type(lv_indev_get_act()) != LV_INDEV_TYPE_KEYPAD) {
 			lv_keyboard_set_textarea(keyboard, ta);
 			lv_obj_set_style_max_height(keyboard, LV_HOR_RES * 2 / 3, 0);
 			lv_obj_update_layout(lv_scr_act()); /*Be sure the sizes are recalculated*/
 			lv_obj_set_height(lv_scr_act(), LV_VER_RES - lv_obj_get_height(keyboard));
-			lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
 			lv_obj_scroll_to_view_recursive(ta, LV_ANIM_OFF);
 		}
 	} else if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
-		ESP_LOGI("TAG", "READY CANCEL");
 		lv_obj_set_height(lv_scr_act(), LV_VER_RES);
-		lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_clear_state(ta, LV_STATE_FOCUSED);
 		lv_indev_reset(NULL, ta); /*To forget the last clicked object to make it focusable again*/
 		// Optional
@@ -393,7 +448,9 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 	uint8_t *operation = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	if (*operation == 1) {
-		saveParameters();
+
+		auto newSettings = saveParameters();
+		sendParametersToEventBus(newSettings);
 
 		// Update pump mode
 		switch (lv_dropdown_get_selected(pumpTypeDD)) {
@@ -515,6 +572,8 @@ bool textAreasApply(uint8_t aArea)
 			const uint8_t hour = atoi(taTextTimeHour);
 			const uint8_t min = atoi(taTextTimeMin);
 			const uint8_t sec = atoi(taTextTimeSec);
+
+			sendNewTimeToEventBus(hour, min, sec);
 			break;
 		}
 		default:
@@ -646,6 +705,12 @@ void enterParameters(struct Settings *aParams)
 	} else {
 		lv_obj_clear_state(tapSountEnableButton, LV_STATE_CHECKED);
 	}
+
+	if (aParams->common.loggingEnabled) {
+		lv_obj_add_state(loggingSwitch, LV_STATE_CHECKED);
+	} else {
+		lv_obj_clear_state(loggingSwitch, LV_STATE_CHECKED);
+	}
 }
 
 struct Settings *saveParameters()
@@ -677,8 +742,14 @@ struct Settings *saveParameters()
 
 	globalSettings.common.alarmSoundEnabled = lv_obj_has_state(alarmSoundEnableButton, LV_STATE_CHECKED);
 	globalSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
+	globalSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 
 	return &globalSettings;
+}
+
+bool getLoggingState()
+{
+	return lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 }
 
 /**********************
@@ -1148,7 +1219,7 @@ void menu_create(lv_obj_t *parent)
 	section = lv_menu_section_create(subLampPage);
 	// Включение или выключение управления лампой
 	lampEnableButton = create_switch(section, LV_SYMBOL_SETTINGS, "Enable", true);
-	lv_obj_t *lampConfigSeparator = lv_menu_separator_create(section);
+	lv_menu_separator_create(section);
 
 	// Текст - время включения лампы
 	lv_obj_t *lampOnBaseText = create_text(section, NULL, "Lamp On Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
@@ -1178,7 +1249,7 @@ void menu_create(lv_obj_t *parent)
 	// Свитч для включения или выключения звука при тапе
 	tapSountEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Tap sound", false);
 	alarmSoundEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
-	lv_obj_t *setTimeSeparator = lv_menu_separator_create(section);
+	lv_menu_separator_create(section);
 
 	// Настройка  текущего времени
 	lv_obj_t *setTimeBaseText = create_text(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
@@ -1193,8 +1264,101 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align(setTimeButton, LV_ALIGN_CENTER, 0, -40);
 	// Надпись на кнопке
 	lv_obj_t *setTimeLabel = lv_label_create(setTimeButton);
-	lv_label_set_text(setTimeLabel, "Set current time");
+	lv_label_set_text(setTimeLabel, "Configure current time");
 	lv_obj_center(setTimeLabel);
+
+	lv_menu_separator_create(section);
+	lv_obj_t *wifiConfigureButton = lv_btn_create(section);
+	lv_obj_set_size(wifiConfigureButton, 314, 35);
+	lv_obj_add_state(wifiConfigureButton, LV_STATE_DISABLED);
+
+	lv_obj_t *wifiConfigureLabel = lv_label_create(wifiConfigureButton);
+	lv_label_set_text(wifiConfigureLabel, "Configure WIFI");
+	lv_obj_center(wifiConfigureLabel);
+
+	lv_menu_separator_create(section);
+	lv_obj_t *mqttConfigureButton = lv_btn_create(section);
+	lv_obj_set_size(mqttConfigureButton, 314, 35);
+	lv_obj_add_state(mqttConfigureButton, LV_STATE_DISABLED);
+
+	lv_obj_t *mqttConfigureLabel = lv_label_create(mqttConfigureButton);
+	lv_label_set_text(mqttConfigureLabel, "Configure MQTT");
+	lv_obj_center(mqttConfigureLabel);
+
+	// ******************************** МЕНЮ ОТЛАДКИ **********************************
+	subManualPage = lv_menu_page_create(menu, NULL);
+	lv_obj_set_style_pad_hor(subManualPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
+	lv_menu_separator_create(subManualPage);
+	section = lv_menu_section_create(subManualPage);
+	lv_obj_clear_flag(section, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+
+	static const int16_t containerColumnDescriber[] = {133, 133, LV_GRID_TEMPLATE_LAST};
+	static const int16_t containerRowDescriber[] = {35, 35, LV_GRID_TEMPLATE_LAST};
+	lv_obj_t *buttonContainer = lv_obj_create(section);
+    lv_obj_set_style_grid_column_dsc_array(buttonContainer, containerColumnDescriber, 0);
+    lv_obj_set_style_grid_row_dsc_array(buttonContainer, containerRowDescriber, 0);
+	lv_obj_set_size(buttonContainer, 315, 120);
+	lv_obj_set_layout(buttonContainer, LV_LAYOUT_GRID);
+	lv_obj_center(buttonContainer);
+
+	lv_obj_t *manualPumpOnButton = lv_btn_create(buttonContainer);
+	lv_obj_t *manualPumpOnButtonLabel = lv_label_create(manualPumpOnButton);
+	lv_label_set_text(manualPumpOnButtonLabel, "Pump ON");
+	lv_obj_align_to(manualPumpOnButtonLabel, manualPumpOnButton, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_center(manualPumpOnButtonLabel);
+	lv_obj_add_event_cb(manualPumpOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOnEnum);
+	lv_obj_set_grid_cell(manualPumpOnButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+
+	lv_obj_t *manualPumpOffButton = lv_btn_create(buttonContainer);
+	lv_obj_t *manualPumpOffButtonLabel = lv_label_create(manualPumpOffButton);
+	lv_label_set_text(manualPumpOffButtonLabel, "Pump OFF");
+	lv_obj_align_to(manualPumpOffButtonLabel, manualPumpOffButton, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_center(manualPumpOffButtonLabel);
+	lv_obj_add_event_cb(manualPumpOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOffEnum);
+	lv_obj_set_grid_cell(manualPumpOffButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+
+	lv_obj_t *manualLampOnButton = lv_btn_create(buttonContainer);
+	lv_obj_t *manualLampOnButtonLabel = lv_label_create(manualLampOnButton);
+	lv_label_set_text(manualLampOnButtonLabel, "Lamp ON");
+	lv_obj_align_to(manualLampOnButtonLabel, manualLampOnButton, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_center(manualLampOnButtonLabel);
+	lv_obj_add_event_cb(manualLampOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOnEnum);
+	lv_obj_set_grid_cell(manualLampOnButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
+
+	lv_obj_t *manualLampOffButton = lv_btn_create(buttonContainer);
+	lv_obj_t *manualLampOffButtonLabel = lv_label_create(manualLampOffButton);
+	lv_label_set_text(manualLampOffButtonLabel, "Lamp OFF");
+	lv_obj_align_to(manualLampOffButtonLabel, manualLampOffButton, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_center(manualLampOffButtonLabel);
+	lv_obj_add_event_cb(manualLampOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOffEnum);
+	lv_obj_set_grid_cell(manualLampOffButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
+
+	loggingSwitch = create_switch(section, LV_SYMBOL_WARNING, "Logging", false);
+	loggingTextarea = lv_label_create(section);
+	lv_obj_set_size(loggingTextarea, 315, 125);
+	lv_label_set_text(loggingTextarea, "A:N=0,R=1");
+	
+	// ******************************** МЕНЮ ABOUT **********************************
+	subAboutPage = lv_menu_page_create(menu, NULL);
+	lv_obj_set_style_pad_hor(subAboutPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
+	lv_menu_separator_create(subAboutPage);
+	section = lv_menu_section_create(subAboutPage);
+
+	lv_obj_t *versionContaiter = create_text(section, NULL, "Version:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	aboutVersionFiller = lv_label_create(versionContaiter);
+	lv_label_set_text(aboutVersionFiller, "2.0.2-ff523ed");
+	lv_obj_align(aboutVersionFiller, LV_ALIGN_LEFT_MID, 0,0);
+
+	lv_obj_t *wifiPresentContainer = create_text(section, NULL, "Wifi status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	aboutWifiPresentFiller = lv_label_create(wifiPresentContainer);
+	lv_label_set_text(aboutWifiPresentFiller, "UNSUPPORTED");
+	lv_obj_align(aboutWifiPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
+
+	lv_obj_t *mqttPresentContainer = create_text(section, NULL, "MQTT status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	aboutMqttPresentFiller = lv_label_create(mqttPresentContainer);
+	lv_label_set_text(aboutMqttPresentFiller, "UNSUPPORTED");
+	lv_obj_align(aboutMqttPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
+
 	// ******************************** МЕНЮ ВЫХОДА **********************************
 	subExitPage = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(subExitPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
@@ -1223,19 +1387,23 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_center(exitWnoSaveLabel);
 
 	/* ************************************ОБЩЕЕ ДЛЯ СОЗДАНИЯ МЕНЮ *******************************/
-	lv_obj_t *root_page = lv_menu_page_create(menu, "Settings");
+	lv_obj_t *root_page = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
 	section = lv_menu_section_create(root_page);
-	cont = create_text(section, LV_SYMBOL_SETTINGS, "Pump", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = create_text(section, LV_SYMBOL_TINT, "Pump", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subPumpPage);
-	cont = create_text(section, LV_SYMBOL_AUDIO, "Light", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = create_text(section, LV_SYMBOL_UP, "Light", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subLampPage);
 	cont = create_text(section, LV_SYMBOL_SETTINGS, "Common", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subCommonPage);
+	cont = create_text(section, LV_SYMBOL_WARNING, "Service", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_menu_set_load_page_event(menu, cont, subManualPage);
+	cont = create_text(section, LV_SYMBOL_LIST, "About", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_menu_set_load_page_event(menu, cont, subAboutPage);
 
 	create_text(root_page, NULL, "Others", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	section = lv_menu_section_create(root_page);
-	cont = create_text(section, NULL, "Exit", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = create_text(section, LV_SYMBOL_CLOSE, "Exit", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subExitPage);
 	lv_menu_set_sidebar_page(menu, root_page);
 	lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(menu), 0), 0), LV_EVENT_CLICKED, NULL);

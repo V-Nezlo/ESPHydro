@@ -1,5 +1,15 @@
-#ifndef EVENTBUS_HPP
-#define EVENTBUS_HPP
+/*!
+@file
+@brief Шина событий-данных
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 09.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_EVENTBUS_HPP_
+#define INCLUDE_EVENTBUS_HPP_
+
+#include "Types.hpp"
 
 #include <cctype>
 #include <cstddef>
@@ -17,9 +27,11 @@ using namespace std;
 
 enum class EventType {
     SetCurrentTime,
+    GetCurrentTime,
     UpdateSensorData,
     ErrorCaused,
     ActionRequest,
+    SettingsUpdated
 };
 
 enum class EventResult {
@@ -56,6 +68,7 @@ struct Event{
         SensorData sensorData;
         ErrorType errorType;
         Action action;
+        Settings settings;
     } data;
 };
 

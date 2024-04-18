@@ -1,5 +1,13 @@
-#ifndef GT911INITIALIZER_HPP_
-#define GT911INITIALIZER_HPP_
+/*!
+@file
+@brief Инициализатор для драйвера тач дисплея
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 09.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_GT911INITIALIZER_HPP_
+#define INCLUDE_GT911INITIALIZER_HPP_
 
 #include <LovyanGFX.hpp>
 

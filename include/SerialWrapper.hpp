@@ -1,5 +1,13 @@
-#ifndef SERIALWRAPPER_HPP
-#define SERIALWRAPPER_HPP
+/*!
+@file
+@brief ООП обертка для серийника
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 17.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_SERIALWRAPPER_HPP
+#define INCLUDE_SERIALWRAPPER_HPP
 
 #include <iostream>
 #include <cstddef>
@@ -10,6 +18,8 @@
 
 class SerialWrapper {
 public:
+    SerialWrapper(const SerialWrapper &) = delete;
+    SerialWrapper() = delete;
 	SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin) :
         port{aPort},
         config{

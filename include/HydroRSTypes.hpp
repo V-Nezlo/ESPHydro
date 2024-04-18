@@ -1,5 +1,13 @@
-#ifndef HYDRORSTYPES_HPP_
-#define HYDRORSTYPES_HPP_
+/*!
+@file
+@brief Типы для работы UtilitaryRS
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 09.04.2024
+@version 1.0
+*/
+
+#ifndef INCLUDE_HYDRORSTYPES_HPP_
+#define INCLUDE_HYDRORSTYPES_HPP_
 
 enum class Commands {
     SetPumpState = 0,

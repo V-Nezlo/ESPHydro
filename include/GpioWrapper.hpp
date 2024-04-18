@@ -1,12 +1,13 @@
-//-----------------------------------------------------------------------
-//  File        : GpioWrapper.hpp
-//  Created     : 6.10.2022
-//  Modified    : 23.10.2022
-//  Author      : V-Nezlo (vlladimirka@gmail.com)
-//  Description : ООП обертка для gpio
+/*!
+@file
+@brief ООП-обертка для gpio
+@author V-Nezlo (vlladimirka@gmail.com)
+@date 09.04.2024
+@version 1.0
+*/
 
-#ifndef GPIOWRAPPER
-#define GPIOWRAPPER
+#ifndef INCLUDE_GPIOWRAPPER_HPP_
+#define INCLUDE_GPIOWRAPPER_HPP_
 
 #include "driver/gpio.h"
 
