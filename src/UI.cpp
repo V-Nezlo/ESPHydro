@@ -1346,7 +1346,7 @@ void menu_create(lv_obj_t *parent)
 
 	lv_obj_t *versionContaiter = create_text(section, NULL, "Version:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutVersionFiller = lv_label_create(versionContaiter);
-	lv_label_set_text(aboutVersionFiller, "2.0.2-ff523ed");
+	lv_label_set_text(aboutVersionFiller, AUTO_VERSION);
 	lv_obj_align(aboutVersionFiller, LV_ALIGN_LEFT_MID, 0,0);
 
 	lv_obj_t *wifiPresentContainer = create_text(section, NULL, "Wifi status:", LV_MENU_ITEM_BUILDER_VARIANT_1);

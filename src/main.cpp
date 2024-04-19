@@ -57,7 +57,13 @@ void app_main()
 	
 	DS3231 rtc(1, 20, 21);
 	SerialWrapper serial(0, 64, 64, 15, 14);
-	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0);
+	Gpio rsLatch(10, GPIO_MODE_OUTPUT);
+	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
+	UiEventObserver uiObserver;
+
+	EventBus::registerObserver(&rtc);
+	EventBus::registerObserver(&smartBus);
+	EventBus::registerObserver(&uiObserver);
 
 	// Поток для работы с дисплеем
 	std::thread displayTask(displayThreadFunc);
@@ -66,11 +72,11 @@ void app_main()
 	// Поток для работы с RTC
 	std::thread rtcTask(rtcThreadFunc, std::ref(rtc));
 	rtcTask.detach();
-
-	// std::thread smartBusTask(smartBusThreadFunc, smartBus, serial);
-	// smartBusTask.detach();
+	// Поток для RS485
+	std::thread smartBusTask(smartBusThreadFunc, std::ref(smartBus), std::ref(serial));
+	smartBusTask.detach();
 
 	while(true) {
-		
+		vTaskDelay(pdTICKS_TO_MS(100));
 	}
 }

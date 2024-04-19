@@ -90,7 +90,7 @@ public:
         }
     }
 
-    void registerObserver(AbstractEventObserver *aObserver)
+    static void registerObserver(AbstractEventObserver *aObserver)
     {
         observers.push_back(aObserver);
     }
