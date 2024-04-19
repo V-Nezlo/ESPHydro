@@ -174,8 +174,7 @@ uint8_t exitWithoutSaveButtonCallbackData = 2;
 lv_obj_t *activeMessageBox;
 // Временный буффер для перевода всяких штук в другие штуки
 
-struct Settings params;
-Settings globalSettings;
+Settings currentSettings;
 
 void sendParametersToEventBus(Settings *aSettings)
 {
@@ -271,19 +270,19 @@ void uiInit(bool aDarkTheme)
 	data.waterTempd10 = 234;
 	updateMainPage(&data);
 
-	params.pump.enabled = true;
-	params.pump.onTime = 123;
-	params.pump.offTime = 456;
-	params.pump.type = 1;
-	params.pump.swingTime = 6;
-	params.lamp.enabled = false;
-	params.lamp.lampOnHour = 9;
-	params.lamp.lampOnMin = 12;
-	params.lamp.lampOffHour = 21;
-	params.lamp.lampOffMin = 8;
-	params.common.alarmSoundEnabled = true;
-	params.common.tapSoundEnabled = false;
-	enterParameters(&params);
+	currentSettings.pump.enabled = true;
+	currentSettings.pump.onTime = 123;
+	currentSettings.pump.offTime = 456;
+	currentSettings.pump.type = 1;
+	currentSettings.pump.swingTime = 6;
+	currentSettings.lamp.enabled = false;
+	currentSettings.lamp.lampOnHour = 9;
+	currentSettings.lamp.lampOnMin = 12;
+	currentSettings.lamp.lampOffHour = 21;
+	currentSettings.lamp.lampOffMin = 8;
+	currentSettings.common.alarmSoundEnabled = true;
+	currentSettings.common.tapSoundEnabled = false;
+	enterParameters(&currentSettings);
 
 	CurrentTime time;
 	time.currentHour = 14;
@@ -479,7 +478,7 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 
 		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, false);
 	} else {
-		enterParameters(&params);
+		enterParameters(&currentSettings);
 		activeMessageBox = lv_msgbox_create(NULL, "Parameters were not applied", "Tap to continue", NULL, false);
 	}
 
@@ -537,9 +536,6 @@ bool textAreasApply(uint8_t aArea)
 			const uint32_t offTime = atoi(taTextOff);
 
 			if (onTime != 0 && offTime != 0) {
-				globalSettings.pump.onTime = onTime;
-				globalSettings.pump.offTime = offTime;
-
 				lv_label_set_text(pumpOnCornerText, taTextOn);
 				lv_label_set_text(pumpOffCornerText, taTextOff);
 				return true;
@@ -655,6 +651,9 @@ void applyNewCurrentTime(struct CurrentTime *aTime)
 
 void enterParameters(struct Settings *aParams)
 {
+	// Установим новые параметры в системе
+	currentSettings = *aParams;
+	// А потом установим все элементы в соответствующее состояние
 	// Сначала насос
 	if (aParams->pump.enabled) {
 		lv_obj_add_state(pumpEnableButton, LV_STATE_CHECKED);
@@ -715,11 +714,11 @@ void enterParameters(struct Settings *aParams)
 
 struct Settings *saveParameters()
 {
-	globalSettings.pump.enabled = lv_obj_has_state(pumpEnableButton, LV_STATE_CHECKED);
-	globalSettings.pump.onTime = atoi(lv_label_get_text(pumpOnCornerText));
-	globalSettings.pump.offTime = atoi(lv_label_get_text(pumpOffCornerText));
-	globalSettings.pump.type = lv_dropdown_get_selected(pumpTypeDD);
-	globalSettings.pump.swingTime = lv_slider_get_value(pumpSwingTimeSlider);
+	currentSettings.pump.enabled = lv_obj_has_state(pumpEnableButton, LV_STATE_CHECKED);
+	currentSettings.pump.onTime = atoi(lv_label_get_text(pumpOnCornerText));
+	currentSettings.pump.offTime = atoi(lv_label_get_text(pumpOffCornerText));
+	currentSettings.pump.type = lv_dropdown_get_selected(pumpTypeDD);
+	currentSettings.pump.swingTime = lv_slider_get_value(pumpSwingTimeSlider);
 
 	const char *lampOnText = lv_label_get_text(lampOnCornerText);
 	const char *lampOffText = lv_label_get_text(lampOffCornerText);
@@ -734,17 +733,17 @@ struct Settings *saveParameters()
 	memcpy(lampOffHourText, lampOffText, 2);
 	memcpy(lampOffMinText, &lampOffText[2], 2);
 
-	globalSettings.lamp.enabled = lv_obj_has_state(lampEnableButton, LV_STATE_CHECKED);
-	globalSettings.lamp.lampOnHour = atoi(lampOnHourText);
-	globalSettings.lamp.lampOnMin = atoi(lampOnMinText);
-	globalSettings.lamp.lampOffHour = atoi(lampOffHourText);
-	globalSettings.lamp.lampOffMin = atoi(lampOffMinText);
+	currentSettings.lamp.enabled = lv_obj_has_state(lampEnableButton, LV_STATE_CHECKED);
+	currentSettings.lamp.lampOnHour = atoi(lampOnHourText);
+	currentSettings.lamp.lampOnMin = atoi(lampOnMinText);
+	currentSettings.lamp.lampOffHour = atoi(lampOffHourText);
+	currentSettings.lamp.lampOffMin = atoi(lampOffMinText);
 
-	globalSettings.common.alarmSoundEnabled = lv_obj_has_state(alarmSoundEnableButton, LV_STATE_CHECKED);
-	globalSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
-	globalSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
+	currentSettings.common.alarmSoundEnabled = lv_obj_has_state(alarmSoundEnableButton, LV_STATE_CHECKED);
+	currentSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
+	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 
-	return &globalSettings;
+	return &currentSettings;
 }
 
 bool getLoggingState()

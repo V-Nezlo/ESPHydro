@@ -65,8 +65,14 @@ public:
         {
         case EventType::UpdateSensorData:
             // Update main page
-            
-            return EventResult::HANDLED;
+            return EventResult::PASS_ON;
+            break;
+        case EventType::GetCurrentTime:
+            applyNewCurrentTime(&e->data.time);
+            return EventResult::PASS_ON;
+        case EventType::SettingsFirstLoad:
+            enterParameters(&e->data.settings);
+            return EventResult::PASS_ON;
             break;
         
         default:

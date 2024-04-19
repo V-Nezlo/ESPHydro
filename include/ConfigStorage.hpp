@@ -34,7 +34,7 @@ public:
         // Запишем внутреннюю часть синглтона
         nvData.settings = *aSettings;
         // Отправим в память
-        NVStorage::writeSettings(aSettings);
+        return NVStorage::writeSettings(aSettings);
     }
 
     EventResult handleEvent(Event *e) override
@@ -44,7 +44,7 @@ public:
                 sync(&e->data.settings);
                 return EventResult::PASS_ON;
             default:
-                break;
+                return EventResult::IGNORED;
         }
     }
 
@@ -52,7 +52,12 @@ private:
     ConfigStorage()
     {
         NVStorage::init();
-        NVStorage::readSettings(&nvData.settings);
+        if (NVStorage::readSettings(&nvData.settings)) {
+            Event ev;
+            ev.type = EventType::SettingsFirstLoad;
+            ev.data.settings = nvData.settings;
+            EventBus::throwEvent(&ev);
+        }
     }
 };
 

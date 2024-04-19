@@ -93,7 +93,7 @@ private:
     bool isConfigured()
     {
         tm time;
-        const auto result = ds3231_get_time(&dev, &time);
+        ds3231_get_time(&dev, &time);
 
         if (time.tm_year >= atoi(AUTO_YEAR) + 1900) {
             return true;

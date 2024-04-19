@@ -47,7 +47,7 @@ public:
 
 void PumpController::process()
 {
-    auto currentTime = TimeWrapper::milliseconds();
+    auto currentTime = TimeWrapper::seconds();
 
     switch (pumpState) {
         case PumpState::PUMPON:
@@ -71,7 +71,7 @@ void PumpController::process()
 private:
     Modes mode;
     PumpState pumpState;
-    std::chrono::milliseconds lastActionTime;
+    std::chrono::seconds lastActionTime;
 
     std::chrono::seconds pumpOnTime;
     std::chrono::seconds pumpOffTime;

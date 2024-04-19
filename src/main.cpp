@@ -11,6 +11,8 @@
 #include <functional>
 #include <SerialWrapper.hpp>
 #include <Lib/Crc8.hpp>
+#include <ConfigStorage.hpp>
+#include <PumpController.hpp>
 
 void displayThreadFunc()
 {
@@ -60,6 +62,7 @@ void app_main()
 	Gpio rsLatch(10, GPIO_MODE_OUTPUT);
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
 	UiEventObserver uiObserver;
+	ConfigStorage::instance();
 
 	EventBus::registerObserver(&rtc);
 	EventBus::registerObserver(&smartBus);

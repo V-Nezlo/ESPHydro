@@ -31,7 +31,8 @@ enum class EventType {
     UpdateSensorData,
     ErrorCaused,
     ActionRequest,
-    SettingsUpdated
+    SettingsUpdated,
+    SettingsFirstLoad
 };
 
 enum class EventResult {
