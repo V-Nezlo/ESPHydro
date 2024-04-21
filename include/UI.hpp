@@ -46,6 +46,7 @@ void applyNewCurrentTime(struct CurrentTime *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
 bool getLoggingState();
+void updateMainPagePumpTypeLabel();
 
 enum {
     LV_MENU_ITEM_BUILDER_VARIANT_1,

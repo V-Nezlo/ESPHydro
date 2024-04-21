@@ -37,6 +37,19 @@ public:
         return NVStorage::writeSettings(aSettings);
     }
 
+    bool firstLoad()
+    {
+        if (NVStorage::readSettings(&nvData.settings)) {
+            Event ev;
+            ev.type = EventType::SettingsFirstLoad;
+            ev.data.settings = nvData.settings;
+            EventBus::throwEvent(&ev);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     EventResult handleEvent(Event *e) override
     {
         switch(e->type) {
@@ -52,12 +65,6 @@ private:
     ConfigStorage()
     {
         NVStorage::init();
-        if (NVStorage::readSettings(&nvData.settings)) {
-            Event ev;
-            ev.type = EventType::SettingsFirstLoad;
-            ev.data.settings = nvData.settings;
-            EventBus::throwEvent(&ev);
-        }
     }
 };
 

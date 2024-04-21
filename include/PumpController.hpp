@@ -45,7 +45,7 @@ public:
         }
     }
 
-void PumpController::process()
+void process()
 {
     auto currentTime = TimeWrapper::seconds();
 
@@ -79,7 +79,7 @@ private:
     void setPumpState(bool aState)
     {
         Event ev;
-        ev.type == EventType::ActionRequest;
+        ev.type = EventType::ActionRequest;
         ev.data.action = aState ? Action::TurnPumpOn : Action::TurnPumpOff;
         EventBus::throwEvent(&ev);
     }

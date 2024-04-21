@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <esp_log.h>
 
 /**********************
  *      Типы
@@ -451,31 +452,6 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 		auto newSettings = saveParameters();
 		sendParametersToEventBus(newSettings);
 
-		// Update pump mode
-		switch (lv_dropdown_get_selected(pumpTypeDD)) {
-			case 0: // Normal
-				lv_label_set_text(currentModeLabel, "EBB-FLOW");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 1: // Swing
-				lv_label_set_text(currentModeLabel, "EBB-SWING");
-				lv_obj_center(currentModeLabel);
-				lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 2: // Maintance
-				lv_label_set_text(currentModeLabel, "MAINTANCE");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 3: // Drip
-				lv_label_set_text(currentModeLabel, "DRIP");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			default:
-				break;
-		}
-
 		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, false);
 	} else {
 		enterParameters(&currentSettings);
@@ -710,6 +686,9 @@ void enterParameters(struct Settings *aParams)
 	} else {
 		lv_obj_clear_state(loggingSwitch, LV_STATE_CHECKED);
 	}
+
+	// В конце обновим главную страницу
+	updateMainPagePumpTypeLabel();
 }
 
 struct Settings *saveParameters()
@@ -749,6 +728,34 @@ struct Settings *saveParameters()
 bool getLoggingState()
 {
 	return lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
+}
+
+void updateMainPagePumpTypeLabel()
+{
+		// Update pump mode
+		switch (lv_dropdown_get_selected(pumpTypeDD)) {
+			case 0: // Normal
+				lv_label_set_text(currentModeLabel, "EBB-FLOW");
+				lv_obj_center(currentModeLabel);
+				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+				break;
+			case 1: // Swing
+				lv_label_set_text(currentModeLabel, "EBB-SWING");
+				lv_obj_center(currentModeLabel);
+				lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+				break;
+			case 2: // Maintance
+				lv_label_set_text(currentModeLabel, "MAINTANCE");
+				lv_obj_center(currentModeLabel);
+				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+				break;
+			case 3: // Drip
+				lv_label_set_text(currentModeLabel, "DRIP");
+				lv_obj_center(currentModeLabel);
+				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			default:
+				break;
+		}
 }
 
 /**********************
