@@ -32,7 +32,8 @@ enum class EventType {
     ErrorCaused,
     ActionRequest,
     SettingsUpdated,
-    SettingsFirstLoad
+    SettingsFirstLoad,
+    NewBrightness
 };
 
 enum class EventResult {
@@ -70,6 +71,7 @@ struct Event{
         ErrorType errorType;
         Action action;
         Settings settings;
+        uint8_t brightness;
     } data;
 };
 

@@ -39,6 +39,7 @@ struct CommonConfiguration {
     bool tapSoundEnabled;
     bool alarmSoundEnabled;
     bool loggingEnabled;
+    uint8_t displayBrightness;
 };
 
 struct Settings {

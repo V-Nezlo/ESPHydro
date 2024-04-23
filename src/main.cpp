@@ -72,8 +72,10 @@ void app_main()
 {
 	// Display and UI initializing
 	GT911Initializer::init();
-	setupDisplay();
-	lvlgSetup();
+	DisplayDriver displayDriver;
+	displayDriver.setupDisplay();
+	displayDriver.setupLvgl();
+	
 	uiInit(true);
 	
 	//DS3231 rtc(1, 20, 21);
@@ -87,6 +89,7 @@ void app_main()
 	//EventBus::registerObserver(&smartBus);
 	EventBus::registerObserver(&uiObserver);
 	EventBus::registerObserver(ConfigStorage::instance());
+	EventBus::registerObserver(&displayDriver);
 	ConfigStorage::instance()->firstLoad();
 
 	auto cfg = esp_pthread_get_default_config();

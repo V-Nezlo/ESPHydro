@@ -75,7 +75,6 @@ public:
             enterParameters(&e->data.settings);
             return EventResult::PASS_ON;
             break;
-        
         default:
             return EventResult::IGNORED;
             break;
@@ -86,5 +85,6 @@ public:
 void sendParametersToEventBus(Settings *aSettings);
 void sendActionCommandToEventBus(Action aAction);
 void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec);
+void sendNewBrightnessToEventBus(uint8_t aDuty);
 
-#endif /*LV_DEMO_WIDGETS_H*/
+#endif /*INCLUDE_UI_HPP_*/

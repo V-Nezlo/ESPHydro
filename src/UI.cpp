@@ -2,14 +2,13 @@
  *      INCLUDES
  *********************/
 
-#include <EventBus.hpp>
+#include "EventBus.hpp"
 #include "Types.hpp"
 #include "UI.hpp"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <esp_log.h>
 
 /**********************
  *      Типы
@@ -151,6 +150,7 @@ lv_obj_t *settingsPageTime;
 // Общие настройки
 lv_obj_t *alarmSoundEnableButton;
 lv_obj_t *tapSountEnableButton;
+lv_obj_t *brightnessSlider;
 // Штуки для сервиса
 lv_obj_t *loggingTextarea;
 lv_obj_t *loggingSwitch;
@@ -201,6 +201,14 @@ void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec)
     ev.data.time.currentMinutes = min;
     ev.data.time.currentSeconds = sec;
     EventBus::throwEvent(&ev);
+}
+
+void sendNewBrightnessToEventBus(uint8_t aDuty)
+{
+	Event ev;
+	ev.type = EventType::NewBrightness;
+	ev.data.brightness = aDuty;
+	EventBus::throwEvent(&ev);
 }
 
 #ifdef __cplusplus
@@ -283,6 +291,7 @@ void uiInit(bool aDarkTheme)
 	currentSettings.lamp.lampOffMin = 8;
 	currentSettings.common.alarmSoundEnabled = true;
 	currentSettings.common.tapSoundEnabled = false;
+	currentSettings.common.displayBrightness = 80;
 	enterParameters(&currentSettings);
 
 	CurrentTime time;
@@ -473,7 +482,14 @@ void setTimeButtonEventHandler(lv_event_t *aEvent)
 	time.currentHour = atoi(lv_textarea_get_text(setTimeHourTa));
 	time.currentMinutes = atoi(lv_textarea_get_text(setTimeMinTa));
 	time.currentSeconds = atoi(lv_textarea_get_text(setTimeSecTa));
-	(void)time;
+
+	sendNewTimeToEventBus(time.currentHour, time.currentMinutes, time.currentSeconds);
+}
+
+void brightnessSliderEventHandler(lv_event_t *)
+{
+	uint8_t newSliderValue = lv_slider_get_value(brightnessSlider);
+	sendNewBrightnessToEventBus(newSliderValue);
 }
 
 /********************************
@@ -537,15 +553,6 @@ bool textAreasApply(uint8_t aArea)
 			break;
 		}
 		case CurrentTimeSettingsScrNumber: {
-			const char *taTextTimeHour = lv_textarea_get_text(setTimeHourTa);
-			const char *taTextTimeMin = lv_textarea_get_text(setTimeMinTa);
-			const char *taTextTimeSec = lv_textarea_get_text(setTimeSecTa);
-
-			const uint8_t hour = atoi(taTextTimeHour);
-			const uint8_t min = atoi(taTextTimeMin);
-			const uint8_t sec = atoi(taTextTimeSec);
-
-			sendNewTimeToEventBus(hour, min, sec);
 			break;
 		}
 		default:
@@ -687,6 +694,9 @@ void enterParameters(struct Settings *aParams)
 		lv_obj_clear_state(loggingSwitch, LV_STATE_CHECKED);
 	}
 
+	// Установим новое значение яркости
+	lv_slider_set_value(brightnessSlider, aParams->common.displayBrightness, LV_ANIM_OFF);
+
 	// В конце обновим главную страницу
 	updateMainPagePumpTypeLabel();
 }
@@ -721,6 +731,7 @@ struct Settings *saveParameters()
 	currentSettings.common.alarmSoundEnabled = lv_obj_has_state(alarmSoundEnableButton, LV_STATE_CHECKED);
 	currentSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
 	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
+	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
 
 	return &currentSettings;
 }
@@ -1210,6 +1221,7 @@ void menu_create(lv_obj_t *parent)
 	pumpSwingTimeText = lv_label_create(pumpSwingTimeBase);
 	lv_obj_align(pumpSwingTimeText, LV_ALIGN_RIGHT_MID, 0, 0);
 	lv_label_set_text(pumpSwingTimeText, "0s ");
+
 	pumpSwingTimeSlider = lv_slider_create(pumpSwingTimeBase);
 	lv_obj_set_flex_grow(pumpSwingTimeSlider, 2);
 	lv_slider_set_range(pumpSwingTimeSlider, 0, 10);
@@ -1257,6 +1269,10 @@ void menu_create(lv_obj_t *parent)
 	alarmSoundEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
 	lv_menu_separator_create(section);
 
+	brightnessSlider = create_slider(section, NULL, "Display brightness", 30, 100, 50);
+	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
+	lv_menu_separator_create(section);
+
 	// Настройка  текущего времени
 	lv_obj_t *setTimeBaseText = create_text(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	settingsPageTime = lv_label_create(setTimeBaseText);
@@ -1274,21 +1290,13 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_center(setTimeLabel);
 
 	lv_menu_separator_create(section);
-	lv_obj_t *wifiConfigureButton = lv_btn_create(section);
-	lv_obj_set_size(wifiConfigureButton, 314, 35);
-	lv_obj_add_state(wifiConfigureButton, LV_STATE_DISABLED);
 
-	lv_obj_t *wifiConfigureLabel = lv_label_create(wifiConfigureButton);
-	lv_label_set_text(wifiConfigureLabel, "Configure WIFI");
-	lv_obj_center(wifiConfigureLabel);
-
-	lv_menu_separator_create(section);
 	lv_obj_t *mqttConfigureButton = lv_btn_create(section);
 	lv_obj_set_size(mqttConfigureButton, 314, 35);
 	lv_obj_add_state(mqttConfigureButton, LV_STATE_DISABLED);
 
 	lv_obj_t *mqttConfigureLabel = lv_label_create(mqttConfigureButton);
-	lv_label_set_text(mqttConfigureLabel, "Configure MQTT");
+	lv_label_set_text(mqttConfigureLabel, "Configure connections");
 	lv_obj_center(mqttConfigureLabel);
 
 	// ******************************** МЕНЮ ОТЛАДКИ **********************************
@@ -1455,7 +1463,7 @@ lv_obj_t *create_slider(lv_obj_t *parent, const char *icon, const char *txt, int
 		lv_obj_add_flag(slider, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
 	}
 
-	return obj;
+	return slider;
 }
 
 lv_obj_t *create_switch(lv_obj_t *parent, const char *icon, const char *txt, bool chk)
