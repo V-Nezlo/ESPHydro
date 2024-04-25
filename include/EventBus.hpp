@@ -28,12 +28,14 @@ using namespace std;
 enum class EventType {
     SetCurrentTime,
     GetCurrentTime,
-    UpdateSensorData,
+    UpdateUpperData,
+    UpdateLowerData,
     ErrorCaused,
     ActionRequest,
     SettingsUpdated,
     SettingsFirstLoad,
-    NewBrightness
+    NewBrightness,
+    BuzzerSignal
 };
 
 enum class EventResult {
@@ -42,36 +44,50 @@ enum class EventResult {
     PASS_ON
 };
 
-struct SensorData {
+struct UpperData {
     float temp;
     float ph;
     float ppm;
     bool upperState;
 };
 
+struct LowerData {
+    uint8_t waterLevel;
+    bool pumpState;
+};
+
 enum class ErrorType {
+    UpperNotFloodedInTime,
     Leak,
     ParamError,
     PumpLost,
     LowWater
 };
 
-enum class Action {
+enum class Action : uint8_t {
     TurnPumpOn,
     TurnPumpOff,
     TurnLampOn,
     TurnLampOff
 };
 
+enum class BuzzerSignal {
+    Disable,
+    Short,
+    Long
+};
+
 struct Event{
     EventType type;
     union {
         CurrentTime time;
-        SensorData sensorData;
+        UpperData sensorData;
         ErrorType errorType;
         Action action;
         Settings settings;
         uint8_t brightness;
+        BuzzerSignal buzSignal;
+
     } data;
 };
 

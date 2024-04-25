@@ -62,9 +62,9 @@ class UiEventObserver : public AbstractEventObserver {
 public:
     EventResult handleEvent(Event *e) override
     {
-        switch (e->type)
+        switch (e->type) 
         {
-        case EventType::UpdateSensorData:
+        case EventType::UpdateUpperData:
             // Update main page
             return EventResult::PASS_ON;
             break;

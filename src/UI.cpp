@@ -145,7 +145,7 @@ lv_obj_t *lampOffCornerText;
 lv_obj_t *setTimeHourTa;
 lv_obj_t *setTimeMinTa;
 lv_obj_t *setTimeSecTa;
-lv_obj_t *setTimeButton;
+lv_obj_t *sendNewTimeButton;
 lv_obj_t *settingsPageTime;
 // Общие настройки
 lv_obj_t *alarmSoundEnableButton;
@@ -158,6 +158,11 @@ lv_obj_t *loggingSwitch;
 uint8_t editScrSelectorPumpSetttins = PumpSettingsScrNumber;
 uint8_t editScrSelectorLampSettings = LampSettingsScrNumber;
 uint8_t editScrSelectorSetTime = CurrentTimeSettingsScrNumber;
+// Кнопки для мануального управления насосом
+lv_obj_t *manualPumpOnButton;
+lv_obj_t *manualPumpOffButton;
+lv_obj_t *manualLampOnButton;
+lv_obj_t *manualLampOffButton;
 // Энумератор для панели сервиса
 uint8_t manualActionPumpOnEnum = ManualActionPumpOn;
 uint8_t manualActionPumpOffEnum = ManualActionPumpOff;
@@ -282,7 +287,7 @@ void uiInit(bool aDarkTheme)
 	currentSettings.pump.enabled = true;
 	currentSettings.pump.onTime = 123;
 	currentSettings.pump.offTime = 456;
-	currentSettings.pump.type = 1;
+	currentSettings.pump.mode = PumpModes::EBBNormal;
 	currentSettings.pump.swingTime = 6;
 	currentSettings.lamp.enabled = false;
 	currentSettings.lamp.lampOnHour = 9;
@@ -366,24 +371,23 @@ void pumpSwingTimeEvent(lv_event_t *aEvent)
 void pumpTypeEventHandler(lv_event_t *aEvent)
 {
 	lv_obj_t *obj = lv_event_get_target(aEvent);
-	uint16_t type = lv_dropdown_get_selected(obj);
+	const uint16_t typeNum = lv_dropdown_get_selected(obj);
+	const PumpModes mode = static_cast<PumpModes>(typeNum);
 
-	switch (type) {
-		case 0: // Normal
-			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			break;
-		case 1: // Swing
-			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			break;
-		case 2: // Maintance
-			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			break;
-		case 3: // Drip
-			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			break;
-		default:
-			break;
+	if (mode == PumpModes::EBBSwing) {
+		lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+	} else {
+		lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 	}
+
+	if (mode == PumpModes::Maintance) {
+		lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
+		lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
+	} else {
+		lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
+		lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
+	}
+
 }
 
 void formattedAreaCommonCallback(lv_event_t *aEvent)
@@ -652,7 +656,7 @@ void enterParameters(struct Settings *aParams)
 	lv_label_set_text(pumpOnCornerText, pumpOnTimeText);
 	lv_label_set_text(pumpOffCornerText, pumpOffTimeText);
 
-	lv_dropdown_set_selected(pumpTypeDD, aParams->pump.type);
+	lv_dropdown_set_selected(pumpTypeDD, static_cast<uint8_t>(aParams->pump.mode));
 	// Вызываю коллбек для DD руками чтобы обновился текст на главной странице
 	lv_event_send(pumpTypeDD, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_slider_set_value(pumpSwingTimeSlider, aParams->pump.swingTime, LV_ANIM_OFF);
@@ -706,7 +710,9 @@ struct Settings *saveParameters()
 	currentSettings.pump.enabled = lv_obj_has_state(pumpEnableButton, LV_STATE_CHECKED);
 	currentSettings.pump.onTime = atoi(lv_label_get_text(pumpOnCornerText));
 	currentSettings.pump.offTime = atoi(lv_label_get_text(pumpOffCornerText));
-	currentSettings.pump.type = lv_dropdown_get_selected(pumpTypeDD);
+	currentSettings.pump.mode = static_cast<PumpModes>(lv_dropdown_get_selected(pumpTypeDD));
+
+
 	currentSettings.pump.swingTime = lv_slider_get_value(pumpSwingTimeSlider);
 
 	const char *lampOnText = lv_label_get_text(lampOnCornerText);
@@ -1144,18 +1150,18 @@ void createAdditionalPanels()
 	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
 	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
 
-	setTimeButton = lv_btn_create(curTimeSettingsScr);
-	lv_obj_set_size(setTimeButton, 120, 40);
-	lv_obj_add_event_cb(setTimeButton, setTimeButtonEventHandler, LV_EVENT_CLICKED, NULL);
-	lv_obj_t *setTimeButtonLabel = lv_label_create(setTimeButton);
-	lv_obj_align_to(setTimeButtonLabel, setTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
+	sendNewTimeButton = lv_btn_create(curTimeSettingsScr);
+	lv_obj_set_size(sendNewTimeButton, 120, 40);
+	lv_obj_add_event_cb(sendNewTimeButton, setTimeButtonEventHandler, LV_EVENT_CLICKED, NULL);
+	lv_obj_t *setTimeButtonLabel = lv_label_create(sendNewTimeButton);
+	lv_obj_align_to(setTimeButtonLabel, sendNewTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
 	lv_label_set_text(setTimeButtonLabel, "Send to RTC");
 
 	// Алигним
 	lv_obj_align_to(setTimeHourTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 20, 20);
 	lv_obj_align_to(setTimeMinTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 70, 20);
 	lv_obj_align_to(setTimeSecTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 120, 20);
-	lv_obj_align_to(setTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
+	lv_obj_align_to(sendNewTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
 }
 
 void menu_create(lv_obj_t *parent)
@@ -1267,7 +1273,6 @@ void menu_create(lv_obj_t *parent)
 	// Свитч для включения или выключения звука при тапе
 	tapSountEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Tap sound", false);
 	alarmSoundEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
-	lv_menu_separator_create(section);
 
 	brightnessSlider = create_slider(section, NULL, "Display brightness", 30, 100, 50);
 	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
@@ -1315,7 +1320,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_set_layout(buttonContainer, LV_LAYOUT_GRID);
 	lv_obj_center(buttonContainer);
 
-	lv_obj_t *manualPumpOnButton = lv_btn_create(buttonContainer);
+	manualPumpOnButton = lv_btn_create(buttonContainer);
 	lv_obj_t *manualPumpOnButtonLabel = lv_label_create(manualPumpOnButton);
 	lv_label_set_text(manualPumpOnButtonLabel, "Pump ON");
 	lv_obj_align_to(manualPumpOnButtonLabel, manualPumpOnButton, LV_ALIGN_CENTER, 0, 0);
@@ -1323,7 +1328,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_add_event_cb(manualPumpOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOnEnum);
 	lv_obj_set_grid_cell(manualPumpOnButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
 
-	lv_obj_t *manualPumpOffButton = lv_btn_create(buttonContainer);
+	manualPumpOffButton = lv_btn_create(buttonContainer);
 	lv_obj_t *manualPumpOffButtonLabel = lv_label_create(manualPumpOffButton);
 	lv_label_set_text(manualPumpOffButtonLabel, "Pump OFF");
 	lv_obj_align_to(manualPumpOffButtonLabel, manualPumpOffButton, LV_ALIGN_CENTER, 0, 0);
@@ -1331,7 +1336,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_add_event_cb(manualPumpOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOffEnum);
 	lv_obj_set_grid_cell(manualPumpOffButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
-	lv_obj_t *manualLampOnButton = lv_btn_create(buttonContainer);
+	manualLampOnButton = lv_btn_create(buttonContainer);
 	lv_obj_t *manualLampOnButtonLabel = lv_label_create(manualLampOnButton);
 	lv_label_set_text(manualLampOnButtonLabel, "Lamp ON");
 	lv_obj_align_to(manualLampOnButtonLabel, manualLampOnButton, LV_ALIGN_CENTER, 0, 0);
@@ -1339,7 +1344,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_add_event_cb(manualLampOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOnEnum);
 	lv_obj_set_grid_cell(manualLampOnButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
 
-	lv_obj_t *manualLampOffButton = lv_btn_create(buttonContainer);
+	manualLampOffButton = lv_btn_create(buttonContainer);
 	lv_obj_t *manualLampOffButtonLabel = lv_label_create(manualLampOffButton);
 	lv_label_set_text(manualLampOffButtonLabel, "Lamp OFF");
 	lv_obj_align_to(manualLampOffButtonLabel, manualLampOffButton, LV_ALIGN_CENTER, 0, 0);

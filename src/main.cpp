@@ -78,11 +78,13 @@ void app_main()
 	
 	uiInit(true);
 	
-	//DS3231 rtc(1, 20, 21);
-	//SerialWrapper serial(0, 64, 64, 15, 14);
-	//Gpio rsLatch(10, GPIO_MODE_OUTPUT);
-	//HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
+	DS3231 rtc(1, 20, 21);
+	SerialWrapper serial(0, 64, 64, 15, 14);
+	Gpio rsLatch(10, GPIO_MODE_OUTPUT);
+	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
 	UiEventObserver uiObserver;
+	PumpController pumpController;
+
 	ConfigStorage::instance();
 
 	//EventBus::registerObserver(&rtc);

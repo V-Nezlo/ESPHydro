@@ -11,6 +11,13 @@
 
 #include <stdint.h>
 
+enum class PumpModes : uint8_t {
+    EBBNormal = 0,
+    EBBSwing,
+    Maintance,
+    Dripping
+};
+
 struct SystemData {
     uint32_t deviceFlags;
     uint16_t ppm;
@@ -23,7 +30,7 @@ struct PumpConfiguration {
     bool enabled;
     uint16_t onTime;
     uint16_t offTime;
-    uint8_t type;
+    PumpModes mode;
     uint8_t swingTime;
 };
 
