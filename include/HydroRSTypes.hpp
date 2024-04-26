@@ -9,14 +9,28 @@
 #ifndef INCLUDE_HYDRORSTYPES_HPP_
 #define INCLUDE_HYDRORSTYPES_HPP_
 
+enum class DeviceType {
+	Unknown = 0,
+	Upper,
+    Lower
+};
+
+struct LowerTelemetry {
+    uint8_t pumpState;
+    uint8_t waterLevelPerc;
+    float waterTemperature;
+    uint8_t waterPH;
+    uint16_t waterPPM;
+    uint8_t deviceFlags;
+} __attribute__((packed));
+
 enum class Commands {
     SetPumpState = 0,
-    SetLampState = 1,
+    SetLampState
 };
 
 enum class Requests {
-    RequestTankData = 0,
-    RequestUpperData = 0
+    RequestTelemetry = 0
 };
 
 #endif
