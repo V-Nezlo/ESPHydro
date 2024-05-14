@@ -30,18 +30,20 @@ lv_obj_t * create_switch(lv_obj_t * parent, const char * icon, const char * txt,
 lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
 lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant);
 
-void create_monitor_tab(lv_obj_t *aParent);
-void create_pump_tab(lv_obj_t *aParent);
-void create_lamp_tab(lv_obj_t *aParent);
-void create_misc_tab(lv_obj_t *aParent);
-
 void createAdditionalPanels();
 void settingsButtonEvent(lv_event_t * e);
 void uiInit(bool aDarkTheme);
 
 void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
-void updateMainPage(struct SystemData *aData);
+
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceFlags aFlag);
+
+void updateSystemData(struct SystemData *aData);
+void updateLowerData(struct LowerInternalData *aData);
+void updateUpperData(struct UpperInternalData *aData);
+void updateAUXData(struct AuxData *aData);
+
 void applyNewCurrentTime(struct CurrentTime *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();

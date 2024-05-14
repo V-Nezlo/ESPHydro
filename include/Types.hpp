@@ -18,12 +18,36 @@ enum class PumpModes : uint8_t {
     Dripping
 };
 
-struct SystemData {
-    uint32_t deviceFlags;
+enum class DeviceFlags : uint8_t {
+	DeviceWorking,
+	DeviceWarning,
+	DeviceError,
+	DeviceCritical,
+	DeviceDisabled
+};
+
+struct UpperInternalData {
+    DeviceFlags flags;
+    bool lampState;
+    bool swingLevelState;
+    bool damState;
+};
+
+struct LowerInternalData {
+    DeviceFlags flags;
+    uint8_t waterLevel;
+    bool pumpState;
+    uint8_t waterTemp10;
+    uint8_t ph10;
     uint16_t ppm;
-    uint8_t phd10;
-    uint8_t waterLevelProcents;
-    int16_t waterTempd10;
+};
+
+struct SystemData {
+    DeviceFlags flags;
+};
+
+struct AuxData {
+    DeviceFlags flags;
 };
 
 struct PumpConfiguration {

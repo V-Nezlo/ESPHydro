@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EVENTBUS_HPP_
 #define INCLUDE_EVENTBUS_HPP_
 
+#include "HydroRSTypes.hpp"
 #include "Types.hpp"
 
 #include <cctype>
@@ -25,7 +26,7 @@
 
 using namespace std;
 
-enum class EventType {
+enum class EventType : uint8_t {
     SetCurrentTime,
     GetCurrentTime,
     UpdateUpperData,
@@ -35,25 +36,15 @@ enum class EventType {
     SettingsUpdated,
     SettingsFirstLoad,
     NewBrightness,
-    BuzzerSignal
+    BuzzerSignal,
+    RsDeviceDetached,
+    RsDeviceAttached
 };
 
 enum class EventResult {
     HANDLED,
     IGNORED,
     PASS_ON
-};
-
-struct UpperData {
-    float temp;
-    float ph;
-    float ppm;
-    bool upperState;
-};
-
-struct LowerData {
-    uint8_t waterLevel;
-    bool pumpState;
 };
 
 enum class ErrorType {
@@ -81,13 +72,14 @@ struct Event{
     EventType type;
     union {
         CurrentTime time;
-        UpperData sensorData;
+        UpperInternalData upperData;
+        LowerInternalData lowerData;
         ErrorType errorType;
         Action action;
         Settings settings;
         uint8_t brightness;
         BuzzerSignal buzSignal;
-
+        DeviceType device;
     } data;
 };
 

@@ -23,25 +23,6 @@ typedef enum {
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
 enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff }; 
 
-enum DeviceFlags {
-	PumpDeviceWorking = 0x01,
-	PumpDeviceWarning = 0x02,
-	PumpDeviceError = 0x04,
-	PumpDeviceCritical = 0x08,
-
-	LampDeviceWorking = 0x10,
-	LampDeviceWarning = 0x20,
-	LampDeviceError = 0x40,
-
-	SensorDeviceWorking = 0x80,
-	SensorDeviceWarning = 0x100,
-	SensorDeviceError = 0x200,
-
-	SystemDeviceWorking = 0x400,
-	SystemDeviceWarning = 0x800,
-	SystemDeviceError = 0x1000
-};
-
 /**********************
  *  Всякое
  **********************/
@@ -73,6 +54,7 @@ lv_obj_t *curTimeSettingsScr;
 lv_style_t style_light;
 lv_style_t style_dark;
 // Стили для меню делать не будем
+lv_style_t style_disabled;
 lv_style_t style_warning;
 lv_style_t style_error;
 lv_style_t style_good;
@@ -105,9 +87,9 @@ lv_obj_t *mainPagePPM;
 lv_obj_t *mainPageWaterTemp;
 lv_obj_t *mainPageWaterLevel;
 // Панель 3
-lv_obj_t *pumpStatusPanel;
-lv_obj_t *lampStatusPanel;
-lv_obj_t *sensorsStatusPanel;
+lv_obj_t *lowerStatusPanel;
+lv_obj_t *auxStatusPanel;
+lv_obj_t *upperStatusPanel;
 lv_obj_t *systemStatusPanel;
 // Настройки
 lv_obj_t *menu;
@@ -276,13 +258,23 @@ void uiInit(bool aDarkTheme)
 	createAdditionalPanels();
 
 	// Test filling
-	struct SystemData data;
-	data.deviceFlags = PumpDeviceWorking | LampDeviceWorking | SensorDeviceWorking | SystemDeviceWorking;
-	data.phd10 = 82;
-	data.ppm = 1200;
-	data.waterLevelProcents = 78;
-	data.waterTempd10 = 234;
-	updateMainPage(&data);
+	struct SystemData sysData;
+	sysData.flags = DeviceFlags::DeviceDisabled;
+	updateSystemData(&sysData);
+
+	struct LowerInternalData lowerData;
+	lowerData.flags = DeviceFlags::DeviceDisabled;
+	lowerData.ph10 = 78;
+	lowerData.ppm = 1205;
+	lowerData.pumpState = false;
+	lowerData.waterLevel = 70;
+	lowerData.waterTemp10 = 100;
+	updateLowerData(&lowerData);
+
+	struct UpperInternalData upperData;
+	upperData.flags = DeviceFlags::DeviceDisabled;
+	upperData.lampState = false;
+	updateUpperData(&upperData);
 
 	currentSettings.pump.enabled = true;
 	currentSettings.pump.onTime = 123;
@@ -374,20 +366,23 @@ void pumpTypeEventHandler(lv_event_t *aEvent)
 	const uint16_t typeNum = lv_dropdown_get_selected(obj);
 	const PumpModes mode = static_cast<PumpModes>(typeNum);
 
-	if (mode == PumpModes::EBBSwing) {
-		lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-	} else {
-		lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+	if (pumpSwingTimeBase != NULL) {
+		if (mode == PumpModes::EBBSwing) {
+			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+		} else {
+			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+		}
 	}
 
-	if (mode == PumpModes::Maintance) {
-		lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
-		lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
-	} else {
-		lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
-		lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
+	if (manualPumpOnButton != NULL) {
+		if (mode == PumpModes::Maintance) {
+			lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
+			lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
+		} else {
+			lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
+			lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
+		}
 	}
-
 }
 
 void formattedAreaCommonCallback(lv_event_t *aEvent)
@@ -566,46 +561,32 @@ bool textAreasApply(uint8_t aArea)
 	return true;
 }
 
-void updateMainPage(struct SystemData *aData)
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceFlags aFlag)
 {
-	// Сначала пробежимся по флагам
-
-	if (aData->deviceFlags & PumpDeviceWorking) {
-		lv_obj_add_style(pumpStatusPanel, &style_good, 0);
-	} else if (aData->deviceFlags & PumpDeviceWarning) {
-		lv_obj_add_style(pumpStatusPanel, &style_warning, 0);
-	} else if (aData->deviceFlags & PumpDeviceError) {
-		lv_obj_add_style(pumpStatusPanel, &style_error, 0);
-	} else {
-		// Stype - critical
+	if (aFlag == DeviceFlags::DeviceWorking) {
+		lv_obj_add_style(aModulePanel, &style_good, 0);
+	} else if (aFlag == DeviceFlags::DeviceWarning) {
+		lv_obj_add_style(aModulePanel, &style_warning, 0);
+	} else if (aFlag == DeviceFlags::DeviceError) {
+		lv_obj_add_style(aModulePanel, &style_error, 0);
+	} else if (aFlag == DeviceFlags::DeviceError) {
+		lv_obj_add_style(aModulePanel, &style_error, 0);
+	} else if (aFlag == DeviceFlags::DeviceDisabled) {
+		lv_obj_add_style(aModulePanel, &style_disabled, 0);
 	}
+}
 
-	if (aData->deviceFlags & LampDeviceWorking) {
-		lv_obj_add_style(lampStatusPanel, &style_good, 0);
-	} else if (aData->deviceFlags & LampDeviceWarning) {
-		lv_obj_add_style(lampStatusPanel, &style_warning, 0);
-	} else if (aData->deviceFlags & LampDeviceError) {
-		lv_obj_add_style(lampStatusPanel, &style_error, 0);
-	}
+void updateSystemData(struct SystemData *aData)
+{
+	updatePanelStyleByFlags(systemStatusPanel, aData->flags);
+}
 
-	if (aData->deviceFlags & SensorDeviceWorking) {
-		lv_obj_add_style(sensorsStatusPanel, &style_good, 0);
-	} else if (aData->deviceFlags & SensorDeviceWarning) {
-		lv_obj_add_style(sensorsStatusPanel, &style_warning, 0);
-	} else if (aData->deviceFlags & SensorDeviceError) {
-		lv_obj_add_style(sensorsStatusPanel, &style_error, 0);
-	}
-
-	if (aData->deviceFlags & SystemDeviceWorking) {
-		lv_obj_add_style(systemStatusPanel, &style_good, 0);
-	} else if (aData->deviceFlags & SystemDeviceWarning) {
-		lv_obj_add_style(systemStatusPanel, &style_warning, 0);
-	} else if (aData->deviceFlags & SystemDeviceError) {
-		lv_obj_add_style(systemStatusPanel, &style_error, 0);
-	}
+void updateLowerData(struct LowerInternalData *aData)
+{
+	updatePanelStyleByFlags(lowerStatusPanel, aData->flags);
 
 	char phData[5];
-	sprintf(phData, "%u.%01u", aData->phd10 / 10, aData->phd10 % 10);
+	sprintf(phData, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 	lv_label_set_text(mainPagePH, phData);
 
 	char ppmData[6];
@@ -613,10 +594,20 @@ void updateMainPage(struct SystemData *aData)
 	lv_label_set_text(mainPagePPM, ppmData);
 
 	char tempData[5];
-	sprintf(tempData, "%02u.%01u", aData->waterTempd10 / 10, aData->waterTempd10 % 10);
+	sprintf(tempData, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	lv_label_set_text(mainPageWaterTemp, tempData);
 
-	lv_bar_set_value(mainPageWaterLevel, aData->waterLevelProcents, LV_ANIM_OFF);
+	lv_bar_set_value(mainPageWaterLevel, aData->waterLevel, LV_ANIM_OFF);
+}
+
+void updateAUXData(struct AuxData *aData)
+{
+	updatePanelStyleByFlags(auxStatusPanel, aData->flags);
+}
+
+void updateUpperData(struct UpperInternalData *aData)
+{
+	updatePanelStyleByFlags(upperStatusPanel, aData->flags);
 }
 
 void applyNewCurrentTime(struct CurrentTime *aTime)
@@ -810,6 +801,14 @@ void style_initialize()
 	lv_style_set_shadow_opa(&style_light, LV_OPA_50);
 	lv_style_set_text_color(&style_light, lv_color_white());
 
+	// Стиль - disabled
+	lv_style_init(&style_disabled);
+	lv_style_set_bg_color(&style_disabled, lv_palette_main(LV_PALETTE_GREY));
+	lv_style_set_border_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 3));
+	lv_style_set_text_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 4));
+	lv_style_set_border_width(&style_disabled, 1);
+	lv_style_set_radius(&style_disabled, 4);
+
 	// Стиль - warning
 	lv_style_init(&style_warning);
 	lv_style_set_bg_color(&style_warning, lv_palette_main(LV_PALETTE_YELLOW));
@@ -864,8 +863,7 @@ void main_page_create(lv_obj_t *parent)
 	lv_obj_clear_flag(panel3, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 	lv_obj_add_style(panel3, &style_light, 0);
 
-	{ // ******************************************************* ПАНЕЛЬ 1
-	  // *******************************************************
+	{ // ******************************************************* ПАНЕЛЬ 1 *******************************************************
 		// Отображение текущего режима
 		currentModePanel = lv_obj_create(panel1);
 		lv_obj_set_size(currentModePanel, miniPanelW, 30);
@@ -876,8 +874,7 @@ void main_page_create(lv_obj_t *parent)
 		// TODO
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
 	}
-	{ // ******************************************************* ПАНЕЛЬ 2
-	  // *******************************************************
+	{ // ******************************************************* ПАНЕЛЬ 2 *******************************************************
 		// Панель для времени
 		currentTimePanel = lv_obj_create(panel2);
 		lv_obj_set_size(currentTimePanel, miniPanelW, 60);
@@ -965,40 +962,39 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(mainPageWaterLevel, waterLevelPanel, LV_ALIGN_BOTTOM_MID, 0, 15);
 		lv_bar_set_value(mainPageWaterLevel, 30, LV_ANIM_OFF);
 	}
-	{ // ******************************************************* ПАНЕЛЬ 3
-	  // *******************************************************
+	{ // ******************************************************* ПАНЕЛЬ 3 *******************************************************
 		// Панель для насоса с выбором цвета
-		pumpStatusPanel = lv_obj_create(panel3);
-		lv_obj_set_size(pumpStatusPanel, miniPanelW, 30);
-		lv_obj_align_to(pumpStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
-		lv_obj_clear_flag(pumpStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(pumpStatusPanel, &style_warning, 0);
+		lowerStatusPanel = lv_obj_create(panel3);
+		lv_obj_set_size(lowerStatusPanel, miniPanelW, 30);
+		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
+		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(lowerStatusPanel, &style_warning, 0);
 		// Текст НАСОС
-		lv_obj_t *pumpStatusLabel = lv_label_create(pumpStatusPanel);
-		lv_label_set_text_static(pumpStatusLabel, "PUMP");
-		lv_obj_align_to(pumpStatusLabel, pumpStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
+		lv_label_set_text_static(lowerStatusLabel, "LOWER");
+		lv_obj_align_to(lowerStatusLabel, lowerStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
 
 		// Панель для лампы с выбором цвета
-		lampStatusPanel = lv_obj_create(panel3);
-		lv_obj_set_size(lampStatusPanel, miniPanelW, 30);
-		lv_obj_align_to(lampStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 25);
-		lv_obj_clear_flag(lampStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(lampStatusPanel, &style_error, 0);
+		auxStatusPanel = lv_obj_create(panel3);
+		lv_obj_set_size(auxStatusPanel, miniPanelW, 30);
+		lv_obj_align_to(auxStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 25);
+		lv_obj_clear_flag(auxStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(auxStatusPanel, &style_disabled, 0);
 		// Текст НАСОС
-		lv_obj_t *lampStatusLabel = lv_label_create(lampStatusPanel);
-		lv_label_set_text_static(lampStatusLabel, "LAMP");
-		lv_obj_align_to(lampStatusLabel, lampStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_obj_t *auxStatusLabel = lv_label_create(auxStatusPanel);
+		lv_label_set_text_static(auxStatusLabel, "AUX");
+		lv_obj_align_to(auxStatusLabel, auxStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
 
 		// Панель для сенсоров с выбором цвета
-		sensorsStatusPanel = lv_obj_create(panel3);
-		lv_obj_set_size(sensorsStatusPanel, miniPanelW, 30);
-		lv_obj_align_to(sensorsStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
-		lv_obj_clear_flag(sensorsStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(sensorsStatusPanel, &style_good, 0);
+		upperStatusPanel = lv_obj_create(panel3);
+		lv_obj_set_size(upperStatusPanel, miniPanelW, 30);
+		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
+		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(upperStatusPanel, &style_good, 0);
 		// Текст НАСОС
-		lv_obj_t *sensorStatusLabel = lv_label_create(sensorsStatusPanel);
-		lv_label_set_text_static(sensorStatusLabel, "SENSORS");
-		lv_obj_align_to(sensorStatusLabel, sensorsStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
+		lv_label_set_text_static(upperStatusLabel, "UPPER");
+		lv_obj_align_to(upperStatusLabel, upperStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
 
 		// Панель для системы с выбором цвета
 		systemStatusPanel = lv_obj_create(panel3);

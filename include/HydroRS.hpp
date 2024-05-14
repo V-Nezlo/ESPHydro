@@ -10,11 +10,13 @@
 #define INCLUDE_HYDRORS_HPP_
 
 #include "TimeWrapper.hpp"
+#include "Types.hpp"
 #include <Lib/RsHandler.hpp>
 #include "HydroRSTypes.hpp"
 #include <EventBus.hpp>
 #include <chrono>
 #include <array>
+#include <utility>
 
 template<class Interface, typename Crc, size_t ParserSize>
 class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public AbstractEventObserver {
@@ -28,25 +30,25 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 	};
 
 	struct TelemetryUnit {
-		DeviceType device{DeviceType::Unknown};
+		DeviceType device;
 		DeviceState state{DeviceState::Probing};
 		std::chrono::milliseconds lastCallTime{0};
 		std::chrono::milliseconds lastAckTime{0};
 		std::chrono::milliseconds actionTimeout{0};
 
-		TelemetryUnit(DeviceType aDevice)
-		{
-			device = aDevice;
-		}
+		TelemetryUnit(DeviceType aDevice) : device{aDevice} {}
 	};
 
-	TelemetryUnit lowerDevice;
+	struct Devices {
+		TelemetryUnit lower{DeviceType::Lower};
+		TelemetryUnit upper{DeviceType::Upper};
+	} devices;
 
 	Gpio &latch;
 public:
 	HydroRS(Interface &aInterface, uint8_t aNodeUID, Gpio &aLatchPin):
 		BaseType{aInterface, aNodeUID},
-		lowerDevice{DeviceType::Lower},
+		devices{},
 		latch{aLatchPin}
 	{
 
@@ -57,46 +59,65 @@ public:
 		return static_cast<DeviceType>(aUID);
 	}
 
+	uint8_t getUIDFromDeviceType(DeviceType aDevice) 
+	{
+		return static_cast<uint8_t>(aDevice);
+	}
+
+	void processDevice(TelemetryUnit &aUnit, std::chrono::milliseconds aCurrentTime)
+	{
+			const DeviceType &type = aUnit.device;
+			const DeviceState &state = aUnit.state;
+			const std::chrono::milliseconds &lastAckTime = aUnit.lastAckTime;
+			const std::chrono::milliseconds &lastCallTime = aUnit.lastCallTime;
+			const uint8_t deviceUID = static_cast<uint8_t>(type);
+
+			switch(state) {
+				case DeviceState::Probing:
+					// Раз в секунду отправляем probe до момента получения первого ack
+					if (aCurrentTime > lastCallTime + std::chrono::milliseconds{1000}) {
+						lastCallTime = aCurrentTime;
+
+						if (lastAckTime == std::chrono::milliseconds{0}) {
+							BaseType::sendProbe(deviceUID);
+						} else {
+							state = DeviceState::Working;
+							handleDeviceAttaching(type);
+						}
+					}
+					break;
+
+				case DeviceState::Working:
+					// Отправляем запрос телеметрии каждые 500мс
+					if (aCurrentTime > lastCallTime + std::chrono::milliseconds{500}) {
+						lastCallTime = aCurrentTime;
+
+						if (type == DeviceType::Lower) {
+							BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(LowerTelemetry));
+						} else if (type == DeviceType::Upper) {
+							BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(UpperTelemetry));
+						}
+					}
+					// Параллельно проверяем факт получения Ack, если ack не приходят - возвращаемся в Probing
+					if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
+						lastAckTime = std::chrono::milliseconds{0};
+						state = DeviceState::Probing;
+						handleDeviceDetaching(type);
+					}
+					break;
+				case DeviceState::Suspended:
+					// Пока непонятно
+					break;
+				case DeviceState::Disabled:
+					// Как выключать устроства непонятно
+					break;
+			}
+	}
+
 	void process(std::chrono::milliseconds aCurrentTime)
 	{
-		const DeviceType &type = lowerDevice.device;
-		const DeviceState &state = lowerDevice.state;
-		const std::chrono::milliseconds &lastAckTime = lowerDevice.lastAckTime;
-		const std::chrono::milliseconds &lastCallTime = lowerDevice.lastCallTime;
-		const uint8_t deviceUID = static_cast<uint8_t>(type);
-
-		switch(state) {
-			case DeviceState::Probing:
-				// Раз в секунду отправляем probe до момента получения первого ack
-				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{1000}) {
-					lastCallTime = aCurrentTime;
-
-					if (lastAckTime == std::chrono::milliseconds{0}) {
-						BaseType::sendProbe(deviceUID);
-					} else {
-						state = DeviceState::Working;
-					}
-				}
-				break;
-			case DeviceState::Working:
-				// Отправляем запрос телеметрии каждые 500мс
-				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{500}) {
-					lastCallTime = aCurrentTime;
-
-					BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(LowerTelemetry));
-				}
-				// Параллельно проверяем факт получения Ack, если ack не приходят - возвращаемся в Probing
-				if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
-					state = DeviceState::Probing;
-				}
-				break;
-			case DeviceState::Suspended:
-				// Пока непонятно
-				break;
-			case DeviceState::Disabled:
-				// Как выключать устроства непонятно
-				break;
-		}
+		processDevice(devices.lower, aCurrentTime);
+		processDevice(devices.upper, aCurrentTime);
 	}
 
 	// UtilitaryRS interface
@@ -109,8 +130,10 @@ public:
 	{
 		const auto device = getDeviceTypeFromUID(aTranceiverUID);
 
-		if (device == lowerDevice.device) {
-			lowerDevice.lastAckTime = TimeWrapper::milliseconds();
+		if (device == devices.lower.device) {
+			devices.lower.lastAckTime = TimeWrapper::milliseconds();
+		} else if (device == devices.upper.device) {
+			devices.upper.lastAckTime = TimeWrapper::milliseconds();
 		}
 	}
 
@@ -118,8 +141,8 @@ public:
 	{
 		const auto device = getDeviceTypeFromUID(aTranceiverUID);
 
-		if ((device == lowerDevice.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
-			lowerDevice.lastAckTime = TimeWrapper::milliseconds();
+		if ((device == devices.lower.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 
 			// Если ожидаемая длина не сходится - ошибка
 			if (aLength != sizeof(LowerTelemetry)) {
@@ -128,14 +151,25 @@ public:
 
 			LowerTelemetry telemetry;
 			memcpy(&telemetry, aData, aLength);
-
-			// Передача телеметрии
+			processLowerTelemetry(telemetry);
 
 			return 1;
-		}
+		} else if ((device == devices.upper.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 
-		// Тут парсинг телеметрии от устройств
-		return 0;
+			// Если ожидаемая длина не сходится - ошибка
+			if (aLength != sizeof(UpperTelemetry)) {
+				return 0;
+			}
+
+			UpperTelemetry telemetry;
+			memcpy(&telemetry, aData, aLength);
+			processUpperTelemetry(telemetry);
+
+			return 1;
+		} else {
+			return 0;
+		}
 	}
 
 	bool processRequest(uint8_t aTransmitUID, uint8_t aRequest, uint8_t aRequestedDataSize) override
@@ -150,6 +184,40 @@ public:
 		latch.reset();
 	}
 
+	void processLowerTelemetry(LowerTelemetry &aTelem)
+	{
+		Event ev;
+		ev.type = EventType::UpdateLowerData;
+		ev.data.lowerData.ppm = aTelem.waterPPM;
+		// Прочие поля
+		EventBus::throwEvent(&ev);
+	}
+
+	void processUpperTelemetry(UpperTelemetry &aTelem)
+	{
+		Event ev;
+		ev.type = EventType::UpdateUpperData;
+		ev.data.upperData.swingLevelState = aTelem.swingLevelState;
+		// Прочие поля
+		EventBus::throwEvent(&ev);
+	}
+
+	void handleDeviceDetaching(DeviceType aDevice)
+	{
+		Event ev;
+		ev.type = EventType::RsDeviceDetached;
+		ev.data.device = aDevice;
+		EventBus::throwEvent(&ev);
+	}
+
+	void handleDeviceAttaching(DeviceType aDevice)
+	{
+		Event ev;
+		ev.type = EventType::RsDeviceAttached;
+		ev.data.device = aDevice;
+		EventBus::throwEvent(&ev);
+	}
+
 	// AbstractEventObserver interface
 	EventResult handleEvent(Event *e) override
 	{
@@ -157,19 +225,19 @@ public:
 			case EventType::ActionRequest: {
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
-						sendCommand(1, 1, 1);
+						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 1);
 						return EventResult::HANDLED;
 						break;
 					case Action::TurnPumpOff:
-						sendCommand(1, 1, 0);
+						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 0);
 						return EventResult::HANDLED;
 						break;
 					case Action::TurnLampOn:
-						sendCommand(2, 1, 1);
+						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 1);
 						return EventResult::HANDLED;
 						break;
 					case Action::TurnLampOff:
-						sendCommand(2, 1, 0);
+						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 0);
 						return EventResult::HANDLED;
 						break;
 				}
