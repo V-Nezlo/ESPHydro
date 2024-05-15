@@ -43,9 +43,9 @@ void rtcThreadFunc(std::reference_wrapper<DS3231> aRtc)
 		if (result.second) {
 			Event ev;
 			ev.type = EventType::GetCurrentTime;
-			ev.data.time.currentHour = result.first.currentHour;
-			ev.data.time.currentMinutes = result.first.currentMinutes;
-			ev.data.time.currentSeconds = result.first.currentSeconds;
+			ev.data.time.hour = result.first.hour;
+			ev.data.time.minutes = result.first.minutes;
+			ev.data.time.seconds = result.first.seconds;
 			EventBus::throwEvent(&ev);
 		}
 

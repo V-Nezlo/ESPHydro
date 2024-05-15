@@ -37,14 +37,14 @@ void uiInit(bool aDarkTheme);
 void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
 
-void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceFlags aFlag);
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceState aFlag);
 
 void updateSystemData(struct SystemData *aData);
 void updateLowerData(struct LowerInternalData *aData);
 void updateUpperData(struct UpperInternalData *aData);
 void updateAUXData(struct AuxData *aData);
 
-void applyNewCurrentTime(struct CurrentTime *aTime);
+void applyNewCurrentTime(struct Time *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
 bool getLoggingState();
@@ -67,16 +67,25 @@ public:
         switch (e->type) 
         {
         case EventType::UpdateUpperData:
-            // Update main page
+            updateUpperData(&e->data.upperData);
             return EventResult::PASS_ON;
-            break;
+
+        case EventType::UpdateLowerData:
+            updateLowerData(&e->data.lowerData);
+            return EventResult::PASS_ON;
+
+        case EventType::UpdateSystemData:
+            updateSystemData(&e->data.systemData);
+            return EventResult::PASS_ON;
+
         case EventType::GetCurrentTime:
             applyNewCurrentTime(&e->data.time);
             return EventResult::PASS_ON;
+
         case EventType::SettingsFirstLoad:
             enterParameters(&e->data.settings);
             return EventResult::PASS_ON;
-            break;
+
         default:
             return EventResult::IGNORED;
             break;

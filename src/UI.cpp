@@ -22,6 +22,7 @@ typedef enum {
 
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
 enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff }; 
+enum DetailedModuleInfoEnum {DetailedLowerInfo = 1, DetailedUpperInfo = 2, DetailedAuxInfo = 3, DetailedSystemInfo = 4};
 
 /**********************
  *  Всякое
@@ -150,6 +151,22 @@ uint8_t manualActionPumpOnEnum = ManualActionPumpOn;
 uint8_t manualActionPumpOffEnum = ManualActionPumpOff;
 uint8_t manualActionLampOnEnum = ManualActionLampOn;
 uint8_t manualActionLampOffEnum = ManualActionLampOff;
+// Энумератор для подробного описания модулей
+uint8_t detailedLowerInfoEnum = DetailedLowerInfo;
+uint8_t detailedUpperInfoEnum = DetailedUpperInfo;
+uint8_t detailedAuxInfoEnum = DetailedAuxInfo;
+uint8_t detailedSystemInfoEnum = DetailedSystemInfo;
+// Були для активации расширенного отображения
+bool isLowerPresent{false};
+bool isUpperPresent{false};
+bool isAuxPresent{false};
+bool isSystemPresent{false};
+
+uint8_t lowerFlags{0};
+uint8_t upperFlags{0};
+uint8_t systemFlags{0};
+uint8_t auxFlags{0};
+
 // Обьекты для текстового вывода версий и статусов
 lv_obj_t *aboutVersionFiller;
 lv_obj_t *aboutWifiPresentFiller;
@@ -180,13 +197,11 @@ void sendActionCommandToEventBus(Action aAction)
     EventBus::throwEvent(&ev);
 }
 
-void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec)
+void sendNewTimeToEventBus(Time aTime)
 {
     Event ev;
     ev.type = EventType::SetCurrentTime;
-    ev.data.time.currentHour = hour;
-    ev.data.time.currentMinutes = min;
-    ev.data.time.currentSeconds = sec;
+    ev.data.time = aTime;
     EventBus::throwEvent(&ev);
 }
 
@@ -259,11 +274,13 @@ void uiInit(bool aDarkTheme)
 
 	// Test filling
 	struct SystemData sysData;
-	sysData.flags = DeviceFlags::DeviceDisabled;
+	sysData.health = DeviceState::DeviceWorking;
+	sysData.flags = 0xFF;
 	updateSystemData(&sysData);
 
 	struct LowerInternalData lowerData;
-	lowerData.flags = DeviceFlags::DeviceDisabled;
+	lowerData.health = DeviceState::DeviceDisabled;
+	lowerData.flags = 0;
 	lowerData.ph10 = 78;
 	lowerData.ppm = 1205;
 	lowerData.pumpState = false;
@@ -272,7 +289,8 @@ void uiInit(bool aDarkTheme)
 	updateLowerData(&lowerData);
 
 	struct UpperInternalData upperData;
-	upperData.flags = DeviceFlags::DeviceDisabled;
+	upperData.health = DeviceState::DeviceDisabled;
+	upperData.flags = 0;
 	upperData.lampState = false;
 	updateUpperData(&upperData);
 
@@ -291,10 +309,10 @@ void uiInit(bool aDarkTheme)
 	currentSettings.common.displayBrightness = 80;
 	enterParameters(&currentSettings);
 
-	CurrentTime time;
-	time.currentHour = 14;
-	time.currentMinutes = 55;
-	time.currentSeconds = 32;
+	Time time;
+	time.hour = 14;
+	time.minutes = 55;
+	time.seconds = 32;
 
 	lv_scr_load(mainPage);
 	applyNewCurrentTime(&time);
@@ -477,18 +495,149 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 
 void setTimeButtonEventHandler(lv_event_t *aEvent)
 {
-	CurrentTime time;
-	time.currentHour = atoi(lv_textarea_get_text(setTimeHourTa));
-	time.currentMinutes = atoi(lv_textarea_get_text(setTimeMinTa));
-	time.currentSeconds = atoi(lv_textarea_get_text(setTimeSecTa));
+	Time time;
+	time.hour = atoi(lv_textarea_get_text(setTimeHourTa));
+	time.minutes = atoi(lv_textarea_get_text(setTimeMinTa));
+	time.seconds = atoi(lv_textarea_get_text(setTimeSecTa));
 
-	sendNewTimeToEventBus(time.currentHour, time.currentMinutes, time.currentSeconds);
+	sendNewTimeToEventBus(time);
 }
 
 void brightnessSliderEventHandler(lv_event_t *)
 {
 	uint8_t newSliderValue = lv_slider_get_value(brightnessSlider);
 	sendNewBrightnessToEventBus(newSliderValue);
+}
+
+void detailedModuleInfoEventHandler(lv_event_t *e)
+{
+	uint8_t *operation = reinterpret_cast<uint8_t *>(lv_event_get_user_data(e));
+
+	static constexpr char kNoProblemsText[] = "Status OK";
+	static constexpr char kProblemsText[] = "Problems: \n";
+	
+	switch(*operation) {
+		case DetailedLowerInfo:
+			if (isLowerPresent) {
+
+				static constexpr char kOverCurrentText[] = "Pump Overcurrent \n";
+				static constexpr char kNoWaterText[] = "No Water \n";
+				static constexpr char kTempSensorErrorText[] = "Temp Sensor Error \n";
+				static constexpr char kPHSensorErrorFlag[] = "PH Sensor Error \n";
+				static constexpr char kPPMSensorErrorFlag[] = "PPM Sensor Error \n";
+				static constexpr char kPumpNoCurrentText[] = "Pump low current \n";
+
+				static constexpr size_t kDetailedPanelFullSize = sizeof(kNoProblemsText) + sizeof(kOverCurrentText) + sizeof(kNoWaterText) + 
+					sizeof(kTempSensorErrorText) + sizeof(kPHSensorErrorFlag) + sizeof(kPPMSensorErrorFlag) + sizeof(kPumpNoCurrentText);
+
+				char infoPanel[kDetailedPanelFullSize] = {};
+				if (lowerFlags == 0) {
+					strcat(infoPanel, kNoProblemsText);
+				} else {
+					strcat(infoPanel, kProblemsText);
+
+					if (lowerFlags & LowerFlags::LowerPumpOverCurrentFlag) {
+						strcat(infoPanel, kOverCurrentText);
+					}
+					if (lowerFlags & LowerFlags::LowerNoWaterFlag) {
+						strcat(infoPanel, kNoWaterText);
+					}
+					if (lowerFlags & LowerFlags::LowerTempSensorErrorFlag) {
+						strcat(infoPanel, kTempSensorErrorText);
+					}
+					if (lowerFlags & LowerFlags::LowerPHSensorErrorFlag) {
+						strcat(infoPanel, kPHSensorErrorFlag);
+					}
+					if (lowerFlags & LowerFlags::LowerPPMSensorErrorFlag) {
+						strcat(infoPanel, kPPMSensorErrorFlag);
+					}
+					if (lowerFlags & LowerFlags::LowerPumpLowCurrentFlag) {
+						strcat(infoPanel, kPumpNoCurrentText);
+					}
+				}
+
+				activeMessageBox = lv_msgbox_create(NULL, "Lower Information", 
+				infoPanel , NULL, false);
+				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
+				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
+			}
+			break;
+		case DetailedUpperInfo:
+			if (isUpperPresent) {
+				static constexpr char kTopLevelStuckText[] = "Top Level Stuck \n";
+				static constexpr char kPowerErrorText[] = "Power Error \n";
+				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kTopLevelStuckText) + sizeof(kPowerErrorText);
+
+				char infoPanel[kDetailedFullSize] = {};
+				if (upperFlags == 0) {
+					strcat(infoPanel, kNoProblemsText);
+				} else {
+					strcat(infoPanel, kProblemsText);
+
+					if (upperFlags & UpperFlags::UpperTopWaterLevelStuck) {
+						strcat(infoPanel, kTopLevelStuckText);
+					}
+					if (upperFlags & UpperFlags::UpperPowerError) {
+						strcat(infoPanel, kPowerErrorText);
+					}
+				}
+
+				activeMessageBox = lv_msgbox_create(NULL, "Upper Information", 
+				infoPanel , NULL, false);
+				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
+				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
+			}
+			break;
+		case DetailedSystemInfo:
+			if (isSystemPresent) {
+				static constexpr char kRTCErrorText[] = "RTC Error \n";
+				static constexpr char kInternalMemErrorText[] = "InternalMemError \n";
+				static constexpr char kRSBusErrorText[] = "RS Bus Error \n";
+				static constexpr char kNotFloodTimeText[] = "Tank not flooded in time \n";
+				static constexpr char kLeakageText[] = "LEAK LEAK LEAK \n";
+				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kRTCErrorText) + sizeof(kInternalMemErrorText) + 
+					sizeof(kRSBusErrorText) + sizeof(kNotFloodTimeText) + sizeof(kLeakageText);
+				char infoPanel[kDetailedFullSize] = {};
+
+				if (systemFlags == 0) {
+					strcat(infoPanel, kNoProblemsText);
+				} else {
+					strcat(infoPanel, kProblemsText);
+
+					if (systemFlags & SystemErrors::SystemLeak) {
+						strcat(infoPanel, kLeakageText);
+					}
+					if (systemFlags & SystemErrors::SystemTankNotFloodedInTime) {
+						strcat(infoPanel, kNotFloodTimeText);
+					}
+					if (systemFlags & SystemErrors::SystemRTCError) {
+						strcat(infoPanel, kRTCErrorText);
+					}
+					if (systemFlags & SystemErrors::SystemInternalMemError) {
+						strcat(infoPanel, kInternalMemErrorText);
+					}
+					if (systemFlags & SystemErrors::SystemRSBusError) {
+						strcat(infoPanel, kRSBusErrorText);
+					}
+				}
+
+				activeMessageBox = lv_msgbox_create(NULL, "System Information", 
+				infoPanel , NULL, false);
+				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
+				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
+			}
+			break;
+		case DetailedAuxInfo:
+			if (isAuxPresent) {
+				activeMessageBox = lv_msgbox_create(NULL, "AUX Information", 
+				"Not supported" , NULL, false);
+				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
+				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
+			}
+			break;
+		default:
+			break;
+	}
 }
 
 /********************************
@@ -561,29 +710,43 @@ bool textAreasApply(uint8_t aArea)
 	return true;
 }
 
-void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceFlags aFlag)
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceState aHealth)
 {
-	if (aFlag == DeviceFlags::DeviceWorking) {
+	if (aHealth == DeviceState::DeviceWorking) {
 		lv_obj_add_style(aModulePanel, &style_good, 0);
-	} else if (aFlag == DeviceFlags::DeviceWarning) {
+	} else if (aHealth == DeviceState::DeviceWarning) {
 		lv_obj_add_style(aModulePanel, &style_warning, 0);
-	} else if (aFlag == DeviceFlags::DeviceError) {
+	} else if (aHealth == DeviceState::DeviceError) {
 		lv_obj_add_style(aModulePanel, &style_error, 0);
-	} else if (aFlag == DeviceFlags::DeviceError) {
+	} else if (aHealth == DeviceState::DeviceError) {
 		lv_obj_add_style(aModulePanel, &style_error, 0);
-	} else if (aFlag == DeviceFlags::DeviceDisabled) {
+	} else if (aHealth == DeviceState::DeviceDisabled) {
 		lv_obj_add_style(aModulePanel, &style_disabled, 0);
 	}
 }
 
 void updateSystemData(struct SystemData *aData)
 {
-	updatePanelStyleByFlags(systemStatusPanel, aData->flags);
+	updatePanelStyleByFlags(systemStatusPanel, aData->health);
+	systemFlags = aData->flags;
+
+	if (aData->health == DeviceState::DeviceDisabled) {
+		isSystemPresent = false;
+	} else {
+		isSystemPresent = true;
+	}
 }
 
 void updateLowerData(struct LowerInternalData *aData)
 {
-	updatePanelStyleByFlags(lowerStatusPanel, aData->flags);
+	updatePanelStyleByFlags(lowerStatusPanel, aData->health);
+	lowerFlags = aData->flags;
+
+	if (aData->health == DeviceState::DeviceDisabled) {
+		isLowerPresent = false;
+	} else {
+		isLowerPresent = true;
+	}
 
 	char phData[5];
 	sprintf(phData, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
@@ -602,22 +765,36 @@ void updateLowerData(struct LowerInternalData *aData)
 
 void updateAUXData(struct AuxData *aData)
 {
-	updatePanelStyleByFlags(auxStatusPanel, aData->flags);
+	updatePanelStyleByFlags(auxStatusPanel, aData->health);
+	auxFlags = aData->flags;
+
+	if (aData->health == DeviceState::DeviceDisabled) {
+		isAuxPresent = false;
+	} else {
+		isAuxPresent = true;
+	}
 }
 
 void updateUpperData(struct UpperInternalData *aData)
 {
-	updatePanelStyleByFlags(upperStatusPanel, aData->flags);
+	updatePanelStyleByFlags(upperStatusPanel, aData->health);
+	upperFlags = aData->flags;
+
+	if (aData->health == DeviceState::DeviceDisabled) {
+		isUpperPresent = false;
+	} else {
+		isUpperPresent = true;
+	}
 }
 
-void applyNewCurrentTime(struct CurrentTime *aTime)
+void applyNewCurrentTime(struct Time *aTime)
 {
 	// Сначала проверим какой из экранов активен
 	lv_obj_t *currentScreen = lv_scr_act();
 
 	if (currentScreen == mainPage || currentScreen == settingsPage) {
 		char newTime[19];
-		sprintf(newTime, "%02u : %02u : %02u", aTime->currentHour, aTime->currentMinutes, aTime->currentSeconds);
+		sprintf(newTime, "%02u : %02u : %02u", aTime->hour, aTime->minutes, aTime->seconds);
 
 		if (currentScreen == mainPage) {
 			lv_label_set_text(mainPageTime, newTime);
@@ -804,34 +981,34 @@ void style_initialize()
 	// Стиль - disabled
 	lv_style_init(&style_disabled);
 	lv_style_set_bg_color(&style_disabled, lv_palette_main(LV_PALETTE_GREY));
-	lv_style_set_border_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 3));
+	lv_style_set_border_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 5));
 	lv_style_set_text_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 4));
 	lv_style_set_border_width(&style_disabled, 1);
-	lv_style_set_radius(&style_disabled, 4);
+	lv_style_set_radius(&style_disabled, 1);
 
 	// Стиль - warning
 	lv_style_init(&style_warning);
 	lv_style_set_bg_color(&style_warning, lv_palette_main(LV_PALETTE_YELLOW));
-	lv_style_set_border_color(&style_warning, lv_palette_darken(LV_PALETTE_YELLOW, 3));
+	lv_style_set_border_color(&style_warning, lv_palette_darken(LV_PALETTE_YELLOW, 5));
 	lv_style_set_text_color(&style_warning, lv_palette_darken(LV_PALETTE_YELLOW, 4));
 	lv_style_set_border_width(&style_warning, 1);
-	lv_style_set_radius(&style_warning, 4);
+	lv_style_set_radius(&style_warning, 1);
 
 	// Стиль - error
 	lv_style_init(&style_error);
 	lv_style_set_bg_color(&style_error, lv_palette_main(LV_PALETTE_RED));
-	lv_style_set_border_color(&style_error, lv_palette_darken(LV_PALETTE_RED, 3));
+	lv_style_set_border_color(&style_error, lv_palette_darken(LV_PALETTE_RED, 5));
 	lv_style_set_text_color(&style_error, lv_palette_darken(LV_PALETTE_RED, 4));
 	lv_style_set_border_width(&style_error, 1);
-	lv_style_set_radius(&style_error, 4);
+	lv_style_set_radius(&style_error, 1);
 
 	// Стиль - good
 	lv_style_init(&style_good);
 	lv_style_set_bg_color(&style_good, lv_palette_main(LV_PALETTE_GREEN));
-	lv_style_set_border_color(&style_good, lv_palette_darken(LV_PALETTE_GREEN, 3));
+	lv_style_set_border_color(&style_good, lv_palette_darken(LV_PALETTE_GREEN, 5));
 	lv_style_set_text_color(&style_good, lv_palette_darken(LV_PALETTE_GREEN, 4));
 	lv_style_set_border_width(&style_good, 1);
-	lv_style_set_radius(&style_good, 4);
+	lv_style_set_radius(&style_good, 1);
 }
 
 void main_page_create(lv_obj_t *parent)
@@ -969,7 +1146,8 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(lowerStatusPanel, &style_warning, 0);
-		// Текст НАСОС
+		lv_obj_add_event_cb(lowerStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedLowerInfoEnum);
+		// Текст LOWER
 		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
 		lv_label_set_text_static(lowerStatusLabel, "LOWER");
 		lv_obj_align_to(lowerStatusLabel, lowerStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
@@ -980,7 +1158,8 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(auxStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 25);
 		lv_obj_clear_flag(auxStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(auxStatusPanel, &style_disabled, 0);
-		// Текст НАСОС
+		lv_obj_add_event_cb(auxStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedAuxInfoEnum);
+		// Текст AUX
 		lv_obj_t *auxStatusLabel = lv_label_create(auxStatusPanel);
 		lv_label_set_text_static(auxStatusLabel, "AUX");
 		lv_obj_align_to(auxStatusLabel, auxStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
@@ -991,7 +1170,8 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(upperStatusPanel, &style_good, 0);
-		// Текст НАСОС
+		lv_obj_add_event_cb(upperStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedUpperInfoEnum);
+		// Текст UPPER
 		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
 		lv_label_set_text_static(upperStatusLabel, "UPPER");
 		lv_obj_align_to(upperStatusLabel, upperStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
@@ -1002,7 +1182,8 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(systemStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(systemStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(systemStatusPanel, &style_good, 0);
-		// Текст НАСОС
+		lv_obj_add_event_cb(systemStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedSystemInfoEnum);
+		// Текст SYSTEM
 		lv_obj_t *systemStatusLabel = lv_label_create(systemStatusPanel);
 		lv_label_set_text_static(systemStatusLabel, "SYSTEM");
 		lv_obj_align_to(systemStatusLabel, systemStatusPanel, LV_ALIGN_TOP_MID, 0, -10);

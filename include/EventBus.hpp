@@ -31,7 +31,9 @@ enum class EventType : uint8_t {
     GetCurrentTime,
     UpdateUpperData,
     UpdateLowerData,
-    ErrorCaused,
+    UpdateSystemData,
+    SetError,
+    ClearError,
     ActionRequest,
     SettingsUpdated,
     SettingsFirstLoad,
@@ -41,18 +43,10 @@ enum class EventType : uint8_t {
     RsDeviceAttached
 };
 
-enum class EventResult {
+enum class EventResult : uint8_t {
     HANDLED,
     IGNORED,
     PASS_ON
-};
-
-enum class ErrorType {
-    UpperNotFloodedInTime,
-    Leak,
-    ParamError,
-    PumpLost,
-    LowWater
 };
 
 enum class Action : uint8_t {
@@ -71,10 +65,11 @@ enum class BuzzerSignal {
 struct Event{
     EventType type;
     union {
-        CurrentTime time;
+        Time time;
         UpperInternalData upperData;
         LowerInternalData lowerData;
-        ErrorType errorType;
+        SystemData systemData;
+        SystemErrors error;
         Action action;
         Settings settings;
         uint8_t brightness;

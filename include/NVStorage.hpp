@@ -49,6 +49,12 @@ private:
             return true;
         } else {
             ESP_LOGE("NVS", "NVS partition initialization error: %d (%s)", err, esp_err_to_name(err));
+
+            Event ev;
+            ev.type = EventType::SetError;
+            ev.data.error = SystemErrors::SystemInternalMemError;
+            EventBus::throwEvent(&ev);
+
             return false;
         };
     }

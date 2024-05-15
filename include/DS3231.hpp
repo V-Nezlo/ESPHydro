@@ -29,6 +29,11 @@ public:
 
         if (result != ESP_OK) {
             ESP_LOGE("RTC", "DS3231 init failed, %i", static_cast<int>(result));
+
+            Event ev;
+            ev.type = EventType::SetError;
+            ev.data.error = SystemErrors::SystemRTCError;
+            EventBus::throwEvent(&ev);
         }
 
         if (!isConfigured()) {
@@ -36,15 +41,15 @@ public:
         }
     }
 
-    bool setCurrentTime(CurrentTime aTime)
+    bool setCurrentTime(Time aTime)
     {
         tm time;
         ds3231_get_time(&dev, &time);
 
         // Забираем все данные, обновляем только часы минуты секунды
-        time.tm_hour = aTime.currentHour;
-        time.tm_min = aTime.currentMinutes;
-        time.tm_sec = aTime.currentSeconds;
+        time.tm_hour = aTime.hour;
+        time.tm_min = aTime.minutes;
+        time.tm_sec = aTime.seconds;
         
         const auto result = ds3231_set_time(&dev, &time);
 
@@ -55,18 +60,18 @@ public:
         }
     }
 
-    std::pair<CurrentTime, bool> getCurrentTime()
+    std::pair<Time, bool> getCurrentTime()
     {
         tm time;
-        CurrentTime newTime{0,0,0};
+        Time newTime{0,0,0};
         bool valid{false};
 
         const auto result = ds3231_get_time(&dev, &time);
 
         if (result == ESP_OK) {
-            newTime.currentHour = time.tm_hour;
-            newTime.currentMinutes = time.tm_min;
-            newTime.currentSeconds = time.tm_sec;
+            newTime.hour = time.tm_hour;
+            newTime.minutes = time.tm_min;
+            newTime.seconds = time.tm_sec;
             valid = true;
         } 
 

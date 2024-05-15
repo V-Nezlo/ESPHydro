@@ -24,7 +24,7 @@ class BuzzerController : public AbstractEventObserver {
 	const std::chrono::milliseconds kLongBeepDuraction{500};
 
 public:
-	BuzzerController() :
+	BuzzerController(uint8_t aPin, uint8_t aPwmChannel) :
 		pwmInstance{}, 
 		lastActionTime{0}, 
 		currentSignal{BuzzerSignal::Disable},
@@ -32,10 +32,10 @@ public:
 	{
 		auto config = pwmInstance.config();
 
-		config.pin_bl = 5;               // Пин
-		config.invert = false;           // Инвертирование канала
-		config.freq   = 44100;           // Частота шим подсветки
-		config.pwm_channel = 1;          // Номер канала ШИМ для использования
+		config.pin_bl = aPin;             // Пин
+		config.invert = false;            // Инвертирование канала
+		config.freq   = 44100;            // Частота шим подсветки
+		config.pwm_channel = aPwmChannel; // Номер канала ШИМ для использования
 		
 		pwmInstance.config(config);
 		pwmInstance.init(0);

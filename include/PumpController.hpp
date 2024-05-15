@@ -141,11 +141,19 @@ private:
 		EventBus::throwEvent(&ev);
 	}
 
-	void throwErrorToEventBus(ErrorType aError)
+	void throwErrorToEventBus(SystemErrors aError)
 	{
 		Event ev;
-		ev.type = EventType::ErrorCaused;
-		ev.data.errorType = aError;
+		ev.type = EventType::SetError;
+		ev.data.error = aError;
+		EventBus::throwEvent(&ev);
+	}
+
+	void clearErrorToEventBus(SystemErrors aError)
+	{
+		Event ev;
+		ev.type = EventType::ClearError;
+		ev.data.error = aError;
 		EventBus::throwEvent(&ev);
 	}
 
@@ -171,7 +179,7 @@ private:
 
 		if (pumpState == PumpState::PUMPON && aCurrentTime > waterFillingTimer ) {
 			setPumpState(false);
-			throwErrorToEventBus(ErrorType::UpperNotFloodedInTime);
+			throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
 			pumpState = PumpState::PUMPOFF;
 		}
 	}
@@ -205,7 +213,7 @@ private:
 				swingState = SwingState::SwingOff;
 				lastSwingTime = aCurrentTime;
 			} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
-				throwErrorToEventBus(ErrorType::UpperNotFloodedInTime);
+				throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
 				setPumpState(false);
 				pumpState = PumpState::PUMPOFF;
 				swingState = SwingState::SwingOff;

@@ -66,52 +66,52 @@ public:
 
 	void processDevice(TelemetryUnit &aUnit, std::chrono::milliseconds aCurrentTime)
 	{
-			const DeviceType &type = aUnit.device;
-			const DeviceState &state = aUnit.state;
-			const std::chrono::milliseconds &lastAckTime = aUnit.lastAckTime;
-			const std::chrono::milliseconds &lastCallTime = aUnit.lastCallTime;
-			const uint8_t deviceUID = static_cast<uint8_t>(type);
+		const DeviceType &type = aUnit.device;
+		const DeviceState &state = aUnit.state;
+		const std::chrono::milliseconds &lastAckTime = aUnit.lastAckTime;
+		const std::chrono::milliseconds &lastCallTime = aUnit.lastCallTime;
+		const uint8_t deviceUID = static_cast<uint8_t>(type);
 
-			switch(state) {
-				case DeviceState::Probing:
-					// Раз в секунду отправляем probe до момента получения первого ack
-					if (aCurrentTime > lastCallTime + std::chrono::milliseconds{1000}) {
-						lastCallTime = aCurrentTime;
+		switch(state) {
+			case DeviceState::Probing:
+				// Раз в секунду отправляем probe до момента получения первого ack
+				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{1000}) {
+					lastCallTime = aCurrentTime;
 
-						if (lastAckTime == std::chrono::milliseconds{0}) {
-							BaseType::sendProbe(deviceUID);
-						} else {
-							state = DeviceState::Working;
-							handleDeviceAttaching(type);
-						}
+					if (lastAckTime == std::chrono::milliseconds{0}) {
+						BaseType::sendProbe(deviceUID);
+					} else {
+						state = DeviceState::Working;
+						handleDeviceAttaching(type);
 					}
-					break;
+				}
+				break;
 
-				case DeviceState::Working:
-					// Отправляем запрос телеметрии каждые 500мс
-					if (aCurrentTime > lastCallTime + std::chrono::milliseconds{500}) {
-						lastCallTime = aCurrentTime;
+			case DeviceState::Working:
+				// Отправляем запрос телеметрии каждые 500мс
+				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{500}) {
+					lastCallTime = aCurrentTime;
 
-						if (type == DeviceType::Lower) {
-							BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(LowerTelemetry));
-						} else if (type == DeviceType::Upper) {
-							BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(UpperTelemetry));
-						}
+					if (type == DeviceType::Lower) {
+						BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(LowerTelemetry));
+					} else if (type == DeviceType::Upper) {
+						BaseType::sendRequest(deviceUID, static_cast<uint8_t>(Requests::RequestTelemetry), sizeof(UpperTelemetry));
 					}
-					// Параллельно проверяем факт получения Ack, если ack не приходят - возвращаемся в Probing
-					if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
-						lastAckTime = std::chrono::milliseconds{0};
-						state = DeviceState::Probing;
-						handleDeviceDetaching(type);
-					}
-					break;
-				case DeviceState::Suspended:
-					// Пока непонятно
-					break;
-				case DeviceState::Disabled:
-					// Как выключать устроства непонятно
-					break;
-			}
+				}
+				// Параллельно проверяем факт получения Ack, если ack не приходят - возвращаемся в Probing
+				if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
+					lastAckTime = std::chrono::milliseconds{0};
+					state = DeviceState::Probing;
+					handleDeviceDetaching(type);
+				}
+				break;
+			case DeviceState::Suspended:
+				// Пока непонятно
+				break;
+			case DeviceState::Disabled:
+				// Как выключать устроства непонятно
+				break;
+		}
 	}
 
 	void process(std::chrono::milliseconds aCurrentTime)

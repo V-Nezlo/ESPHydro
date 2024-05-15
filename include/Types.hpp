@@ -18,7 +18,7 @@ enum class PumpModes : uint8_t {
     Dripping
 };
 
-enum class DeviceFlags : uint8_t {
+enum class DeviceState : uint8_t {
 	DeviceWorking,
 	DeviceWarning,
 	DeviceError,
@@ -26,15 +26,39 @@ enum class DeviceFlags : uint8_t {
 	DeviceDisabled
 };
 
+enum LowerFlags : uint8_t {
+    LowerPumpOverCurrentFlag = 0x01,
+    LowerNoWaterFlag = 0x02,
+    LowerTempSensorErrorFlag = 0x04,
+    LowerPHSensorErrorFlag = 0x08,
+    LowerPPMSensorErrorFlag = 0x10,
+    LowerPumpLowCurrentFlag = 0x20
+};
+
+enum UpperFlags : uint8_t {
+    UpperTopWaterLevelStuck = 0x01,
+    UpperPowerError = 0x02
+};
+
+enum SystemErrors : uint8_t {
+    SystemRTCError = 0x01,
+    SystemInternalMemError = 0x02,
+    SystemRSBusError = 0x04,
+    SystemTankNotFloodedInTime = 0x08,
+    SystemLeak = 0x10
+};
+
 struct UpperInternalData {
-    DeviceFlags flags;
+    DeviceState health;
+    uint8_t flags;
     bool lampState;
     bool swingLevelState;
     bool damState;
 };
 
 struct LowerInternalData {
-    DeviceFlags flags;
+    DeviceState health;
+    uint8_t flags;
     uint8_t waterLevel;
     bool pumpState;
     uint8_t waterTemp10;
@@ -43,11 +67,13 @@ struct LowerInternalData {
 };
 
 struct SystemData {
-    DeviceFlags flags;
+    DeviceState health;
+    uint8_t flags;
 };
 
 struct AuxData {
-    DeviceFlags flags;
+    DeviceState health;
+    uint8_t flags;
 };
 
 struct PumpConfiguration {
@@ -79,10 +105,10 @@ struct Settings {
     struct CommonConfiguration common; 
 };
 
-struct CurrentTime {
-    uint8_t currentHour;
-    uint8_t currentMinutes;
-    uint8_t currentSeconds;
+struct Time {
+    uint8_t hour;
+    uint8_t minutes;
+    uint8_t seconds;
 };
 
 #endif
