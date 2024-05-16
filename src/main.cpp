@@ -1,9 +1,10 @@
 #include <LovyanGFX.hpp>
 #include <lvgl.h>
 #include "GpioWrapper.hpp"
+#include "SystemIntergrator.hpp"
+#include "BuzzerController.hpp"
 #include "esp_log.h"
 #include "Display.hpp"
-#include "GT911Initializer.hpp"
 #include "UI.hpp"
 #include "HydroRS.hpp"
 #include <thread>
@@ -36,23 +37,6 @@ void displayThreadFunc()
 	}
 }
 
-void rtcThreadFunc(std::reference_wrapper<DS3231> aRtc)
-{
-	while(true) {
-		auto result = aRtc.get().getCurrentTime();
-		if (result.second) {
-			Event ev;
-			ev.type = EventType::GetCurrentTime;
-			ev.data.time.hour = result.first.hour;
-			ev.data.time.minutes = result.first.minutes;
-			ev.data.time.seconds = result.first.seconds;
-			EventBus::throwEvent(&ev);
-		}
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-	}
-}
-
 void smartBusThreadFunc(std::reference_wrapper<HydroRS<SerialWrapper, Crc8, 64>> aSmartBusRef, std::reference_wrapper<SerialWrapper> aSerialRef)
 {
 	while(true) {
@@ -71,21 +55,20 @@ extern "C"
 void app_main()
 {
 	// Display and UI initializing
-	GT911Initializer::init();
 	DisplayDriver displayDriver;
 	displayDriver.setupDisplay();
 	displayDriver.setupLvgl();
 	
 	uiInit(true);
 	
-	DS3231 rtc(1, 20, 21);
-	SerialWrapper serial(0, 64, 64, 15, 14);
-	Gpio rsLatch(10, GPIO_MODE_OUTPUT);
+	SystemIntegrator systemIntegrator;
+	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
+	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 64, 64, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
+	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
 	UiEventObserver uiObserver;
 	PumpController pumpController;
-
-	ConfigStorage::instance();
+	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
 	//EventBus::registerObserver(&rtc);
 	//EventBus::registerObserver(&smartBus);
@@ -96,17 +79,11 @@ void app_main()
 
 	auto cfg = esp_pthread_get_default_config();
 	
-	// Поток для работы с дисплеем, увеличенный стек
+	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	cfg = updateThreadConfig("Display", 0, 5 * 1024, 5);
 	esp_pthread_set_cfg(&cfg);
 	std::thread displayTask(displayThreadFunc);
 	displayTask.detach();
-
-	// Поток для работы с RTC
-	// cfg = updateThreadConfig("RTC", 0, 1 * 1024, 3);
-	// esp_pthread_set_cfg(&cfg);
-	// std::thread rtcTask(rtcThreadFunc, std::ref(rtc));
-	// rtcTask.detach();
 
 	// Поток для RS485
 	// cfg = updateThreadConfig("SmartBus", 0, 2 * 1024, 3);

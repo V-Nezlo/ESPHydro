@@ -9,12 +9,12 @@
 #ifndef INCLUDE_DISPLAY_HPP_
 #define INCLUDE_DISPLAY_HPP_
 
-#include <lvgl.h>
+#include "EventBus.hpp"
+#include "HardwareConfig.hpp"
 #include <LovyanGFX.hpp>
-#include <EventBus.hpp>
+#include <lvgl.h>
 
-class LGFX : public lgfx::LGFX_Device
-{
+class LGFX : public lgfx::LGFX_Device {
 	lgfx::Panel_ILI9488 _panel_instance;
 	lgfx::Bus_SPI _bus_instance;
 	lgfx::Light_PWM _light_instance;
@@ -33,10 +33,10 @@ public:
 		cfg.use_lock   = true;        // トランザクションロックを使用する場合はtrueを設定
 		cfg.dma_channel = SPI_DMA_CH_AUTO; // 使用するDMAチャンネルを設定 (0=DMA不使用 / 1=1ch / 2=ch / SPI_DMA_CH_AUTO=自動設定)
 		// ※ ESP-IDFバージョンアップに伴い、DMAチャンネルはSPI_DMA_CH_AUTO(自動設定)が推奨になりました。1ch,2chの指定は非推奨になります。
-		cfg.pin_sclk = 17;            // SPIのSCLK
-		cfg.pin_mosi = 16;            // SPIのMOSI
-		cfg.pin_miso = 18;            // SPIのMISO (-1 = disable)
-		cfg.pin_dc   = 4;            // SPIのD/C  (-1 = disable)
+		cfg.pin_sclk = Hardware::Display::kClkPin;            // SPIのSCLK
+		cfg.pin_mosi = Hardware::Display::kMosiPin;            // SPIのMOSI
+		cfg.pin_miso = Hardware::Display::kMisoPin;            // SPIのMISO (-1 = disable)
+		cfg.pin_dc   = Hardware::Display::kDcPin;            // SPIのD/C  (-1 = disable)
 
 		_bus_instance.config(cfg);    // 設定値をバスに反映します。
 		_panel_instance.setBus(&_bus_instance);      // バスをパネルにセットします。
@@ -45,9 +45,9 @@ public:
 		{ 
 		auto cfg = _panel_instance.config();    // 表示パネル設定用の構造体を取得します。
 
-		cfg.pin_cs           =    15;  // CSが接続されているピン番号   (-1 = disable)
-		cfg.pin_rst          =    2;  // RSTが接続されているピン番号  (-1 = disable)
-		cfg.pin_busy         =    -1;  // BUSYが接続されているピン番号 (-1 = disable)
+		cfg.pin_cs           =    Hardware::Display::kCsPin;  // CSが接続されているピン番号   (-1 = disable)
+		cfg.pin_rst          =    Hardware::Display::kRstPin;  // RSTが接続されているピン番号  (-1 = disable)
+		cfg.pin_busy         =    Hardware::Display::kBusyPin;  // BUSYが接続されているピン番号 (-1 = disable)
 
 		cfg.panel_width      =   320;  // 実際に表示可能な幅
 		cfg.panel_height     =   480;  // 実際に表示可能な高さ
@@ -62,19 +62,16 @@ public:
 		cfg.dlen_16bit       = false;  // 16bitパラレルやSPIでデータ長を16bit単位で送信するパネルの場合 trueに設定
 		cfg.bus_shared       =  true;  // SDカードとバスを共有している場合 trueに設定(drawJpgFile等でバス制御を行います)
 
-	//    cfg.memory_width     =   240;  // ドライバICがサポートしている最大の幅
-	//    cfg.memory_height    =   320;  // ドライバICがサポートしている最大の高さ
-
 		_panel_instance.config(cfg);
 		}
 
 		{ 
 		auto cfg = _light_instance.config();    // バックライト設定用の構造体を取得します。
 
-		cfg.pin_bl = 5;              // バックライトが接続されているピン番号
+		cfg.pin_bl = Hardware::Display::kBacklightPin;              // バックライトが接続されているピン番号
 		cfg.invert = false;           // バックライトの輝度を反転させる場合 true
 		cfg.freq   = 44100;           // バックライトのPWM周波数
-		cfg.pwm_channel = 7;          // 使用するPWMのチャンネル番号
+		cfg.pwm_channel = Hardware::Display::kBacklightPwmChannel;          // 使用するPWMのチャンネル番号
 
 		_light_instance.config(cfg);
 		_panel_instance.setLight(&_light_instance);  // バックライトをパネルにセットします。
@@ -82,6 +79,8 @@ public:
 
 		{ // タッチスクリーン制御の設定を行います。（必要なければ削除）
 		auto cfg = _touch_instance.config();
+
+		touchInit(Hardware::Touch::kRstPin, Hardware::Touch::kIntPin);
 
 		cfg.x_min      = 0;    // タッチスクリーンから得られる最小のX値(生の値)
 		cfg.x_max      = 319;  // タッチスクリーンから得られる最大のX値(生の値)
@@ -93,10 +92,10 @@ public:
 		cfg.pin_miso = -1;     // MISOが接続されているピン番号
 		cfg.pin_cs   = -1;     //   CSが接続されているピン番号
 
-		cfg.i2c_port = 0;      // 使用するI2Cを選択 (0 or 1)
-		cfg.i2c_addr = 0x5D;   // I2Cデバイスアドレス番号
-		cfg.pin_sda  = 22;     // SDAが接続されているピン番号
-		cfg.pin_scl  = 19;     // SCLが接続されているピン番号
+		cfg.i2c_port = Hardware::Touch::kI2CPort;      // 使用するI2Cを選択 (0 or 1)
+		cfg.i2c_addr = Hardware::Touch::kI2CAddr;   // I2Cデバイスアドレス番号
+		cfg.pin_sda  = Hardware::Touch::kSdaPin;     // SDAが接続されているピン番号
+		cfg.pin_scl  = Hardware::Touch::kSclPin;     // SCLが接続されているピン番号
 		cfg.freq = 400000;     // I2Cクロックを設定
 
 		_touch_instance.config(cfg);
@@ -109,6 +108,25 @@ public:
 	void setBrightness(uint8_t aDuty)
 	{
 		return _light_instance.setBrightness(aDuty);
+	}
+
+private:
+	void touchInit(int8_t aRstPin, int8_t aIntPin)
+	{
+        lgfx::pinMode(aRstPin, lgfx::pin_mode_t::output);
+        lgfx::pinMode(aIntPin, lgfx::pin_mode_t::output);
+        lgfx::gpio_lo(aRstPin);
+        lgfx::gpio_lo(aIntPin);
+        lgfx::delay(10);
+
+        lgfx::gpio_hi(aIntPin);
+        lgfx::delayMicroseconds(100);
+
+        lgfx::gpio_hi(aRstPin);
+        lgfx::delay(5);
+
+        lgfx::gpio_lo(aIntPin);
+        lgfx::delay(50);
 	}
 };
 
