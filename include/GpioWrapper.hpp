@@ -28,4 +28,4 @@ private:
 	gpio_num_t number;
 };
 
-#endif
+#endif // INCLUDE_GPIOWRAPPER_HPP_

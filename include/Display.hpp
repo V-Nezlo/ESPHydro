@@ -226,12 +226,4 @@ public:
 	}
 };
 
-
-
-
-
-
-
-
-
-#endif
+#endif // INCLUDE_DISPLAY_HPP_

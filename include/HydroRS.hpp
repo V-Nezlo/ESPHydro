@@ -9,17 +9,20 @@
 #ifndef INCLUDE_HYDRORS_HPP_
 #define INCLUDE_HYDRORS_HPP_
 
+#include "EventBus.hpp"
+#include "LinearSched.hpp"
 #include "TimeWrapper.hpp"
 #include "Types.hpp"
-#include <Lib/RsHandler.hpp>
 #include "HydroRSTypes.hpp"
-#include <EventBus.hpp>
+
+#include <Lib/RsHandler.hpp>
+
 #include <chrono>
 #include <array>
 #include <utility>
 
 template<class Interface, typename Crc, size_t ParserSize>
-class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public AbstractEventObserver {
+class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public AbstractEventObserver, public AbstractLinearTask {
 	using BaseType = RS::RsHandler<Interface, Crc, ParserSize>;
 
 	enum class DeviceState {
@@ -67,9 +70,9 @@ public:
 	void processDevice(TelemetryUnit &aUnit, std::chrono::milliseconds aCurrentTime)
 	{
 		const DeviceType &type = aUnit.device;
-		const DeviceState &state = aUnit.state;
-		const std::chrono::milliseconds &lastAckTime = aUnit.lastAckTime;
-		const std::chrono::milliseconds &lastCallTime = aUnit.lastCallTime;
+		DeviceState &state = aUnit.state;
+		std::chrono::milliseconds &lastAckTime = aUnit.lastAckTime;
+		std::chrono::milliseconds &lastCallTime = aUnit.lastCallTime;
 		const uint8_t deviceUID = static_cast<uint8_t>(type);
 
 		switch(state) {
@@ -114,7 +117,7 @@ public:
 		}
 	}
 
-	void process(std::chrono::milliseconds aCurrentTime)
+	void process(std::chrono::milliseconds aCurrentTime) override
 	{
 		processDevice(devices.lower, aCurrentTime);
 		processDevice(devices.upper, aCurrentTime);
@@ -252,4 +255,4 @@ public:
 	}
 };
 
-#endif
+#endif // INCLUDE_HYDRORS_HPP_

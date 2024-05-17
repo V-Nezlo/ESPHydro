@@ -6,13 +6,12 @@
 @version 1.0
 */
 
-
 #ifndef INCLUDE_UI_HPP_
 #define INCLUDE_UI_HPP_
 
-#include <lvgl.h>
 #include "Types.hpp"
 #include "EventBus.hpp"
+#include <lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,8 +50,8 @@ bool getLoggingState();
 void updateMainPagePumpTypeLabel();
 
 enum {
-    LV_MENU_ITEM_BUILDER_VARIANT_1,
-    LV_MENU_ITEM_BUILDER_VARIANT_2
+	LV_MENU_ITEM_BUILDER_VARIANT_1,
+	LV_MENU_ITEM_BUILDER_VARIANT_2
 };
 
 #ifdef __cplusplus
@@ -62,35 +61,35 @@ enum {
 /// @brief Приемная сторона шины событий-данных для графического интерфейса
 class UiEventObserver : public AbstractEventObserver {
 public:
-    EventResult handleEvent(Event *e) override
-    {
-        switch (e->type) 
-        {
-        case EventType::UpdateUpperData:
-            updateUpperData(&e->data.upperData);
-            return EventResult::PASS_ON;
+	EventResult handleEvent(Event *e) override
+	{
+		switch (e->type) 
+		{
+		case EventType::UpdateUpperData:
+			updateUpperData(&e->data.upperData);
+			return EventResult::PASS_ON;
 
-        case EventType::UpdateLowerData:
-            updateLowerData(&e->data.lowerData);
-            return EventResult::PASS_ON;
+		case EventType::UpdateLowerData:
+			updateLowerData(&e->data.lowerData);
+			return EventResult::PASS_ON;
 
-        case EventType::UpdateSystemData:
-            updateSystemData(&e->data.systemData);
-            return EventResult::PASS_ON;
+		case EventType::UpdateSystemData:
+			updateSystemData(&e->data.systemData);
+			return EventResult::PASS_ON;
 
-        case EventType::GetCurrentTime:
-            applyNewCurrentTime(&e->data.time);
-            return EventResult::PASS_ON;
+		case EventType::GetCurrentTime:
+			applyNewCurrentTime(&e->data.time);
+			return EventResult::PASS_ON;
 
-        case EventType::SettingsFirstLoad:
-            enterParameters(&e->data.settings);
-            return EventResult::PASS_ON;
+		case EventType::SettingsFirstLoad:
+			enterParameters(&e->data.settings);
+			return EventResult::PASS_ON;
 
-        default:
-            return EventResult::IGNORED;
-            break;
-        }
-    }
+		default:
+			return EventResult::IGNORED;
+			break;
+		}
+	}
 };
 
 void sendParametersToEventBus(Settings *aSettings);
@@ -98,4 +97,4 @@ void sendActionCommandToEventBus(Action aAction);
 void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec);
 void sendNewBrightnessToEventBus(uint8_t aDuty);
 
-#endif /*INCLUDE_UI_HPP_*/
+#endif // INCLUDE_UI_HPP_

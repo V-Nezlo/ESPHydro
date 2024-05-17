@@ -1,97 +1,102 @@
+#include "BuzzerController.hpp"
+#include "ConfigStorage.hpp"
+#include "DS3231.hpp"
+#include "Display.hpp"
+#include "GpioWrapper.hpp"
+#include "HydroRS.hpp"
+#include "LightController.hpp"
+#include "PumpController.hpp"
+#include "SerialWrapper.hpp"
+#include "SystemIntergrator.hpp"
+#include "UI.hpp"
+
+#include <Lib/Crc8.hpp>
 #include <LovyanGFX.hpp>
 #include <lvgl.h>
-#include "GpioWrapper.hpp"
-#include "SystemIntergrator.hpp"
-#include "BuzzerController.hpp"
-#include "esp_log.h"
-#include "Display.hpp"
-#include "UI.hpp"
-#include "HydroRS.hpp"
-#include <thread>
-#include <DS3231.hpp>
-#include <functional>
-#include <SerialWrapper.hpp>
-#include <Lib/Crc8.hpp>
-#include <ConfigStorage.hpp>
-#include <PumpController.hpp>
-#include <esp_pthread.h>
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_log.h>
+#include <esp_pthread.h>
+
+#include <functional>
+#include <thread>
 
 esp_pthread_cfg_t updateThreadConfig(const char *name, int core_id, int stack, int prio)
 {
-    auto cfg = esp_pthread_get_default_config();
-    cfg.thread_name = name;
-    cfg.pin_to_core = core_id;
-    cfg.stack_size = stack;
-    cfg.prio = prio;
-    return cfg;
+	auto cfg = esp_pthread_get_default_config();
+	cfg.thread_name = name;
+	cfg.pin_to_core = core_id;
+	cfg.stack_size = stack;
+	cfg.prio = prio;
+	return cfg;
 }
 
 void displayThreadFunc()
 {
 	while(true) {
-		lv_timer_handler(); /* let the GUI do its work */
+		lv_timer_handler();
 		lv_tick_inc(5);
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
-	}
-}
-
-void smartBusThreadFunc(std::reference_wrapper<HydroRS<SerialWrapper, Crc8, 64>> aSmartBusRef, std::reference_wrapper<SerialWrapper> aSerialRef)
-{
-	while(true) {
-		const size_t len = aSerialRef.get().bytesAvaillable();
-		if (len) {
-			uint8_t buffer[64];
-			aSerialRef.get().read(buffer, len);
-			aSmartBusRef.get().update(buffer, len);
-		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
 
 extern "C"
 void app_main()
 {
-	// Display and UI initializing
+	ConfigStorage paramStorage;
 	DisplayDriver displayDriver;
-	displayDriver.setupDisplay();
-	displayDriver.setupLvgl();
-	
-	uiInit(true);
-	
-	SystemIntegrator systemIntegrator;
-	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
-	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 64, 64, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
-	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
-	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
 	UiEventObserver uiObserver;
+
+	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
+	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 64, 64, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
+	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
+
+	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
+
 	PumpController pumpController;
+	LightController lightController;
+	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
-	//EventBus::registerObserver(&rtc);
-	//EventBus::registerObserver(&smartBus);
-	EventBus::registerObserver(&uiObserver);
-	EventBus::registerObserver(ConfigStorage::instance());
+	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
-	ConfigStorage::instance()->firstLoad();
+	EventBus::registerObserver(&uiObserver);
+	EventBus::registerObserver(&smartBus);
+	EventBus::registerObserver(&rtc);
+	EventBus::registerObserver(&pumpController);
+	EventBus::registerObserver(&lightController);
+	EventBus::registerObserver(&systemIntegrator);
+	EventBus::registerObserver(&buzzController);
+	// Загружаем параметры во все модули
+	paramStorage.firstLoad();
+	// Включаем и отрисовываем экран
+	displayDriver.setupDisplay();
+	displayDriver.setupLvgl();
+	uiInit(true);
 
-	auto cfg = esp_pthread_get_default_config();
-	
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
+	auto cfg = esp_pthread_get_default_config();
 	cfg = updateThreadConfig("Display", 0, 5 * 1024, 5);
 	esp_pthread_set_cfg(&cfg);
 	std::thread displayTask(displayThreadFunc);
 	displayTask.detach();
 
-	// Поток для RS485
-	// cfg = updateThreadConfig("SmartBus", 0, 2 * 1024, 3);
-	// esp_pthread_set_cfg(&cfg);
-	// std::thread smartBusTask(smartBusThreadFunc, std::ref(smartBus), std::ref(serial));
-	// smartBusTask.detach();
-
 	while(true) {
-		lgfx::delay(500);
+		// Обработка SmartBus
+		const size_t len = serial.bytesAvaillable();
+		if (len) {
+			uint8_t buffer[64];
+			serial.read(buffer, len);
+			smartBus.update(buffer, len);
+		}
+
+		const std::chrono::milliseconds currentTime = TimeWrapper::milliseconds();
+		// Прочие обработчики
+		rtc.process(currentTime);
+		pumpController.process(currentTime);
+		lightController.process(currentTime);
+		systemIntegrator.process(currentTime);
+		buzzController.process(currentTime);
 	}
 }
