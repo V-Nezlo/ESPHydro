@@ -21,8 +21,8 @@ enum class DeviceType {
 struct LowerTelemetry {
 	uint8_t pumpState;
 	uint8_t waterLevelPerc;
-	float waterTemperature;
-	uint8_t waterPH;
+	int8_t waterTemperature10;
+	uint8_t waterPH10;
 	uint16_t waterPPM;
 	uint8_t deviceFlags;
 } __attribute__((packed));
@@ -36,7 +36,8 @@ struct UpperTelemetry {
 
 enum class Commands {
 	SetPumpState = 1,
-	SetLampState
+	SetLampState = 2,
+	SetDamState = 3
 };
 
 enum class Requests {

@@ -274,12 +274,12 @@ void uiInit(bool aDarkTheme)
 
 	// Test filling
 	struct SystemData sysData;
-	sysData.health = DeviceState::DeviceWorking;
+	sysData.health = DeviceHealth::DeviceWorking;
 	sysData.flags = 0xFF;
 	updateSystemData(&sysData);
 
 	struct LowerInternalData lowerData;
-	lowerData.health = DeviceState::DeviceDisabled;
+	lowerData.health = DeviceHealth::DeviceDisabled;
 	lowerData.flags = 0;
 	lowerData.ph10 = 78;
 	lowerData.ppm = 1205;
@@ -289,7 +289,7 @@ void uiInit(bool aDarkTheme)
 	updateLowerData(&lowerData);
 
 	struct UpperInternalData upperData;
-	upperData.health = DeviceState::DeviceDisabled;
+	upperData.health = DeviceHealth::DeviceDisabled;
 	upperData.flags = 0;
 	upperData.lampState = false;
 	updateUpperData(&upperData);
@@ -710,17 +710,17 @@ bool textAreasApply(uint8_t aArea)
 	return true;
 }
 
-void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceState aHealth)
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 {
-	if (aHealth == DeviceState::DeviceWorking) {
+	if (aHealth == DeviceHealth::DeviceWorking) {
 		lv_obj_add_style(aModulePanel, &style_good, 0);
-	} else if (aHealth == DeviceState::DeviceWarning) {
+	} else if (aHealth == DeviceHealth::DeviceWarning) {
 		lv_obj_add_style(aModulePanel, &style_warning, 0);
-	} else if (aHealth == DeviceState::DeviceError) {
+	} else if (aHealth == DeviceHealth::DeviceError) {
 		lv_obj_add_style(aModulePanel, &style_error, 0);
-	} else if (aHealth == DeviceState::DeviceError) {
+	} else if (aHealth == DeviceHealth::DeviceError) {
 		lv_obj_add_style(aModulePanel, &style_error, 0);
-	} else if (aHealth == DeviceState::DeviceDisabled) {
+	} else if (aHealth == DeviceHealth::DeviceDisabled) {
 		lv_obj_add_style(aModulePanel, &style_disabled, 0);
 	}
 }
@@ -730,7 +730,7 @@ void updateSystemData(struct SystemData *aData)
 	updatePanelStyleByFlags(systemStatusPanel, aData->health);
 	systemFlags = aData->flags;
 
-	if (aData->health == DeviceState::DeviceDisabled) {
+	if (aData->health == DeviceHealth::DeviceDisabled) {
 		isSystemPresent = false;
 	} else {
 		isSystemPresent = true;
@@ -742,7 +742,7 @@ void updateLowerData(struct LowerInternalData *aData)
 	updatePanelStyleByFlags(lowerStatusPanel, aData->health);
 	lowerFlags = aData->flags;
 
-	if (aData->health == DeviceState::DeviceDisabled) {
+	if (aData->health == DeviceHealth::DeviceDisabled) {
 		isLowerPresent = false;
 	} else {
 		isLowerPresent = true;
@@ -768,7 +768,7 @@ void updateAUXData(struct AuxData *aData)
 	updatePanelStyleByFlags(auxStatusPanel, aData->health);
 	auxFlags = aData->flags;
 
-	if (aData->health == DeviceState::DeviceDisabled) {
+	if (aData->health == DeviceHealth::DeviceDisabled) {
 		isAuxPresent = false;
 	} else {
 		isAuxPresent = true;
@@ -780,7 +780,7 @@ void updateUpperData(struct UpperInternalData *aData)
 	updatePanelStyleByFlags(upperStatusPanel, aData->health);
 	upperFlags = aData->flags;
 
-	if (aData->health == DeviceState::DeviceDisabled) {
+	if (aData->health == DeviceHealth::DeviceDisabled) {
 		isUpperPresent = false;
 	} else {
 		isUpperPresent = true;
@@ -917,30 +917,39 @@ bool getLoggingState()
 
 void updateMainPagePumpTypeLabel()
 {
-		// Update pump mode
-		switch (lv_dropdown_get_selected(pumpTypeDD)) {
-			case 0: // Normal
-				lv_label_set_text(currentModeLabel, "EBB-FLOW");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 1: // Swing
-				lv_label_set_text(currentModeLabel, "EBB-SWING");
-				lv_obj_center(currentModeLabel);
-				lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 2: // Maintance
-				lv_label_set_text(currentModeLabel, "MAINTANCE");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-				break;
-			case 3: // Drip
-				lv_label_set_text(currentModeLabel, "DRIP");
-				lv_obj_center(currentModeLabel);
-				lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-			default:
-				break;
-		}
+	// Update pump mode
+	const uint8_t modeNumber = lv_dropdown_get_selected(pumpTypeDD);
+	const PumpModes mode = static_cast<PumpModes>(modeNumber);
+
+	switch (mode) {
+		case PumpModes::EBBNormal: // Normal
+			lv_label_set_text(currentModeLabel, "EBB-FLOW");
+			lv_obj_center(currentModeLabel);
+			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		case PumpModes::EBBSwing: // Swing
+			lv_label_set_text(currentModeLabel, "EBB-SWING");
+			lv_obj_center(currentModeLabel);
+			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		case PumpModes::Maintance: // Maintance
+			lv_label_set_text(currentModeLabel, "MAINTANCE");
+			lv_obj_center(currentModeLabel);
+			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		case PumpModes::Dripping: // Drip
+			lv_label_set_text(currentModeLabel, "DRIP");
+			lv_obj_center(currentModeLabel);
+			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		case PumpModes::EBBDam: // DAM
+			lv_label_set_text(currentModeLabel, "EBB-DAM");
+			lv_obj_center(currentModeLabel);
+			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		default:
+			break;
+	}
 }
 
 /**********************
@@ -1393,7 +1402,8 @@ void menu_create(lv_obj_t *parent)
 		"Normal\n"
 		"Swing\n"
 		"Maintance\n"
-		"Drip");
+		"Drip\n"
+		"Dam");
 	lv_dropdown_set_dir(pumpTypeDD, LV_DIR_RIGHT);
 
 	lv_obj_align(pumpTypeDD, LV_ALIGN_TOP_MID, 0, 20);

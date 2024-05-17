@@ -15,10 +15,11 @@ enum class PumpModes : uint8_t {
 	EBBNormal = 0,
 	EBBSwing,
 	Maintance,
-	Dripping
+	Dripping,
+	EBBDam
 };
 
-enum class DeviceState : uint8_t {
+enum class DeviceHealth : uint8_t {
 	DeviceWorking,
 	DeviceWarning,
 	DeviceError,
@@ -49,7 +50,7 @@ enum SystemErrors : uint8_t {
 };
 
 struct UpperInternalData {
-	DeviceState health;
+	DeviceHealth health;
 	uint8_t flags;
 	bool lampState;
 	bool swingLevelState;
@@ -57,22 +58,22 @@ struct UpperInternalData {
 };
 
 struct LowerInternalData {
-	DeviceState health;
+	DeviceHealth health;
 	uint8_t flags;
 	uint8_t waterLevel;
 	bool pumpState;
-	uint8_t waterTemp10;
+	int8_t waterTemp10;
 	uint8_t ph10;
 	uint16_t ppm;
 };
 
 struct SystemData {
-	DeviceState health;
+	DeviceHealth health;
 	uint8_t flags;
 };
 
 struct AuxData {
-	DeviceState health;
+	DeviceHealth health;
 	uint8_t flags;
 };
 

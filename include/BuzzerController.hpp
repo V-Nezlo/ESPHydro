@@ -26,7 +26,6 @@ class BuzzerController : public AbstractEventObserver, public AbstractLinearTask
 
 public:
 	BuzzerController(uint8_t aPin, uint8_t aPwmChannel);
-
 	EventResult handleEvent(Event *e) override;
 	void process(std::chrono::milliseconds aCurrentTime) override;
 

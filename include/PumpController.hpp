@@ -22,19 +22,26 @@
 #include <chrono>
 
 class PumpController : public AbstractEventObserver, public AbstractLinearTask {
-	enum class PumpState{
-		PUMPON,
-		PUMPOFF
+	enum class ControlState : uint8_t {
+		PumpOn,
+		PumpOff
 	};
 
-	enum class SwingState {
+	enum class SwingState : uint8_t {
 		SwingOn,
 		SwingOff
 	};
 
+	enum class DamTankState : uint8_t {
+		DamUnlocked,
+		DamLocked
+	};
+
 	PumpModes mode;
-	PumpState pumpState;
+	ControlState controlState;
 	SwingState swingState;
+	DamTankState damTankState;
+
 	std::chrono::milliseconds lastActionTime;
 	std::chrono::milliseconds lastSwingTime;
 	std::chrono::milliseconds waterFillingTimer;
@@ -46,6 +53,7 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 
 	uint8_t currentWaterLevel;
 	bool upperState;
+	bool damState;
 
 	// Пояснение: некоторые поля этого класса являются разделяемым ресурсом
 	// Поэтому, пока ресуры класса модифицируются UI необходимо отключать работу контроллера насоса
@@ -58,10 +66,13 @@ public:
 
 private:
 	void updateMode(PumpModes aNewMode);
-	void setPumpState(bool aState);
+	void setPumpState(ControlState aState);
+	void setDamState(DamTankState aState);
 
 	void throwErrorToEventBus(SystemErrors aError);
 	void clearErrorToEventBus(SystemErrors aError);
+	void sendCommandToPump(bool aNewPumpState);
+	void sendCommandToDam(bool aNewDamState);
 
 	/// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг
 	void processEBBNormalMode(std::chrono::milliseconds aCurrentTime);

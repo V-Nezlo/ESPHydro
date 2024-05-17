@@ -53,7 +53,9 @@ enum class Action : uint8_t {
 	TurnPumpOn,
 	TurnPumpOff,
 	TurnLampOn,
-	TurnLampOff
+	TurnLampOff,
+	CloseDam,
+	OpenDam
 };
 
 enum class BuzzerSignal {

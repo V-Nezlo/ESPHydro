@@ -192,7 +192,24 @@ public:
 		Event ev;
 		ev.type = EventType::UpdateLowerData;
 		ev.data.lowerData.ppm = aTelem.waterPPM;
-		// Прочие поля
+		ev.data.lowerData.ph10 = aTelem.waterPH10;
+		ev.data.lowerData.waterTemp10 = aTelem.waterTemperature10;
+		ev.data.lowerData.pumpState = aTelem.pumpState == 1 ? true : false;
+		ev.data.lowerData.waterLevel = aTelem.waterLevelPerc;
+		ev.data.lowerData.flags = aTelem.deviceFlags;
+
+		if (ev.data.lowerData.flags & LowerFlags::LowerNoWaterFlag 
+			|| ev.data.lowerData.flags & LowerFlags::LowerPumpOverCurrentFlag 
+			|| ev.data.lowerData.flags & LowerFlags::LowerPumpLowCurrentFlag) {
+			ev.data.lowerData.health = DeviceHealth::DeviceError;
+		} else if (ev.data.lowerData.flags & LowerFlags::LowerPHSensorErrorFlag
+			|| ev.data.lowerData.flags & LowerFlags::LowerPPMSensorErrorFlag
+			|| ev.data.lowerData.flags & LowerFlags::LowerTempSensorErrorFlag) {
+			ev.data.lowerData.health = DeviceHealth::DeviceWarning;
+		} else {
+			ev.data.lowerData.health = DeviceHealth::DeviceWorking;
+		}
+
 		EventBus::throwEvent(&ev);
 	}
 
@@ -200,8 +217,19 @@ public:
 	{
 		Event ev;
 		ev.type = EventType::UpdateUpperData;
-		ev.data.upperData.swingLevelState = aTelem.swingLevelState;
-		// Прочие поля
+		ev.data.upperData.swingLevelState = aTelem.swingLevelState == 1 ? true : false;
+		ev.data.upperData.lampState = aTelem.lampState == 1 ? true : false;
+		ev.data.upperData.damState = aTelem.damState == 1 ? true : false;
+		ev.data.upperData.flags = aTelem.deviceFlags;
+
+		if (ev.data.upperData.flags & UpperFlags::UpperPowerError) {
+			ev.data.upperData.health = DeviceHealth::DeviceError;
+		} else if (ev.data.upperData.flags & UpperFlags::UpperTopWaterLevelStuck) {
+			ev.data.upperData.health = DeviceHealth::DeviceWarning;
+		} else {
+			ev.data.upperData.health = DeviceHealth::DeviceWorking;
+		}
+
 		EventBus::throwEvent(&ev);
 	}
 
@@ -230,19 +258,26 @@ public:
 					case Action::TurnPumpOn:
 						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 1);
 						return EventResult::HANDLED;
-						break;
+
 					case Action::TurnPumpOff:
 						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 0);
 						return EventResult::HANDLED;
-						break;
+
 					case Action::TurnLampOn:
 						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 1);
 						return EventResult::HANDLED;
-						break;
+
 					case Action::TurnLampOff:
 						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 0);
 						return EventResult::HANDLED;
-						break;
+
+					case Action::OpenDam:
+						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 1);
+						return EventResult::HANDLED;
+
+					case Action::CloseDam:
+						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 0);
+						return EventResult::HANDLED;
 				}
 			} break;
 

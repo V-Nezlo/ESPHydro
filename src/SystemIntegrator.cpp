@@ -19,19 +19,19 @@ void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 		updated = false;
 
 		// Составим health из флагов
-		DeviceState state = DeviceState::DeviceWorking;
+		DeviceHealth health = DeviceHealth::DeviceWorking;
 		if ((systemFlagStorage & SystemErrors::SystemLeak) || (systemFlagStorage & SystemErrors::SystemRSBusError)) {
-			state = DeviceState::DeviceCritical;
+			health = DeviceHealth::DeviceCritical;
 		} else if ((systemFlagStorage & SystemErrors::SystemRTCError) || (systemFlagStorage & SystemErrors::SystemInternalMemError)) {
-			state = DeviceState::DeviceError;
+			health = DeviceHealth::DeviceError;
 		} else if (systemFlagStorage & SystemErrors::SystemTankNotFloodedInTime) {
-			state = DeviceState::DeviceWarning;
+			health = DeviceHealth::DeviceWarning;
 		}
 
 		Event ev;
 		ev.type = EventType::UpdateSystemData;
 		ev.data.systemData.flags = systemFlagStorage;
-		ev.data.systemData.health = state;
+		ev.data.systemData.health = health;
 		EventBus::throwEvent(&ev);
 	}
 }

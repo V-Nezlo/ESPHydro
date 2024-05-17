@@ -11,8 +11,9 @@
 
 PumpController::PumpController() :
 	mode{PumpModes::EBBNormal},
-	pumpState{PumpState::PUMPOFF},
+	controlState{ControlState::PumpOff},
 	swingState{SwingState::SwingOff},
+	damTankState{DamTankState::DamUnlocked},
 	lastActionTime{0},
 	lastSwingTime{0},
 	waterFillingTimer{0},
@@ -22,6 +23,7 @@ PumpController::PumpController() :
 	swingTime{0},
 	currentWaterLevel{0},
 	upperState{false},
+	damState{false},
 	mutex{}
 {
 }
@@ -42,9 +44,12 @@ EventResult PumpController::handleEvent(Event *e)
 			xSemaphoreGive(mutex);
 			return EventResult::PASS_ON;
 		case EventType::UpdateLowerData:
-			break;
+			currentWaterLevel = e->data.lowerData.waterLevel;
+			return EventResult::PASS_ON;
 		case EventType::UpdateUpperData:
-			break;
+			upperState = e->data.upperData.swingLevelState;
+			damState = e->data.upperData.damState;
+			return EventResult::PASS_ON;
 		default:
 			return EventResult::IGNORED;
 	}
@@ -72,12 +77,15 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 			case PumpModes::Maintance:
 				processMaintanceMode();
 				break;
+			case PumpModes::EBBDam:
+				processEBBDumMode(currentTime);
+				break;
 		}
 	} else {
-		if (pumpState == PumpState::PUMPON) {
-			setPumpState(false);
-			pumpState = PumpState::PUMPOFF;
-			}
+		if (controlState == ControlState::PumpOn) {
+			setPumpState(ControlState::PumpOff);
+			setDamState(DamTankState::DamUnlocked);
+		}
 	}
 
 	xSemaphoreGive(mutex);
@@ -86,18 +94,35 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 void PumpController::updateMode(PumpModes aNewMode)
 {
 	auto currentTime = TimeWrapper::milliseconds();
-
 	lastActionTime = currentTime;
 	lastSwingTime = currentTime;
 	waterFillingTimer = std::chrono::milliseconds{0};
+
+	mode = aNewMode;
+	setPumpState(ControlState::PumpOff);
+	setDamState(DamTankState::DamUnlocked);
 }
 
-void PumpController::setPumpState(bool aState)
+void PumpController::setPumpState(ControlState aState)
 {
-	Event ev;
-	ev.type = EventType::ActionRequest;
-	ev.data.action = aState ? Action::TurnPumpOn : Action::TurnPumpOff;
-	EventBus::throwEvent(&ev);
+	controlState = aState;
+
+	if (aState == ControlState::PumpOff) {
+		sendCommandToPump(false);
+	} else {
+		sendCommandToPump(true);
+	}
+}
+
+void PumpController::setDamState(DamTankState aState)
+{
+	damTankState = aState;
+
+	if (aState == DamTankState::DamLocked) {
+		sendCommandToDam(false);
+	} else {
+		sendCommandToDam(true);
+	}
 }
 
 void PumpController::throwErrorToEventBus(SystemErrors aError)
@@ -116,65 +141,79 @@ void PumpController::clearErrorToEventBus(SystemErrors aError)
 	EventBus::throwEvent(&ev);
 }
 
+void PumpController::sendCommandToPump(bool aNewPumpState)
+{
+	Event ev;
+	ev.type = EventType::ActionRequest;
+	ev.data.action = aNewPumpState ? Action::TurnPumpOn : Action::TurnPumpOff;
+	EventBus::throwEvent(&ev);
+}
+
+void PumpController::sendCommandToDam(bool aNewDamState)
+{
+	Event ev;
+	ev.type = EventType::ActionRequest;
+	ev.data.action = aNewDamState ? Action::OpenDam : Action::CloseDam;
+	EventBus::throwEvent(&ev);
+}
+
 /// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг
 void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
-		case PumpState::PUMPON:
+	switch (controlState) {
+		case ControlState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(false);
+				setPumpState(ControlState::PumpOff);
 			}
 			break;
-		case PumpState::PUMPOFF:
+		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
 				lastActionTime = aCurrentTime;
-				setPumpState(true);
+				setPumpState(ControlState::PumpOn);
 			}
 			break;
 	}
 
-	if (pumpState == PumpState::PUMPON && aCurrentTime > waterFillingTimer ) {
-		setPumpState(false);
+	if (controlState == ControlState::PumpOn && aCurrentTime > waterFillingTimer ) {
+		setPumpState(ControlState::PumpOff);
 		throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
-		pumpState = PumpState::PUMPOFF;
 	}
 }
 
 /// @brief Расширенный EBB режим, вкл выкл насоса по времени и отработка "качелей"
 void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
-		case PumpState::PUMPON:
+	switch (controlState) {
+		case ControlState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(false);
+				setPumpState(ControlState::PumpOff);
 			}
 			break;
-		case PumpState::PUMPOFF:
+		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(true);
+				setPumpState(ControlState::PumpOn);
 			}
 			break;
 	}
 
-	if (pumpState == PumpState::PUMPON) {
+	if (controlState == ControlState::PumpOn) {
 		if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
-			setPumpState(true);
+			setPumpState(ControlState::PumpOn);
 			swingState = SwingState::SwingOn;
 			waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
 		} else if (swingState == SwingState::SwingOn && upperState == true) {
-			setPumpState(false);
+			setPumpState(ControlState::PumpOff);
 			swingState = SwingState::SwingOff;
 			lastSwingTime = aCurrentTime;
 		} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
 			throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
-			setPumpState(false);
-			pumpState = PumpState::PUMPOFF;
+			setPumpState(ControlState::PumpOff);
 			swingState = SwingState::SwingOff;
 		}
 	}
@@ -183,18 +222,18 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 /// @brief Самый простой режим, просто вкл-выкл насоса по времени
 void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
-		case PumpState::PUMPON:
+	switch (controlState) {
+		case ControlState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(false);
+				setPumpState(ControlState::PumpOff);
 			}
 			break;
-		case PumpState::PUMPOFF:
+		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(true);
+				setPumpState(ControlState::PumpOn);
 			}
 			break;
 	}
@@ -205,8 +244,31 @@ void PumpController::processMaintanceMode()
 	return;
 }
 
-void processEBBDumMode(std::chrono::milliseconds aCurrentTime)
+void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 {
-    // TODO
+	switch (controlState) {
+		case ControlState::PumpOn:
+		// Если насос сейчас включен - смотрим, не пора ли выключать
+			if (aCurrentTime > lastActionTime + pumpOnTime) {
+				lastActionTime = aCurrentTime;
+				setDamState(DamTankState::DamUnlocked); // Открываем дамбу при выключении
+			} else {
+				if (upperState) { // При срабатывании поплавкового датчика закрываем дамбу и выключаем насос
+					setPumpState(ControlState::PumpOff);
+					setDamState(DamTankState::DamLocked);
+				} else if (aCurrentTime > waterFillingTimer) {
+					setPumpState(ControlState::PumpOff);
+					setDamState(DamTankState::DamUnlocked);
+				}
+			}
+			break;
+		case ControlState::PumpOff:
+			if (aCurrentTime > lastActionTime + pumpOffTime) {
+				lastActionTime = aCurrentTime;
+				setPumpState(ControlState::PumpOn);
+				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
+			}
+			break;
+	}
 }
 

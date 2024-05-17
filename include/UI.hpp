@@ -36,7 +36,7 @@ void uiInit(bool aDarkTheme);
 void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
 
-void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceState aFlag);
+void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
 
 void updateSystemData(struct SystemData *aData);
 void updateLowerData(struct LowerInternalData *aData);
