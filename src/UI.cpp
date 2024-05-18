@@ -868,6 +868,7 @@ void enterParameters(struct Settings *aParams)
 
 	// Установим новое значение яркости
 	lv_slider_set_value(brightnessSlider, aParams->common.displayBrightness, LV_ANIM_OFF);
+	lv_event_send(brightnessSlider, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// В конце обновим главную страницу
 	updateMainPagePumpTypeLabel();
@@ -1461,7 +1462,7 @@ void menu_create(lv_obj_t *parent)
 	tapSountEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Tap sound", false);
 	alarmSoundEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
 
-	brightnessSlider = create_slider(section, NULL, "Display brightness", 30, 100, 50);
+	brightnessSlider = create_slider(section, NULL, "Display brightness", 30, 255, 50);
 	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_menu_separator_create(section);
 
