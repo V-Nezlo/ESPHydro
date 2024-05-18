@@ -49,7 +49,7 @@ void app_main()
 	UiEventObserver uiObserver;
 
 	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
-	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 64, 64, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
+	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
@@ -68,16 +68,18 @@ void app_main()
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&systemIntegrator);
 	EventBus::registerObserver(&buzzController);
-	// Загружаем параметры во все модули
-	paramStorage.firstLoad();
+
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
 	displayDriver.setupLvgl();
 	uiInit(true);
 
+	// Загружаем параметры во все модули
+	paramStorage.firstLoad();
+
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	auto cfg = esp_pthread_get_default_config();
-	cfg = updateThreadConfig("Display", 0, 5 * 1024, 5);
+	cfg = updateThreadConfig("Display", 1, 5 * 1024, 5);
 	esp_pthread_set_cfg(&cfg);
 	std::thread displayTask(displayThreadFunc);
 	displayTask.detach();
@@ -98,5 +100,7 @@ void app_main()
 		lightController.process(currentTime);
 		systemIntegrator.process(currentTime);
 		buzzController.process(currentTime);
+
+		lgfx::delay(50);
 	}
 }

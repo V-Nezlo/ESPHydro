@@ -8,14 +8,21 @@
 
 #include "DS3231.hpp"
 
-DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) : dev{}, lastReadTime{0}
+DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) : 
+	dev{}, 
+	lastReadTime{0},
+	present{false}
 {
 	// Уберем мусор из структуры без конструктора
 	memset(&dev, 0, sizeof(i2c_dev_t));
-	const auto result = ds3231_init_desc(&dev, static_cast<i2c_port_t>(aPort), static_cast<gpio_num_t>(aSdaPin),
-		static_cast<gpio_num_t>(aSclPin));
+	// Функция только создает дескриптор, обращений внутри никаких нет
+	ESP_ERROR_CHECK(ds3231_init_desc(&dev, static_cast<i2c_port_t>(aPort), static_cast<gpio_num_t>(aSdaPin),
+		static_cast<gpio_num_t>(aSclPin)));
 
-	if (result != ESP_OK) {
+	const auto result = probe();
+	if (result == ESP_OK) {
+		present = true;
+	} else {
 		ESP_LOGE("RTC", "DS3231 init failed, %i", static_cast<int>(result));
 
 		Event ev;
@@ -24,14 +31,20 @@ DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) : dev{}, lastRea
 		EventBus::throwEvent(&ev);
 	}
 
-	if (!isConfigured()) {
+	if (present && !isConfigured()) {
 		initialConfigure();
 	}
 }
 
+esp_err_t DS3231::probe()
+{
+	ds3231_alarm_t alarmFlags;
+	return ds3231_get_alarm_flags(&dev, &alarmFlags);
+}
+
 void DS3231::process(std::chrono::milliseconds aCurrentTime)
 {
-	if (aCurrentTime > lastReadTime + std::chrono::milliseconds{1000}) {
+	if (present && (aCurrentTime > lastReadTime + std::chrono::milliseconds{1000})) {
 		lastReadTime = aCurrentTime;
 
 		auto result = getCurrentTime();
@@ -87,7 +100,9 @@ EventResult DS3231::handleEvent(Event *e)
 {
 	switch(e->type) {
 		case EventType::SetCurrentTime:
-			setCurrentTime(e->data.time);
+			if (present) {
+				setCurrentTime(e->data.time);
+			}
 			return EventResult::HANDLED;
 			break;
 		default:

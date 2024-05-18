@@ -38,20 +38,20 @@ namespace Touch {
 
 namespace RTCI2C {
 	static constexpr int8_t kI2CPort = 1;
-	static constexpr int8_t kSdaPin = 11;
-	static constexpr int8_t kSclPin = 12;
+	static constexpr int8_t kSdaPin = 12;
+	static constexpr int8_t kSclPin = 13;
 } // namespace RTCI2C
 
 namespace Buzzer {
-	static constexpr int8_t kPwmPin = 13;
+	static constexpr int8_t kPwmPin = 14;
 	static constexpr int8_t kPwmChannel = 1;
 } // namespace Buzzer
 
 namespace SerialRS {
-	static constexpr int8_t kLatchPin = 10;
+	static constexpr int8_t kLatchPin = 25;
 	static constexpr int8_t kUsartPort = 0;
-	static constexpr int8_t aRxPin = 15;
-	static constexpr int8_t aTxPin = 14;
+	static constexpr int8_t aRxPin = 26;
+	static constexpr int8_t aTxPin = 27;
 } // namespace SerialRS
 
 } // namespace Hardware

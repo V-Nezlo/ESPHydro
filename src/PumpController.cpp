@@ -26,6 +26,7 @@ PumpController::PumpController() :
 	damState{false},
 	mutex{}
 {
+	mutex = xSemaphoreCreateMutex();
 }
 
 EventResult PumpController::handleEvent(Event *e)

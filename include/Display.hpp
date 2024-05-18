@@ -136,7 +136,8 @@ class DisplayDriver : public AbstractEventObserver {
 	static const uint32_t screenWidth  = 480;
 	static const uint32_t screenHeight = 320;
 	static lv_disp_draw_buf_t draw_buf;
-	static lv_color_t buf[ screenWidth * 10 ];
+	static lv_color_t buf1[ screenWidth * 10 ];
+	static lv_color_t buf2[ screenWidth * 10 ];
 
 public:
 	virtual EventResult handleEvent(Event *e)
@@ -199,7 +200,7 @@ public:
 	static void setupLvgl()
 	{
 		lv_init();
-		lv_disp_draw_buf_init( &draw_buf, buf, NULL, screenWidth * 10 );
+		lv_disp_draw_buf_init( &draw_buf, buf1, buf2, screenWidth * 10 );
 
 		/*Initialize the display*/
 		static lv_disp_drv_t disp_drv;

@@ -25,6 +25,7 @@ public:
 	DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin);
 
 	void process(std::chrono::milliseconds aCurrentTime) override;
+	esp_err_t probe();
 	bool setCurrentTime(Time aTime);
 	std::pair<Time, bool> getCurrentTime();
 	EventResult handleEvent(Event *e) override;
@@ -32,6 +33,7 @@ public:
 private:
 	i2c_dev_t dev;
 	std::chrono::milliseconds lastReadTime;
+	bool present;
 
 	/// @brief Проверим настройку времени по установленному году
 	bool isConfigured();

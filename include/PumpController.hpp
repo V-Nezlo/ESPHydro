@@ -57,7 +57,7 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 
 	// Пояснение: некоторые поля этого класса являются разделяемым ресурсом
 	// Поэтому, пока ресуры класса модифицируются UI необходимо отключать работу контроллера насоса
-	QueueHandle_t mutex;
+	SemaphoreHandle_t mutex;
 
 public:
 	PumpController();

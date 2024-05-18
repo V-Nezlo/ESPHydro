@@ -43,7 +43,7 @@
 
 // KConfig replacement
 #define CONFIG_I2CDEV_TIMEOUT 1000
-#define CONFIG_I2CDEV_NOLOCK 0
+#define CONFIG_I2CDEV_NOLOCK 1
 
 #ifdef __cplusplus
 extern "C" {

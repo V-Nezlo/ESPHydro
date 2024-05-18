@@ -256,27 +256,39 @@ public:
 			case EventType::ActionRequest: {
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
-						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 1);
+						if (devices.lower.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 1);
+						}
 						return EventResult::HANDLED;
 
 					case Action::TurnPumpOff:
-						sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 0);
+						if (devices.lower.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 0);
+						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOn:
-						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 1);
+						if (devices.upper.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 1);
+						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOff:
-						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 0);
+						if (devices.upper.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 0);
+						}
 						return EventResult::HANDLED;
 
 					case Action::OpenDam:
-						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 1);
+						if (devices.upper.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 1);
+						}
 						return EventResult::HANDLED;
 
 					case Action::CloseDam:
-						sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 0);
+						if (devices.upper.state == DeviceState::Working) {
+							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 0);
+						}
 						return EventResult::HANDLED;
 				}
 			} break;
