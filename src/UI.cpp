@@ -275,7 +275,7 @@ void uiInit(bool aDarkTheme)
 	// Test filling
 	struct SystemData sysData;
 	sysData.health = DeviceHealth::DeviceWorking;
-	sysData.flags = 0xFF;
+	sysData.flags = 0;
 	updateSystemData(&sysData);
 
 	struct LowerInternalData lowerData;
@@ -476,6 +476,7 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 	if (*operation == 1) {
 
 		auto newSettings = saveParameters();
+		updateMainPagePumpTypeLabel();
 		sendParametersToEventBus(newSettings);
 
 		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, false);
