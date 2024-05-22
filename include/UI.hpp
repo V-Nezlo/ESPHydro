@@ -21,6 +21,7 @@ typedef uint8_t lv_menu_builder_variant_t;
 
 void style_initialize();
 void menu_create(lv_obj_t *parent);
+void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset);
 void main_page_create(lv_obj_t * parent);
 void loading_screen_create(lv_obj_t * parent);
 void keyboard_create();
@@ -37,6 +38,7 @@ void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
+void updateActuatorByFlags(lv_obj_t *aActuator, DeviceHealth aHealth, bool aActivated);
 
 void updateSystemData(struct SystemData *aData);
 void updateLowerData(struct LowerInternalData *aData);

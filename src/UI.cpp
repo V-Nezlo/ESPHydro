@@ -51,14 +51,17 @@ lv_obj_t *pumpSettingsScr;
 lv_obj_t *lampSettingsScr;
 lv_obj_t *curTimeSettingsScr;
 // Стили
-// Два стиля для главного экрана
-lv_style_t style_light;
-lv_style_t style_dark;
-// Стили для меню делать не будем
+lv_style_t style_menu_panel;
+lv_style_t style_menu_subpanel;
+lv_style_t style_water_meter;
+
 lv_style_t style_disabled;
 lv_style_t style_warning;
 lv_style_t style_error;
 lv_style_t style_good;
+
+lv_style_t style_actuator_activated;
+lv_style_t style_actuator_not_activated;
 // Темы
 lv_theme_t *mainTheme;
 // Клавиатура
@@ -73,20 +76,26 @@ lv_obj_t *panel1;
 lv_obj_t *panel2;
 lv_obj_t *panel3;
 // Панель 1
-lv_obj_t *waterLevelPanel;
 lv_obj_t *waterLevelLabel;
 lv_obj_t *waterMeter;
-lv_meter_scale_t *scale;
-lv_meter_indicator_t *indic;
-lv_obj_t *currentModePanel;
 lv_obj_t *currentModeLabel;
+
+struct {
+	lv_obj_t *pump;
+	lv_obj_t *lamp;
+	lv_obj_t *topLev;
+	lv_obj_t *dam;
+	lv_obj_t *aux;
+} actuators;
 // Панель 2
 lv_obj_t *currentTimePanel;
 lv_obj_t *mainPageTime;
 lv_obj_t *mainPagePH;
 lv_obj_t *mainPagePPM;
 lv_obj_t *mainPageWaterTemp;
-lv_obj_t *mainPageWaterLevel;
+
+lv_obj_t *waterLevelMeter;
+lv_meter_indicator_t *waterLevelIndic;
 // Панель 3
 lv_obj_t *lowerStatusPanel;
 lv_obj_t *auxStatusPanel;
@@ -232,7 +241,7 @@ void uiInit(bool aDarkTheme)
 	font_normal = LV_FONT_DEFAULT;
 
 	if (aDarkTheme) {
-		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_GREEN), lv_palette_main(LV_PALETTE_GREEN),
+		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_CYAN), lv_palette_main(LV_PALETTE_CYAN),
 			LV_THEME_DEFAULT_TRANSITION_TIME, font_large);
 	} else {
 		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_LIGHT_GREEN),
@@ -279,19 +288,22 @@ void uiInit(bool aDarkTheme)
 	updateSystemData(&sysData);
 
 	struct LowerInternalData lowerData;
-	lowerData.health = DeviceHealth::DeviceDisabled;
+	lowerData.health = DeviceHealth::DeviceError;
 	lowerData.flags = 0;
 	lowerData.ph10 = 78;
 	lowerData.ppm = 1205;
-	lowerData.pumpState = false;
+	lowerData.pumpState = true;
 	lowerData.waterLevel = 70;
 	lowerData.waterTemp10 = 100;
 	updateLowerData(&lowerData);
 
 	struct UpperInternalData upperData;
-	upperData.health = DeviceHealth::DeviceDisabled;
+	upperData.health = DeviceHealth::DeviceWarning;
 	upperData.flags = 0;
 	upperData.lampState = false;
+	upperData.damState = false;
+	upperData.swingLevelState = false;
+
 	updateUpperData(&upperData);
 
 	currentSettings.pump.enabled = true;
@@ -726,6 +738,17 @@ void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 	}
 }
 
+void updateActuatorByFlags(lv_obj_t *aActuator, DeviceHealth aHealth, bool aActivated)
+{
+	if (aHealth == DeviceHealth::DeviceDisabled) {
+		lv_obj_add_style(aActuator, &style_disabled, 0);
+	} else if (aActivated) {
+		lv_obj_add_style(aActuator, &style_actuator_activated, 0);
+	} else {
+		lv_obj_add_style(aActuator, &style_actuator_not_activated, 0);
+	}
+}
+
 void updateSystemData(struct SystemData *aData)
 {
 	updatePanelStyleByFlags(systemStatusPanel, aData->health);
@@ -741,6 +764,7 @@ void updateSystemData(struct SystemData *aData)
 void updateLowerData(struct LowerInternalData *aData)
 {
 	updatePanelStyleByFlags(lowerStatusPanel, aData->health);
+	updateActuatorByFlags(actuators.pump, aData->health, aData->pumpState);
 	lowerFlags = aData->flags;
 
 	if (aData->health == DeviceHealth::DeviceDisabled) {
@@ -761,7 +785,10 @@ void updateLowerData(struct LowerInternalData *aData)
 	sprintf(tempData, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	lv_label_set_text(mainPageWaterTemp, tempData);
 
-	lv_bar_set_value(mainPageWaterLevel, aData->waterLevel, LV_ANIM_OFF);
+	lv_meter_set_indicator_value(waterLevelMeter, waterLevelIndic, aData->waterLevel);
+
+	// Заполнение актуаторов
+
 }
 
 void updateAUXData(struct AuxData *aData)
@@ -779,6 +806,9 @@ void updateAUXData(struct AuxData *aData)
 void updateUpperData(struct UpperInternalData *aData)
 {
 	updatePanelStyleByFlags(upperStatusPanel, aData->health);
+	updateActuatorByFlags(actuators.lamp, aData->health, aData->lampState);
+	updateActuatorByFlags(actuators.dam, aData->health, aData->damState);
+	updateActuatorByFlags(actuators.topLev, aData->health, aData->swingLevelState);
 	upperFlags = aData->flags;
 
 	if (aData->health == DeviceHealth::DeviceDisabled) {
@@ -882,7 +912,6 @@ struct Settings *saveParameters()
 	currentSettings.pump.offTime = atoi(lv_label_get_text(pumpOffCornerText));
 	currentSettings.pump.mode = static_cast<PumpModes>(lv_dropdown_get_selected(pumpTypeDD));
 
-
 	currentSettings.pump.swingTime = lv_slider_get_value(pumpSwingTimeSlider);
 
 	const char *lampOnText = lv_label_get_text(lampOnCornerText);
@@ -979,47 +1008,147 @@ void keyboard_create()
 void style_initialize()
 {
 	// Настройка стилей - основной стиль
-	lv_style_init(&style_light);
-	lv_style_set_bg_color(&style_light, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_color(&style_light, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
-	lv_style_set_border_width(&style_light, 0);
-	lv_style_set_radius(&style_light, 0);
-	lv_style_set_shadow_width(&style_light, 10);
-	lv_style_set_shadow_ofs_y(&style_light, 5);
-	lv_style_set_shadow_opa(&style_light, LV_OPA_50);
-	lv_style_set_text_color(&style_light, lv_color_white());
+	lv_style_init(&style_menu_panel);
+	lv_style_set_bg_color(&style_menu_panel, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
+	lv_style_set_border_color(&style_menu_panel, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_border_width(&style_menu_panel, 0);
+	lv_style_set_radius(&style_menu_panel, 0);
+	lv_style_set_shadow_width(&style_menu_panel, 10);
+	lv_style_set_shadow_ofs_y(&style_menu_panel, 5);
+	lv_style_set_shadow_opa(&style_menu_panel, LV_OPA_50);
+	lv_style_set_text_color(&style_menu_panel, lv_color_white());
+
+	// Стили субпанелей
+	lv_style_init(&style_menu_subpanel);
+	lv_style_set_bg_color(&style_menu_subpanel, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
+	lv_style_set_border_color(&style_menu_subpanel, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_border_width(&style_menu_subpanel, 0);
+	lv_style_set_radius(&style_menu_subpanel, 0);
+	lv_style_set_shadow_width(&style_menu_subpanel, 10);
+	lv_style_set_shadow_ofs_y(&style_menu_subpanel, 5);
+	lv_style_set_shadow_opa(&style_menu_subpanel, LV_OPA_50);
+	lv_style_set_text_color(&style_menu_subpanel, lv_color_white());
+
+	// Стиль для ватерметра
+	lv_style_init(&style_water_meter);
+	lv_style_set_bg_color(&style_water_meter, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
+	lv_style_set_border_width(&style_water_meter, 0);
 
 	// Стиль - disabled
 	lv_style_init(&style_disabled);
 	lv_style_set_bg_color(&style_disabled, lv_palette_main(LV_PALETTE_GREY));
-	lv_style_set_border_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 5));
-	lv_style_set_text_color(&style_disabled, lv_palette_darken(LV_PALETTE_GREY, 4));
-	lv_style_set_border_width(&style_disabled, 1);
-	lv_style_set_radius(&style_disabled, 1);
+	lv_style_set_border_color(&style_disabled, lv_palette_lighten(LV_PALETTE_GREY, 3));
+	lv_style_set_border_width(&style_disabled, 0);
+	lv_style_set_radius(&style_disabled, 0);
+	lv_style_set_shadow_width(&style_disabled, 10);
+	lv_style_set_shadow_ofs_y(&style_disabled, 5);
+	lv_style_set_shadow_opa(&style_disabled, LV_OPA_50);
+	lv_style_set_text_color(&style_disabled, lv_color_white());
 
 	// Стиль - warning
 	lv_style_init(&style_warning);
 	lv_style_set_bg_color(&style_warning, lv_palette_main(LV_PALETTE_YELLOW));
-	lv_style_set_border_color(&style_warning, lv_palette_darken(LV_PALETTE_YELLOW, 5));
-	lv_style_set_text_color(&style_warning, lv_palette_darken(LV_PALETTE_YELLOW, 4));
-	lv_style_set_border_width(&style_warning, 1);
-	lv_style_set_radius(&style_warning, 1);
+	lv_style_set_border_color(&style_warning, lv_palette_lighten(LV_PALETTE_YELLOW, 3));
+	lv_style_set_border_width(&style_warning, 0);
+	lv_style_set_radius(&style_warning, 0);
+	lv_style_set_shadow_width(&style_warning, 10);
+	lv_style_set_shadow_ofs_y(&style_warning, 5);
+	lv_style_set_shadow_opa(&style_warning, LV_OPA_50);
+	lv_style_set_text_color(&style_warning, lv_color_white());
 
 	// Стиль - error
 	lv_style_init(&style_error);
 	lv_style_set_bg_color(&style_error, lv_palette_main(LV_PALETTE_RED));
-	lv_style_set_border_color(&style_error, lv_palette_darken(LV_PALETTE_RED, 5));
-	lv_style_set_text_color(&style_error, lv_palette_darken(LV_PALETTE_RED, 4));
-	lv_style_set_border_width(&style_error, 1);
-	lv_style_set_radius(&style_error, 1);
+	lv_style_set_border_color(&style_error, lv_palette_lighten(LV_PALETTE_RED, 3));
+	lv_style_set_border_width(&style_error, 0);
+	lv_style_set_radius(&style_error, 0);
+	lv_style_set_shadow_width(&style_error, 10);
+	lv_style_set_shadow_ofs_y(&style_error, 5);
+	lv_style_set_shadow_opa(&style_error, LV_OPA_50);
+	lv_style_set_text_color(&style_error, lv_color_white());
 
 	// Стиль - good
 	lv_style_init(&style_good);
 	lv_style_set_bg_color(&style_good, lv_palette_main(LV_PALETTE_GREEN));
-	lv_style_set_border_color(&style_good, lv_palette_darken(LV_PALETTE_GREEN, 5));
-	lv_style_set_text_color(&style_good, lv_palette_darken(LV_PALETTE_GREEN, 4));
-	lv_style_set_border_width(&style_good, 1);
-	lv_style_set_radius(&style_good, 1);
+	lv_style_set_border_color(&style_good, lv_palette_lighten(LV_PALETTE_GREEN, 3));
+	lv_style_set_border_width(&style_good, 0);
+	lv_style_set_radius(&style_good, 0);
+	lv_style_set_shadow_width(&style_good, 10);
+	lv_style_set_shadow_ofs_y(&style_good, 5);
+	lv_style_set_shadow_opa(&style_good, LV_OPA_50);
+	lv_style_set_text_color(&style_good, lv_color_white());
+
+	// Стиль - not activated
+	lv_style_init(&style_actuator_not_activated);
+	lv_style_set_bg_color(&style_actuator_not_activated, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
+	lv_style_set_border_color(&style_actuator_not_activated, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_border_width(&style_actuator_not_activated, 0);
+	lv_style_set_radius(&style_actuator_not_activated, 0);
+	lv_style_set_shadow_width(&style_actuator_not_activated, 10);
+	lv_style_set_shadow_ofs_y(&style_actuator_not_activated, 5);
+	lv_style_set_shadow_opa(&style_actuator_not_activated, LV_OPA_50);
+	lv_style_set_text_color(&style_actuator_not_activated, lv_color_white());
+
+	// Стиль - activated
+	lv_style_init(&style_actuator_activated);
+	lv_style_set_bg_color(&style_actuator_activated, lv_palette_main(LV_PALETTE_LIGHT_BLUE));
+	lv_style_set_border_color(&style_actuator_activated, lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 3));
+	lv_style_set_border_width(&style_actuator_activated, 0);
+	lv_style_set_radius(&style_actuator_activated, 0);
+	lv_style_set_shadow_width(&style_actuator_activated, 10);
+	lv_style_set_shadow_ofs_y(&style_actuator_activated, 5);
+	lv_style_set_shadow_opa(&style_actuator_activated, LV_OPA_50);
+	lv_style_set_text_color(&style_actuator_activated, lv_color_white());
+}
+
+void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
+{
+	static constexpr uint8_t kPanelSize = 40;
+
+	actuators.pump = lv_obj_create(parent);
+	lv_obj_align(actuators.pump, LV_ALIGN_CENTER, 0, aYOffset);
+	lv_obj_set_size(actuators.pump, kPanelSize, kPanelSize);
+	lv_obj_clear_flag(actuators.pump, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_style(actuators.pump, &style_disabled, 0);
+	lv_obj_t *actuatorPumpLabel = lv_label_create(actuators.pump);
+	lv_label_set_text(actuatorPumpLabel, "P");
+	lv_obj_align(actuatorPumpLabel, LV_ALIGN_CENTER, 0, 0);
+
+	actuators.lamp = lv_obj_create(parent);
+	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 45, aYOffset);
+	lv_obj_set_size(actuators.lamp, kPanelSize, kPanelSize);
+	lv_obj_clear_flag(actuators.lamp, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_style(actuators.lamp, &style_disabled, 0);
+	lv_obj_t *actuatorLampLabel = lv_label_create(actuators.lamp);
+	lv_label_set_text(actuatorLampLabel, "L");
+	lv_obj_align(actuatorLampLabel, LV_ALIGN_CENTER, 0, 0);
+
+	actuators.topLev = lv_obj_create(parent);
+	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -45, aYOffset);
+	lv_obj_set_size(actuators.topLev, kPanelSize, kPanelSize);
+	lv_obj_clear_flag(actuators.topLev, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_style(actuators.topLev, &style_disabled, 0);
+	lv_obj_t *actuatorTopLevLabel = lv_label_create(actuators.topLev);
+	lv_label_set_text(actuatorTopLevLabel, "T");
+	lv_obj_align(actuatorTopLevLabel, LV_ALIGN_CENTER, 0, 0);
+
+	actuators.dam = lv_obj_create(parent);
+	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -45, aYOffset + 45);
+	lv_obj_set_size(actuators.dam, kPanelSize, kPanelSize);
+	lv_obj_clear_flag(actuators.dam, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_style(actuators.dam, &style_disabled, 0);
+	lv_obj_t *actuatorDamLabel = lv_label_create(actuators.dam);
+	lv_label_set_text(actuatorDamLabel, "D");
+	lv_obj_align(actuatorDamLabel, LV_ALIGN_CENTER, 0, 0);
+
+	actuators.aux = lv_obj_create(parent);
+	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 23, aYOffset + 45);
+	lv_obj_set_size(actuators.aux, kPanelSize * 2 + 5, kPanelSize);
+	lv_obj_clear_flag(actuators.aux, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_style(actuators.aux, &style_disabled, 0);
+	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
+	lv_label_set_text(actuatorAuxLabel, "AUX");
+	lv_obj_align(actuatorAuxLabel, LV_ALIGN_CENTER, 0, 0);
 }
 
 void main_page_create(lv_obj_t *parent)
@@ -1035,43 +1164,40 @@ void main_page_create(lv_obj_t *parent)
 	lv_obj_set_size(panel1, panelW, panelH);
 	lv_obj_align_to(panel1, parent, LV_ALIGN_LEFT_MID, 5, 0);
 	lv_obj_clear_flag(panel1, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-	lv_obj_add_style(panel1, &style_light, 0);
+	lv_obj_add_style(panel1, &style_menu_panel, 0);
 
 	// Панель с информацией о всех датчиках, времени
 	panel2 = lv_obj_create(parent);
 	lv_obj_set_size(panel2, panelW, panelH);
 	lv_obj_align_to(panel2, parent, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_clear_flag(panel2, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-	lv_obj_add_style(panel2, &style_light, 0);
+	lv_obj_add_style(panel2, &style_menu_panel, 0);
 
 	// Панель с информацией о исполнительных устройствах и кнопка настройки
 	panel3 = lv_obj_create(parent);
 	lv_obj_set_size(panel3, panelW, panelH);
 	lv_obj_align_to(panel3, parent, LV_ALIGN_RIGHT_MID, -4, 0);
 	lv_obj_clear_flag(panel3, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-	lv_obj_add_style(panel3, &style_light, 0);
+	lv_obj_add_style(panel3, &style_menu_panel, 0);
 
 	{ // ******************************************************* ПАНЕЛЬ 1 *******************************************************
 		// Отображение текущего режима
-		currentModePanel = lv_obj_create(panel1);
+		lv_obj_t *currentModePanel = lv_obj_create(panel1);
 		lv_obj_set_size(currentModePanel, miniPanelW, 30);
-		lv_obj_align_to(currentModePanel, panel1, LV_ALIGN_TOP_MID, 0, 20);
+		lv_obj_align_to(currentModePanel, panel1, LV_ALIGN_TOP_MID, 0, 10);
 		lv_obj_clear_flag(currentModePanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(currentModePanel, &style_menu_subpanel, 0);
 		currentModeLabel = lv_label_create(currentModePanel);
-		// Текст с режимом
-		// TODO
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
 	}
 	{ // ******************************************************* ПАНЕЛЬ 2 *******************************************************
 		// Панель для времени
 		currentTimePanel = lv_obj_create(panel2);
-		lv_obj_set_size(currentTimePanel, miniPanelW, 60);
+		lv_obj_set_size(currentTimePanel, miniPanelW, 30);
 		lv_obj_align_to(currentTimePanel, panel2, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(currentTimePanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		// Текст ВРЕМЯ
-		lv_obj_t *currentTimeLabel = lv_label_create(currentTimePanel);
-		lv_label_set_text_static(currentTimeLabel, "Time");
-		lv_obj_align_to(currentTimeLabel, currentTimePanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_obj_add_style(currentTimePanel, &style_menu_subpanel, 0);
+
 		// Текст с текущим временем
 		mainPageTime = lv_label_create(currentTimePanel);
 		lv_label_set_text_static(mainPageTime, "12 : 31 : 46");
@@ -1079,8 +1205,10 @@ void main_page_create(lv_obj_t *parent)
 		// Панель для PH
 		lv_obj_t *pHPanel = lv_obj_create(panel2);
 		lv_obj_set_size(pHPanel, miniPanelW, 30);
-		lv_obj_align_to(pHPanel, panel2, LV_ALIGN_TOP_MID, 0, 55);
+		lv_obj_align_to(pHPanel, panel2, LV_ALIGN_TOP_MID, 0, 25);
 		lv_obj_clear_flag(pHPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(pHPanel, &style_menu_subpanel, 0);
+
 		// Текст для PH
 		lv_obj_t *mainPagePHLabel = lv_label_create(pHPanel);
 		lv_label_set_text(mainPagePHLabel, "PH: ");
@@ -1092,8 +1220,9 @@ void main_page_create(lv_obj_t *parent)
 		// Панель для PPM
 		lv_obj_t *ppmPanel = lv_obj_create(panel2);
 		lv_obj_set_size(ppmPanel, miniPanelW, 30);
-		lv_obj_align_to(ppmPanel, panel2, LV_ALIGN_TOP_MID, 0, 90);
+		lv_obj_align_to(ppmPanel, panel2, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(ppmPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(ppmPanel, &style_menu_subpanel, 0);
 		// Текст для PPM
 		lv_obj_t *mainPagePPMLabel = lv_label_create(ppmPanel);
 		lv_label_set_text(mainPagePPMLabel, "PPM: ");
@@ -1105,8 +1234,9 @@ void main_page_create(lv_obj_t *parent)
 		// Панель для температуры воды
 		lv_obj_t *waterTempPanel = lv_obj_create(panel2);
 		lv_obj_set_size(waterTempPanel, miniPanelW, 30);
-		lv_obj_align_to(waterTempPanel, panel2, LV_ALIGN_TOP_MID, 0, 125);
+		lv_obj_align_to(waterTempPanel, panel2, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(waterTempPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(waterTempPanel, &style_menu_subpanel, 0);
 		// Текст для PPM
 		lv_obj_t *mainPageWaterTempLabel = lv_label_create(waterTempPanel);
 		lv_label_set_text(mainPageWaterTempLabel, "Temp: ");
@@ -1117,38 +1247,52 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(mainPageWaterTemp, waterTempPanel, LV_ALIGN_RIGHT_MID, -10, 0);
 
 		// Индикатор уровня воды
-		waterLevelPanel = lv_obj_create(panel2);
-		lv_obj_set_size(waterLevelPanel, miniPanelW, 60);
-		lv_obj_align_to(waterLevelPanel, panel2, LV_ALIGN_BOTTOM_MID, 0, 0);
-		lv_obj_clear_flag(waterLevelPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		waterLevelMeter = lv_meter_create(panel2);
+		lv_obj_center(waterLevelMeter);
+		lv_obj_set_size(waterLevelMeter, 160, 160);
+		lv_obj_align_to(waterLevelMeter, panel2, LV_ALIGN_BOTTOM_MID, 0, 30);
+		lv_obj_add_style(waterLevelMeter, &style_water_meter, 0);
 
-		waterLevelLabel = lv_label_create(waterLevelPanel);
-		lv_label_set_text_static(waterLevelLabel, "Water Level");
-		lv_obj_align_to(waterLevelLabel, waterLevelPanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_meter_scale_t * scale = lv_meter_add_scale(waterLevelMeter);
+		lv_meter_set_scale_ticks(waterLevelMeter, scale, 41, 2, 10, lv_palette_main(LV_PALETTE_BLUE));
+		lv_meter_set_scale_major_ticks(waterLevelMeter, scale, 8, 4, 15, lv_palette_main(LV_PALETTE_BLUE), 10);
 
-		static lv_style_t style_bg;
-		static lv_style_t style_indic;
+		// Добавим красную полосу в начале
+		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_RED), 0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 0);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 20);
 
-		lv_style_init(&style_bg);
-		lv_style_set_border_color(&style_bg, lv_palette_main(LV_PALETTE_GREEN));
-		lv_style_set_border_width(&style_bg, 3);
-		lv_style_set_pad_all(&style_bg, 5); /*To make the indicator smaller*/
-		lv_style_set_radius(&style_bg, 2);
+		// Покрасим первые маджорные линии в красный
+		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_RED), lv_palette_main(LV_PALETTE_RED),
+										false, 0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 0);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 20);
 
-		lv_style_init(&style_indic);
-		lv_style_set_bg_opa(&style_indic, LV_OPA_COVER);
-		lv_style_set_bg_color(&style_indic, lv_palette_main(LV_PALETTE_GREEN));
-		lv_style_set_radius(&style_indic, 2);
+		// Добавим желтую полосу в центре
+		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_YELLOW), 0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 20);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 40);
 
-		mainPageWaterLevel = lv_bar_create(waterLevelPanel);
-		lv_obj_remove_style_all(mainPageWaterLevel); /*To have a clean start*/
-		lv_obj_add_style(mainPageWaterLevel, &style_bg, 0);
-		lv_obj_add_style(mainPageWaterLevel, &style_indic, LV_PART_INDICATOR);
+		// Покрасим средние мажорные линии в желтый
+		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_YELLOW), lv_palette_main(LV_PALETTE_YELLOW),
+										false, 0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 20);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 40);
 
-		lv_obj_set_size(mainPageWaterLevel, panelW - 40, 30);
-		lv_obj_center(mainPageWaterLevel);
-		lv_obj_align_to(mainPageWaterLevel, waterLevelPanel, LV_ALIGN_BOTTOM_MID, 0, 15);
-		lv_bar_set_value(mainPageWaterLevel, 30, LV_ANIM_OFF);
+		// Добавим синюю полосу в конце
+		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_BLUE), 0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 40);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 100);
+
+		// Покрасим последние маджорные линии в синий
+		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_BLUE), false,
+										0);
+		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 40);
+		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 100);
+
+		/*Add a needle line indicator*/
+		waterLevelIndic = lv_meter_add_needle_line(waterLevelMeter, scale, 4, lv_palette_main(LV_PALETTE_GREY), -10);
+
 	}
 	{ // ******************************************************* ПАНЕЛЬ 3 *******************************************************
 		// Панель для насоса с выбором цвета
@@ -1207,6 +1351,9 @@ void main_page_create(lv_obj_t *parent)
 		lv_imgbtn_set_src(settingsButton, LV_IMGBTN_STATE_RELEASED, &global_settings, NULL, NULL);
 		lv_obj_add_event_cb(settingsButton, &settingsButtonEvent, LV_EVENT_CLICKED, NULL);
 	}
+
+	// Актуаторы
+	actuatorsCreate(panel1, -90);
 }
 
 void createAdditionalPanels()
