@@ -117,7 +117,7 @@ bool DS3231::isConfigured()
 	tm time;
 	ds3231_get_time(&dev, &time);
 
-	if (time.tm_year >= atoi(AUTO_YEAR) + 1900) {
+	if (time.tm_year + 1900 >= atoi(AUTO_YEAR)) {
 		return true;
 	} else {
 		return false;
@@ -134,7 +134,7 @@ bool DS3231::initialConfigure()
 
 	time.tm_hour = atoi(AUTO_HOUR);
 	time.tm_min = atoi(AUTO_MIN);
-	time.tm_sec = atoi(AUTO_YEAR);
+	time.tm_sec = atoi(AUTO_SEC);
 
 	const auto result = ds3231_set_time(&dev, &time);
 
