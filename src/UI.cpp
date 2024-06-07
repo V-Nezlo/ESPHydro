@@ -93,9 +93,8 @@ lv_obj_t *mainPageTime;
 lv_obj_t *mainPagePH;
 lv_obj_t *mainPagePPM;
 lv_obj_t *mainPageWaterTemp;
+lv_obj_t *mainPageWaterLev;
 
-lv_obj_t *waterLevelMeter;
-lv_meter_indicator_t *waterLevelIndic;
 // Панель 3
 lv_obj_t *lowerStatusPanel;
 lv_obj_t *auxStatusPanel;
@@ -785,10 +784,9 @@ void updateLowerData(struct LowerInternalData *aData)
 	sprintf(tempData, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	lv_label_set_text(mainPageWaterTemp, tempData);
 
-	lv_meter_set_indicator_value(waterLevelMeter, waterLevelIndic, aData->waterLevel);
-
-	// Заполнение актуаторов
-
+	char waterLevelData[6];
+	sprintf(waterLevelData, "%3u %%", aData->waterLevel);
+	lv_label_set_text(mainPageWaterLev, waterLevelData);
 }
 
 void updateAUXData(struct AuxData *aData)
@@ -1237,7 +1235,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(waterTempPanel, panel2, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(waterTempPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(waterTempPanel, &style_menu_subpanel, 0);
-		// Текст для PPM
+		// Текст для температуры воды
 		lv_obj_t *mainPageWaterTempLabel = lv_label_create(waterTempPanel);
 		lv_label_set_text(mainPageWaterTempLabel, "Temp: ");
 		lv_obj_align_to(mainPageWaterTempLabel, waterTempPanel, LV_ALIGN_LEFT_MID, 5, 0);
@@ -1247,52 +1245,20 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_align_to(mainPageWaterTemp, waterTempPanel, LV_ALIGN_RIGHT_MID, -10, 0);
 
 		// Индикатор уровня воды
-		waterLevelMeter = lv_meter_create(panel2);
-		lv_obj_center(waterLevelMeter);
-		lv_obj_set_size(waterLevelMeter, 160, 160);
-		lv_obj_align_to(waterLevelMeter, panel2, LV_ALIGN_BOTTOM_MID, 0, 30);
-		lv_obj_add_style(waterLevelMeter, &style_water_meter, 0);
+		// Панель
+		lv_obj_t *waterLevelPanel = lv_obj_create(panel2);
+		lv_obj_set_size(waterLevelPanel, miniPanelW, 30);
+		lv_obj_align_to(waterLevelPanel, panel2, LV_ALIGN_TOP_MID, 0, 130);
+		lv_obj_clear_flag(waterLevelPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_add_style(waterLevelPanel, &style_menu_subpanel, 0);
+		// Текст для уровня воды
+		lv_obj_t *mainPageWaterLevelLabel = lv_label_create(waterLevelPanel);
+		lv_label_set_text(mainPageWaterLevelLabel, "Water: ");
+		lv_obj_align_to(mainPageWaterLevelLabel, waterLevelPanel, LV_ALIGN_LEFT_MID, 5, 0);
 
-		lv_meter_scale_t * scale = lv_meter_add_scale(waterLevelMeter);
-		lv_meter_set_scale_ticks(waterLevelMeter, scale, 41, 2, 10, lv_palette_main(LV_PALETTE_BLUE));
-		lv_meter_set_scale_major_ticks(waterLevelMeter, scale, 8, 4, 15, lv_palette_main(LV_PALETTE_BLUE), 10);
-
-		// Добавим красную полосу в начале
-		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_RED), 0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 0);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 20);
-
-		// Покрасим первые маджорные линии в красный
-		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_RED), lv_palette_main(LV_PALETTE_RED),
-										false, 0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 0);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 20);
-
-		// Добавим желтую полосу в центре
-		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_YELLOW), 0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 20);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 40);
-
-		// Покрасим средние мажорные линии в желтый
-		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_YELLOW), lv_palette_main(LV_PALETTE_YELLOW),
-										false, 0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 20);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 40);
-
-		// Добавим синюю полосу в конце
-		waterLevelIndic = lv_meter_add_arc(waterLevelMeter, scale, 3, lv_palette_main(LV_PALETTE_BLUE), 0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 40);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 100);
-
-		// Покрасим последние маджорные линии в синий
-		waterLevelIndic = lv_meter_add_scale_lines(waterLevelMeter, scale, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_BLUE), false,
-										0);
-		lv_meter_set_indicator_start_value(waterLevelMeter, waterLevelIndic, 40);
-		lv_meter_set_indicator_end_value(waterLevelMeter, waterLevelIndic, 100);
-
-		/*Add a needle line indicator*/
-		waterLevelIndic = lv_meter_add_needle_line(waterLevelMeter, scale, 4, lv_palette_main(LV_PALETTE_GREY), -10);
-
+		mainPageWaterLev = lv_label_create(waterLevelPanel);
+		lv_label_set_text_static(mainPageWaterLev, "70");
+		lv_obj_align_to(mainPageWaterLev, waterLevelPanel, LV_ALIGN_RIGHT_MID, -15, 0);
 	}
 	{ // ******************************************************* ПАНЕЛЬ 3 *******************************************************
 		// Панель для насоса с выбором цвета
@@ -1346,7 +1312,7 @@ void main_page_create(lv_obj_t *parent)
 		// Кнопка с картинкой настроек
 		LV_IMG_DECLARE(global_settings);
 		lv_obj_t *settingsButton = lv_imgbtn_create(panel3);
-		lv_obj_set_size(settingsButton, 128, 128);
+		lv_obj_set_size(settingsButton, 125, 125);
 		lv_obj_align_to(settingsButton, panel3, LV_ALIGN_BOTTOM_MID, 0, 0);
 		lv_imgbtn_set_src(settingsButton, LV_IMGBTN_STATE_RELEASED, &global_settings, NULL, NULL);
 		lv_obj_add_event_cb(settingsButton, &settingsButtonEvent, LV_EVENT_CLICKED, NULL);
