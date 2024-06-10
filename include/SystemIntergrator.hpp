@@ -23,6 +23,7 @@ private:
 	uint8_t systemFlagStorage;
 	std::chrono::milliseconds lastCheckTime;
 	bool updated;
+	BuzzerSignal signalNeeds;
 };
 
 #endif // INCLUDE_SYSTEMINTERGRATOR_HPP_

@@ -13,8 +13,10 @@ LightController::LightController() :
 	lampOnTime{0,0,0},
 	lampOffTime{0,0,0},
 	currentTime{0,0,0},
-	lastCheckTime{0}
+	lastCheckTime{0},
+	mutex{}
 {
+	mutex = xSemaphoreCreateMutex();
 }
 
 EventResult LightController::handleEvent(Event *e)
@@ -27,11 +29,13 @@ EventResult LightController::handleEvent(Event *e)
 		case EventType::SettingsFirstLoad:
 		// Fallthrough
 		case EventType::SettingsUpdated:
+			xSemaphoreTake(mutex, portMAX_DELAY);
 			enabled = e->data.settings.lamp.enabled;
 			lampOnTime.hour = e->data.settings.lamp.lampOnHour;
 			lampOnTime.minutes = e->data.settings.lamp.lampOnMin;
 			lampOffTime.hour = e->data.settings.lamp.lampOffHour;
 			lampOffTime.minutes = e->data.settings.lamp.lampOffMin;
+			xSemaphoreGive(mutex);
 				return EventResult::PASS_ON;
 			break;
 		default:
@@ -41,6 +45,8 @@ EventResult LightController::handleEvent(Event *e)
 
 void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 {
+	xSemaphoreTake(mutex, portMAX_DELAY);
+
 	if (aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
 		lastCheckTime = aCurrentInternalTime;
 
@@ -52,6 +58,8 @@ void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 			sendCommandToEventBus(false);
 		}
 	}
+
+	xSemaphoreGive(mutex);
 }
 
 void LightController::sendCommandToEventBus(bool aNewLampState)

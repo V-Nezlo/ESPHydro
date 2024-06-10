@@ -15,6 +15,9 @@
 #include "GpioWrapper.hpp"
 #include "TimeWrapper.hpp"
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
 class LightController : public AbstractEventObserver, public AbstractLinearTask {
 public:
 	LightController();
@@ -29,6 +32,7 @@ private:
 	Time currentTime;
 
 	std::chrono::milliseconds lastCheckTime;
+	SemaphoreHandle_t mutex;
 
 	void sendCommandToEventBus(bool aNewLampState);
 

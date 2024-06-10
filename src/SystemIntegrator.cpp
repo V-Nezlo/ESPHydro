@@ -8,7 +8,11 @@
 
 #include "SystemIntergrator.hpp"
 
-SystemIntegrator::SystemIntegrator() : systemFlagStorage{0}, lastCheckTime{0}, updated{false}
+SystemIntegrator::SystemIntegrator() :
+	systemFlagStorage{0},
+	lastCheckTime{0},
+	updated{false},
+	signalNeeds{BuzzerSignal::Disable}
 {
 }
 
@@ -28,11 +32,20 @@ void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 			health = DeviceHealth::DeviceWarning;
 		}
 
+		// Обновляем GUI
 		Event ev;
 		ev.type = EventType::UpdateSystemData;
 		ev.data.systemData.flags = systemFlagStorage;
 		ev.data.systemData.health = health;
 		EventBus::throwEvent(&ev);
+
+		// Оповещаем буззером
+		if (signalNeeds == BuzzerSignal::Short || signalNeeds == BuzzerSignal::Long) {
+			Event ev;
+			ev.type = EventType::BuzzerSignal;
+			ev.data.buzSignal = signalNeeds;
+			EventBus::throwEvent(&ev);
+		}
 	}
 }
 
@@ -42,11 +55,13 @@ EventResult SystemIntegrator::handleEvent(Event *e)
 		case EventType::SetError:
 			systemFlagStorage |= e->data.error;
 			updated = true;
+			signalNeeds = BuzzerSignal::Long;
 			return EventResult::PASS_ON;
 
 		case EventType::ClearError:
 			systemFlagStorage &= ~e->data.error;
 			updated = true;
+			signalNeeds = BuzzerSignal::Short;
 			return EventResult::PASS_ON;
 
 		default:
