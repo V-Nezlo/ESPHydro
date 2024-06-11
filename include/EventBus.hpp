@@ -100,7 +100,11 @@ public:
 
 	static void registerObserver(AbstractEventObserver *aObserver)
 	{
-		observers.push_back(aObserver);
+		const auto iter = std::find(observers.begin(), observers.end(), aObserver);
+
+		if (iter == observers.end()) {
+			observers.push_back(aObserver);
+		}
 	}
 
 private:

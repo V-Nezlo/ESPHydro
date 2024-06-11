@@ -76,6 +76,14 @@ void app_main()
 	EventBus::registerObserver(&buzzController);
 	EventBus::registerObserver(&ledControl);
 
+	LinearSched sched;
+	sched.registerTask(&rtc);
+	sched.registerTask(&pumpController);
+	sched.registerTask(&lightController);
+	sched.registerTask(&systemIntegrator);
+	sched.registerTask(&buzzController);
+	sched.registerTask(&ledControl);
+
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
 	displayDriver.setupLvgl();
@@ -100,14 +108,7 @@ void app_main()
 			smartBus.update(buffer, len);
 		}
 
-		const std::chrono::milliseconds currentTime = TimeWrapper::milliseconds();
-		// Прочие обработчики
-		rtc.process(currentTime);
-		pumpController.process(currentTime);
-		lightController.process(currentTime);
-		systemIntegrator.process(currentTime);
-		buzzController.process(currentTime);
-
+		sched.doTasks();
 		lgfx::delay(50);
 	}
 }
