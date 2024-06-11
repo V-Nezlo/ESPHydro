@@ -14,6 +14,24 @@
 
 namespace Hardware {
 
+namespace Prohibited {
+	static constexpr int8_t kProhibited1 = 6;
+	static constexpr int8_t kProhibited2 = 7;
+	static constexpr int8_t kProhibited3 = 8;
+	static constexpr int8_t kProhibited4 = 9;
+	static constexpr int8_t kProhibited5 = 10;
+	static constexpr int8_t kProhibited6 = 11;
+	static constexpr int8_t kProhibited7 = 1;
+	static constexpr int8_t kProhibited8 = 3;
+} // namespace Prohibited
+
+namespace OnlyInput {
+	static constexpr int8_t kOnlyInput1 = 35;
+	static constexpr int8_t kOnlyInput2 = 34;
+	static constexpr int8_t kOnlyInput3 = 36;
+	static constexpr int8_t kOnlyInput4 = 39;
+} // namespace OnlyInput
+
 namespace Display {
 	static constexpr int8_t kClkPin = 17;
 	static constexpr int8_t kMosiPin = 16;
@@ -57,7 +75,7 @@ namespace SerialRS {
 namespace Leds {
 	static constexpr int8_t kGreenPin = 33;
 	static constexpr int8_t kBluePin = 32;
-	static constexpr int8_t kRedPin = 35;
+	static constexpr int8_t kRedPin = 0;
 } // namespace Leds
 
 } // namespace Hardware
