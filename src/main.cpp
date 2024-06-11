@@ -51,7 +51,7 @@ void app_main()
 
 	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
 	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
-	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, 0, rsLatch);
+	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master, rsLatch);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
 

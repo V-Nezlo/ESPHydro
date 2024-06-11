@@ -57,16 +57,6 @@ public:
 
 	}
 
-	DeviceType getDeviceTypeFromUID(uint8_t aUID)
-	{
-		return static_cast<DeviceType>(aUID);
-	}
-
-	uint8_t getUIDFromDeviceType(DeviceType aDevice) 
-	{
-		return static_cast<uint8_t>(aDevice);
-	}
-
 	void processDevice(TelemetryUnit &aUnit, std::chrono::milliseconds aCurrentTime)
 	{
 		const DeviceType &type = aUnit.device;
@@ -131,20 +121,16 @@ public:
 
 	void handleAck(uint8_t aTranceiverUID, uint8_t aReturnCode) override
 	{
-		const auto device = getDeviceTypeFromUID(aTranceiverUID);
-
-		if (device == devices.lower.device) {
+		if (aTranceiverUID == devices.lower.device) {
 			devices.lower.lastAckTime = TimeWrapper::milliseconds();
-		} else if (device == devices.upper.device) {
+		} else if (aTranceiverUID == devices.upper.device) {
 			devices.upper.lastAckTime = TimeWrapper::milliseconds();
 		}
 	}
 
 	uint8_t handleAnswer(uint8_t aTranceiverUID, uint8_t aRequest, const uint8_t *aData, uint8_t aLength) override
 	{
-		const auto device = getDeviceTypeFromUID(aTranceiverUID);
-
-		if ((device == devices.lower.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+		if ((aTranceiverUID == devices.lower.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
 			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 
 			// Если ожидаемая длина не сходится - ошибка
@@ -157,7 +143,7 @@ public:
 			processLowerTelemetry(telemetry);
 
 			return 1;
-		} else if ((device == devices.upper.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+		} else if ((aTranceiverUID == devices.upper.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
 			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 
 			// Если ожидаемая длина не сходится - ошибка
@@ -257,37 +243,37 @@ public:
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
 						if (devices.lower.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 1);
+							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnPumpOff:
 						if (devices.lower.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Lower), static_cast<uint8_t>(Commands::SetPumpState), 0);
+							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOn:
 						if (devices.upper.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 1);
+							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOff:
 						if (devices.upper.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetLampState), 0);
+							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::OpenDam:
 						if (devices.upper.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 1);
+							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::CloseDam:
 						if (devices.upper.state == DeviceState::Working) {
-							sendCommand(getUIDFromDeviceType(DeviceType::Upper), static_cast<uint8_t>(Commands::SetDamState), 0);
+							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 0);
 						}
 						return EventResult::HANDLED;
 				}

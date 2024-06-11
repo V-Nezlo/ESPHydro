@@ -11,10 +11,11 @@
 
 #include <cstdint>
 
-enum class DeviceType {
-	Unknown = 0,
+enum DeviceType {
+	Master = 0,
 	Upper,
-	Lower
+	Lower,
+	AUX
 };
 
 // Структуры для HydroRS
