@@ -15,7 +15,7 @@
 #include "Types.hpp"
 #include "HydroRSTypes.hpp"
 
-#include <Lib/RsHandler.hpp>
+#include <UtilitaryRS/RsHandler.hpp>
 
 #include <chrono>
 #include <array>

@@ -5,12 +5,13 @@
 #include "GpioWrapper.hpp"
 #include "HydroRS.hpp"
 #include "LightController.hpp"
+#include "LedController.hpp"
 #include "PumpController.hpp"
 #include "SerialWrapper.hpp"
 #include "SystemIntergrator.hpp"
 #include "UI.hpp"
 
-#include <Lib/Crc8.hpp>
+#include <UtilitaryRS/Crc8.hpp>
 #include <LovyanGFX.hpp>
 #include <lvgl.h>
 
@@ -59,6 +60,11 @@ void app_main()
 	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
+	Gpio greenLed{Hardware::Leds::kGreenPin, GPIO_MODE_OUTPUT};
+	Gpio blueLed{Hardware::Leds::kBluePin, GPIO_MODE_OUTPUT};
+	Gpio redLed{Hardware::Leds::kRedPin, GPIO_MODE_OUTPUT};
+	LedController ledControl(greenLed, blueLed, redLed);
+
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
 	EventBus::registerObserver(&uiObserver);
@@ -68,6 +74,7 @@ void app_main()
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&systemIntegrator);
 	EventBus::registerObserver(&buzzController);
+	EventBus::registerObserver(&ledControl);
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();

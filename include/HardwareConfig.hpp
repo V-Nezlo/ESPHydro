@@ -54,6 +54,12 @@ namespace SerialRS {
 	static constexpr int8_t aTxPin = 27;
 } // namespace SerialRS
 
+namespace Leds {
+	static constexpr int8_t kGreenPin = 33;
+	static constexpr int8_t kBluePin = 32;
+	static constexpr int8_t kRedPin = 35;
+} // namespace Leds
+
 } // namespace Hardware
 
 #endif // INCLUDE_HARDWARECONFIG_HPP_
