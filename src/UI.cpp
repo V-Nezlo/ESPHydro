@@ -280,50 +280,11 @@ void uiInit(bool aDarkTheme)
 	keyboard_create();
 	createAdditionalPanels();
 
-	// Test filling
-	struct SystemData sysData;
-	sysData.flags = 0;
-	updateSystemData(&sysData);
-
-	struct LowerInternalData lowerData;
-	lowerData.flags = 0;
-	lowerData.ph10 = 78;
-	lowerData.ppm = 1205;
-	lowerData.pumpState = true;
-	lowerData.waterLevel = 70;
-	lowerData.waterTemp10 = 100;
-	updateLowerData(&lowerData);
-
-	struct UpperInternalData upperData;
-	upperData.flags = 0;
-	upperData.lampState = false;
-	upperData.damState = false;
-	upperData.swingLevelState = false;
-
-	updateUpperData(&upperData);
-
-	currentSettings.pump.enabled = true;
-	currentSettings.pump.onTime = 123;
-	currentSettings.pump.offTime = 456;
-	currentSettings.pump.mode = PumpModes::EBBNormal;
-	currentSettings.pump.swingTime = 6;
-	currentSettings.lamp.enabled = false;
-	currentSettings.lamp.lampOnHour = 9;
-	currentSettings.lamp.lampOnMin = 12;
-	currentSettings.lamp.lampOffHour = 21;
-	currentSettings.lamp.lampOffMin = 8;
-	currentSettings.common.alarmSoundEnabled = true;
-	currentSettings.common.tapSoundEnabled = false;
-	currentSettings.common.displayBrightness = 80;
-	enterParameters(&currentSettings);
-
-	Time time;
-	time.hour = 14;
-	time.minutes = 55;
-	time.seconds = 32;
+	// Placeholders
+	fillDevicePlaceholders(DeviceType::Master);
+	fillDevicePlaceholders(DeviceType::Lower);
 
 	lv_scr_load(mainPage);
-	applyNewCurrentTime(&time);
 }
 
 /**********************
@@ -777,6 +738,23 @@ void updateAUXData(struct AuxData *aData)
 	auxFlags = aData->flags;
 }
 
+void fillDevicePlaceholders(DeviceType aDevice)
+{
+	switch (aDevice) {
+		case DeviceType::Master:
+			systemFlags = 0;
+			break;
+		case DeviceType::Lower:
+			lv_label_set_text(mainPagePH, "?");
+			lv_label_set_text(mainPagePPM, "?");
+			lv_label_set_text(mainPageWaterTemp, "?");
+			lv_label_set_text(mainPageWaterLev, "?");
+			break;
+		default:
+			break;
+	}
+}
+
 void updateUpperData(struct UpperInternalData *aData)
 {
 	updateActuatorByFlags(actuators.lamp, isUpperPresent, aData->lampState);
@@ -1200,6 +1178,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_add_style(currentModePanel, &style_menu_subpanel, 0);
 		currentModeLabel = lv_label_create(currentModePanel);
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
+		lv_label_set_text(currentModeLabel, "Error");
 	}
 	{ // ******************************************************* ПАНЕЛЬ 2 *******************************************************
 		// Панель для времени
@@ -1211,7 +1190,7 @@ void main_page_create(lv_obj_t *parent)
 
 		// Текст с текущим временем
 		mainPageTime = lv_label_create(currentTimePanel);
-		lv_label_set_text_static(mainPageTime, "12 : 31 : 46");
+		lv_label_set_text_static(mainPageTime, "?? : ?? : ??");
 		lv_obj_align_to(mainPageTime, currentTimePanel, LV_ALIGN_BOTTOM_MID, 0, 10);
 		// Панель для PH
 		lv_obj_t *pHPanel = lv_obj_create(panel2);
@@ -1279,7 +1258,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(lowerStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(lowerStatusPanel, &style_warning, 0);
+		lv_obj_add_style(lowerStatusPanel, &style_disabled, 0);
 		lv_obj_add_event_cb(lowerStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedLowerInfoEnum);
 		// Текст LOWER
 		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
@@ -1303,7 +1282,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(upperStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(upperStatusPanel, &style_good, 0);
+		lv_obj_add_style(upperStatusPanel, &style_disabled, 0);
 		lv_obj_add_event_cb(upperStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedUpperInfoEnum);
 		// Текст UPPER
 		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
@@ -1315,7 +1294,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(systemStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(systemStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(systemStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(systemStatusPanel, &style_good, 0);
+		lv_obj_add_style(systemStatusPanel, &style_disabled, 0);
 		lv_obj_add_event_cb(systemStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedSystemInfoEnum);
 		// Текст SYSTEM
 		lv_obj_t *systemStatusLabel = lv_label_create(systemStatusPanel);

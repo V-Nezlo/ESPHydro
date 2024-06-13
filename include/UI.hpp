@@ -45,6 +45,8 @@ void updateLowerData(struct LowerInternalData *aData);
 void updateUpperData(struct UpperInternalData *aData);
 void updateAUXData(struct AuxData *aData);
 
+void fillDevicePlaceholders(DeviceType aDevice);
+
 void applyNewCurrentTime(struct Time *aTime);
 void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
@@ -90,6 +92,10 @@ public:
 
 		case EventType::HealthUpdated:
 			updateDeviceHealth(&e->data.healthUpdate);
+			return EventResult::PASS_ON;
+
+		case EventType::RsDeviceDetached:
+			fillDevicePlaceholders(e->data.device);
 			return EventResult::PASS_ON;
 
 		default:
