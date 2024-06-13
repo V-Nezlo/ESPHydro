@@ -50,7 +50,6 @@ enum SystemErrors : uint8_t {
 };
 
 struct UpperInternalData {
-	DeviceHealth health;
 	uint8_t flags;
 	bool lampState;
 	bool swingLevelState;
@@ -58,7 +57,6 @@ struct UpperInternalData {
 };
 
 struct LowerInternalData {
-	DeviceHealth health;
 	uint8_t flags;
 	uint8_t waterLevel;
 	bool pumpState;
@@ -68,12 +66,10 @@ struct LowerInternalData {
 };
 
 struct SystemData {
-	DeviceHealth health;
 	uint8_t flags;
 };
 
 struct AuxData {
-	DeviceHealth health;
 	uint8_t flags;
 };
 

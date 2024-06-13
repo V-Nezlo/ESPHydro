@@ -38,7 +38,7 @@ void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
-void updateActuatorByFlags(lv_obj_t *aActuator, DeviceHealth aHealth, bool aActivated);
+void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated);
 
 void updateSystemData(struct SystemData *aData);
 void updateLowerData(struct LowerInternalData *aData);
@@ -50,6 +50,7 @@ void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
 bool getLoggingState();
 void updateMainPagePumpTypeLabel();
+void updateDeviceHealth(struct HealthUpdate *aUpdate);
 
 enum {
 	LV_MENU_ITEM_BUILDER_VARIANT_1,
@@ -85,6 +86,10 @@ public:
 
 		case EventType::SettingsFirstLoad:
 			enterParameters(&e->data.settings);
+			return EventResult::PASS_ON;
+
+		case EventType::HealthUpdated:
+			updateDeviceHealth(&e->data.healthUpdate);
 			return EventResult::PASS_ON;
 
 		default:

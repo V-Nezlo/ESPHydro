@@ -75,7 +75,8 @@ public:
 						BaseType::sendProbe(deviceUID);
 					} else {
 						state = DeviceState::Working;
-						handleDeviceAttaching(type);
+						// Отправляем событие подключения устройства
+						sendAttachEventToBus(type); // Как реагировать на событие пока непонятно
 					}
 				}
 				break;
@@ -95,7 +96,8 @@ public:
 				if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
 					lastAckTime = std::chrono::milliseconds{0};
 					state = DeviceState::Probing;
-					handleDeviceDetaching(type);
+					// Отправляем событие отключения устройства
+					sendDetachEventToBus(type);
 				}
 				break;
 			case DeviceState::Suspended:
@@ -184,18 +186,6 @@ public:
 		ev.data.lowerData.waterLevel = aTelem.waterLevelPerc;
 		ev.data.lowerData.flags = aTelem.deviceFlags;
 
-		if (ev.data.lowerData.flags & LowerFlags::LowerNoWaterFlag 
-			|| ev.data.lowerData.flags & LowerFlags::LowerPumpOverCurrentFlag 
-			|| ev.data.lowerData.flags & LowerFlags::LowerPumpLowCurrentFlag) {
-			ev.data.lowerData.health = DeviceHealth::DeviceError;
-		} else if (ev.data.lowerData.flags & LowerFlags::LowerPHSensorErrorFlag
-			|| ev.data.lowerData.flags & LowerFlags::LowerPPMSensorErrorFlag
-			|| ev.data.lowerData.flags & LowerFlags::LowerTempSensorErrorFlag) {
-			ev.data.lowerData.health = DeviceHealth::DeviceWarning;
-		} else {
-			ev.data.lowerData.health = DeviceHealth::DeviceWorking;
-		}
-
 		EventBus::throwEvent(&ev);
 	}
 
@@ -208,18 +198,10 @@ public:
 		ev.data.upperData.damState = aTelem.damState == 1 ? true : false;
 		ev.data.upperData.flags = aTelem.deviceFlags;
 
-		if (ev.data.upperData.flags & UpperFlags::UpperPowerError) {
-			ev.data.upperData.health = DeviceHealth::DeviceError;
-		} else if (ev.data.upperData.flags & UpperFlags::UpperTopWaterLevelStuck) {
-			ev.data.upperData.health = DeviceHealth::DeviceWarning;
-		} else {
-			ev.data.upperData.health = DeviceHealth::DeviceWorking;
-		}
-
 		EventBus::throwEvent(&ev);
 	}
 
-	void handleDeviceDetaching(DeviceType aDevice)
+	void sendDetachEventToBus(DeviceType aDevice)
 	{
 		Event ev;
 		ev.type = EventType::RsDeviceDetached;
@@ -227,7 +209,7 @@ public:
 		EventBus::throwEvent(&ev);
 	}
 
-	void handleDeviceAttaching(DeviceType aDevice)
+	void sendAttachEventToBus(DeviceType aDevice)
 	{
 		Event ev;
 		ev.type = EventType::RsDeviceAttached;

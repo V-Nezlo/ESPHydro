@@ -40,7 +40,8 @@ enum class EventType : uint8_t {
 	NewBrightness,
 	BuzzerSignal,
 	RsDeviceDetached,
-	RsDeviceAttached
+	RsDeviceAttached,
+	HealthUpdated
 };
 
 enum class EventResult : uint8_t {
@@ -64,6 +65,11 @@ enum class BuzzerSignal {
 	Long
 };
 
+struct HealthUpdate {
+	DeviceType type;
+	DeviceHealth health;
+};
+
 struct Event{
 	EventType type;
 	union {
@@ -77,6 +83,7 @@ struct Event{
 		uint8_t brightness;
 		BuzzerSignal buzSignal;
 		DeviceType device;
+		HealthUpdate healthUpdate;
 	} data;
 };
 

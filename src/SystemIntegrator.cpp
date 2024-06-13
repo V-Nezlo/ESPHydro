@@ -36,8 +36,13 @@ void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 		Event ev;
 		ev.type = EventType::UpdateSystemData;
 		ev.data.systemData.flags = systemFlagStorage;
-		ev.data.systemData.health = health;
 		EventBus::throwEvent(&ev);
+		// Обновляем Health устройства System
+		Event ev2;
+		ev2.type = EventType::HealthUpdated;
+		ev2.data.healthUpdate.type = DeviceType::Master;
+		ev2.data.healthUpdate.health = health;
+		EventBus::throwEvent(&ev2);
 
 		// Оповещаем буззером
 		if (signalNeeds == BuzzerSignal::Short || signalNeeds == BuzzerSignal::Long) {

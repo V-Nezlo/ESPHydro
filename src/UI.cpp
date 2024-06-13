@@ -21,7 +21,7 @@ typedef enum {
 } disp_size_t;
 
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
-enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff }; 
+enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff };
 enum DetailedModuleInfoEnum {DetailedLowerInfo = 1, DetailedUpperInfo = 2, DetailedAuxInfo = 3, DetailedSystemInfo = 4};
 
 /**********************
@@ -282,12 +282,10 @@ void uiInit(bool aDarkTheme)
 
 	// Test filling
 	struct SystemData sysData;
-	sysData.health = DeviceHealth::DeviceWorking;
 	sysData.flags = 0;
 	updateSystemData(&sysData);
 
 	struct LowerInternalData lowerData;
-	lowerData.health = DeviceHealth::DeviceError;
 	lowerData.flags = 0;
 	lowerData.ph10 = 78;
 	lowerData.ppm = 1205;
@@ -297,7 +295,6 @@ void uiInit(bool aDarkTheme)
 	updateLowerData(&lowerData);
 
 	struct UpperInternalData upperData;
-	upperData.health = DeviceHealth::DeviceWarning;
 	upperData.flags = 0;
 	upperData.lampState = false;
 	upperData.damState = false;
@@ -527,7 +524,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 
 	static constexpr char kNoProblemsText[] = "Status OK";
 	static constexpr char kProblemsText[] = "Problems: \n";
-	
+
 	switch(*operation) {
 		case DetailedLowerInfo:
 			if (isLowerPresent) {
@@ -539,7 +536,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				static constexpr char kPPMSensorErrorFlag[] = "PPM Sensor Error \n";
 				static constexpr char kPumpNoCurrentText[] = "Pump low current \n";
 
-				static constexpr size_t kDetailedPanelFullSize = sizeof(kNoProblemsText) + sizeof(kOverCurrentText) + sizeof(kNoWaterText) + 
+				static constexpr size_t kDetailedPanelFullSize = sizeof(kNoProblemsText) + sizeof(kOverCurrentText) + sizeof(kNoWaterText) +
 					sizeof(kTempSensorErrorText) + sizeof(kPHSensorErrorFlag) + sizeof(kPPMSensorErrorFlag) + sizeof(kPumpNoCurrentText);
 
 				char infoPanel[kDetailedPanelFullSize] = {};
@@ -568,7 +565,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 					}
 				}
 
-				activeMessageBox = lv_msgbox_create(NULL, "Lower Information", 
+				activeMessageBox = lv_msgbox_create(NULL, "Lower Information",
 				infoPanel , NULL, false);
 				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
@@ -594,7 +591,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 					}
 				}
 
-				activeMessageBox = lv_msgbox_create(NULL, "Upper Information", 
+				activeMessageBox = lv_msgbox_create(NULL, "Upper Information",
 				infoPanel , NULL, false);
 				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
@@ -607,7 +604,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				static constexpr char kRSBusErrorText[] = "RS Bus Error \n";
 				static constexpr char kNotFloodTimeText[] = "Tank not flooded in time \n";
 				static constexpr char kLeakageText[] = "LEAK LEAK LEAK \n";
-				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kRTCErrorText) + sizeof(kInternalMemErrorText) + 
+				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kRTCErrorText) + sizeof(kInternalMemErrorText) +
 					sizeof(kRSBusErrorText) + sizeof(kNotFloodTimeText) + sizeof(kLeakageText);
 				char infoPanel[kDetailedFullSize] = {};
 
@@ -633,7 +630,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 					}
 				}
 
-				activeMessageBox = lv_msgbox_create(NULL, "System Information", 
+				activeMessageBox = lv_msgbox_create(NULL, "System Information",
 				infoPanel , NULL, false);
 				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
@@ -641,7 +638,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 			break;
 		case DetailedAuxInfo:
 			if (isAuxPresent) {
-				activeMessageBox = lv_msgbox_create(NULL, "AUX Information", 
+				activeMessageBox = lv_msgbox_create(NULL, "AUX Information",
 				"Not supported" , NULL, false);
 				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
@@ -737,9 +734,9 @@ void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 	}
 }
 
-void updateActuatorByFlags(lv_obj_t *aActuator, DeviceHealth aHealth, bool aActivated)
+void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated)
 {
-	if (aHealth == DeviceHealth::DeviceDisabled) {
+	if (!aDevicePresent) {
 		lv_obj_add_style(aActuator, &style_disabled, 0);
 	} else if (aActivated) {
 		lv_obj_add_style(aActuator, &style_actuator_activated, 0);
@@ -750,27 +747,13 @@ void updateActuatorByFlags(lv_obj_t *aActuator, DeviceHealth aHealth, bool aActi
 
 void updateSystemData(struct SystemData *aData)
 {
-	updatePanelStyleByFlags(systemStatusPanel, aData->health);
 	systemFlags = aData->flags;
-
-	if (aData->health == DeviceHealth::DeviceDisabled) {
-		isSystemPresent = false;
-	} else {
-		isSystemPresent = true;
-	}
 }
 
 void updateLowerData(struct LowerInternalData *aData)
 {
-	updatePanelStyleByFlags(lowerStatusPanel, aData->health);
-	updateActuatorByFlags(actuators.pump, aData->health, aData->pumpState);
+	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
-
-	if (aData->health == DeviceHealth::DeviceDisabled) {
-		isLowerPresent = false;
-	} else {
-		isLowerPresent = true;
-	}
 
 	char phData[5];
 	sprintf(phData, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
@@ -791,29 +774,15 @@ void updateLowerData(struct LowerInternalData *aData)
 
 void updateAUXData(struct AuxData *aData)
 {
-	updatePanelStyleByFlags(auxStatusPanel, aData->health);
 	auxFlags = aData->flags;
-
-	if (aData->health == DeviceHealth::DeviceDisabled) {
-		isAuxPresent = false;
-	} else {
-		isAuxPresent = true;
-	}
 }
 
 void updateUpperData(struct UpperInternalData *aData)
 {
-	updatePanelStyleByFlags(upperStatusPanel, aData->health);
-	updateActuatorByFlags(actuators.lamp, aData->health, aData->lampState);
-	updateActuatorByFlags(actuators.dam, aData->health, aData->damState);
-	updateActuatorByFlags(actuators.topLev, aData->health, aData->swingLevelState);
+	updateActuatorByFlags(actuators.lamp, isUpperPresent, aData->lampState);
+	updateActuatorByFlags(actuators.dam, isUpperPresent, aData->damState);
+	updateActuatorByFlags(actuators.topLev, isUpperPresent, aData->swingLevelState);
 	upperFlags = aData->flags;
-
-	if (aData->health == DeviceHealth::DeviceDisabled) {
-		isUpperPresent = false;
-	} else {
-		isUpperPresent = true;
-	}
 }
 
 void applyNewCurrentTime(struct Time *aTime)
@@ -975,6 +944,50 @@ void updateMainPagePumpTypeLabel()
 			lv_label_set_text(currentModeLabel, "EBB-DAM");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+			break;
+		default:
+			break;
+	}
+}
+
+void updateDeviceHealth(struct HealthUpdate *aUpdate)
+{
+	switch(aUpdate->type) {
+		case DeviceType::Lower:
+			updatePanelStyleByFlags(lowerStatusPanel, aUpdate->health);
+
+			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+				isLowerPresent = false;
+			} else {
+				isLowerPresent = true;
+			}
+			break;
+		case DeviceType::Upper:
+			updatePanelStyleByFlags(upperStatusPanel, aUpdate->health);
+
+			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+				isUpperPresent = false;
+			} else {
+				isUpperPresent = true;
+			}
+			break;
+		case DeviceType::AUX:
+			updatePanelStyleByFlags(auxStatusPanel, aUpdate->health);
+
+			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+				isAuxPresent = false;
+			} else {
+				isAuxPresent = true;
+			}
+			break;
+		case DeviceType::Master:
+			updatePanelStyleByFlags(systemStatusPanel, aUpdate->health);
+
+			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+				isSystemPresent = false;
+			} else {
+				isSystemPresent = true;
+			}
 			break;
 		default:
 			break;
@@ -1658,7 +1671,7 @@ void menu_create(lv_obj_t *parent)
 	loggingTextarea = lv_label_create(section);
 	lv_obj_set_size(loggingTextarea, 315, 125);
 	lv_label_set_text(loggingTextarea, "A:N=0,R=1");
-	
+
 	// ******************************** МЕНЮ ABOUT **********************************
 	subAboutPage = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(subAboutPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);

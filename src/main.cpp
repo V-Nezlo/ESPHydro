@@ -1,5 +1,6 @@
 #include "BuzzerController.hpp"
 #include "ConfigStorage.hpp"
+#include "DeviceMonitor.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
 #include "GpioWrapper.hpp"
@@ -59,6 +60,7 @@ void app_main()
 	LightController lightController;
 	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
+	DeviceMonitor deviceMonitor;
 
 	Gpio greenLed{Hardware::Leds::kGreenPin, GPIO_MODE_OUTPUT};
 	Gpio blueLed{Hardware::Leds::kBluePin, GPIO_MODE_OUTPUT};
@@ -75,6 +77,7 @@ void app_main()
 	EventBus::registerObserver(&systemIntegrator);
 	EventBus::registerObserver(&buzzController);
 	EventBus::registerObserver(&ledControl);
+	EventBus::registerObserver(&deviceMonitor);
 
 	LinearSched sched;
 	sched.registerTask(&rtc);
@@ -83,6 +86,7 @@ void app_main()
 	sched.registerTask(&systemIntegrator);
 	sched.registerTask(&buzzController);
 	sched.registerTask(&ledControl);
+	sched.registerTask(&deviceMonitor);
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
