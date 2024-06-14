@@ -245,52 +245,52 @@ public:
 	EventResult handleEvent(Event *e) override
 	{
 		switch (e->type) {
-			case EventType::ActionRequest: {
+			case EventType::ActionRequest:
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
-						if (devices.lower.state == DeviceState::Working) {
+						if (devices.lower.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnPumpOff:
-						if (devices.lower.state == DeviceState::Working) {
+						if (devices.lower.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOn:
-						if (devices.upper.state == DeviceState::Working) {
+						if (devices.upper.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOff:
-						if (devices.upper.state == DeviceState::Working) {
+						if (devices.upper.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::OpenDam:
-						if (devices.upper.state == DeviceState::Working) {
+						if (devices.upper.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::CloseDam:
-						if (devices.upper.state == DeviceState::Working) {
+						if (devices.upper.state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 0);
 						}
 						return EventResult::HANDLED;
+
+					default:
+						return EventResult::IGNORED;
 				}
-			} break;
 
 			default:
 				return EventResult::IGNORED;
 				break;
 		}
-
-		return EventResult::IGNORED;
 	}
 };
 
