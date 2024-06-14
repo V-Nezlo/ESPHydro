@@ -221,6 +221,13 @@ void sendNewBrightnessToEventBus(uint8_t aDuty)
 	EventBus::throwEvent(&ev);
 }
 
+void writeToLoggingPanel(const char *aData, int aSize)
+{
+	if (getLoggingState() && loggingTextarea != NULL) {
+		lv_textarea_add_text(loggingTextarea, aData);
+	}
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1647,9 +1654,9 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_set_grid_cell(manualLampOffButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
 	loggingSwitch = create_switch(section, LV_SYMBOL_WARNING, "Logging", false);
-	loggingTextarea = lv_label_create(section);
+	loggingTextarea = lv_textarea_create(section);
 	lv_obj_set_size(loggingTextarea, 315, 125);
-	lv_label_set_text(loggingTextarea, "A:N=0,R=1");
+	lv_textarea_set_text(loggingTextarea, "");
 
 	// ******************************** МЕНЮ ABOUT **********************************
 	subAboutPage = lv_menu_page_create(menu, NULL);

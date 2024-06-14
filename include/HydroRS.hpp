@@ -16,6 +16,7 @@
 #include "HydroRSTypes.hpp"
 
 #include <UtilitaryRS/RsHandler.hpp>
+#include <esp_log.h>
 
 #include <chrono>
 #include <array>
@@ -75,6 +76,7 @@ public:
 						BaseType::sendProbe(deviceUID);
 					} else {
 						state = DeviceState::Working;
+						ESP_LOGI("RS", "Device %u attached", static_cast<uint8_t>(type));
 						// Отправляем событие подключения устройства
 						sendAttachEventToBus(type); // Как реагировать на событие пока непонятно
 						resetDeviceToInitialState(type); // Сбросим насос и дамбу при инициализации
@@ -98,6 +100,7 @@ public:
 					lastAckTime = std::chrono::milliseconds{0};
 					state = DeviceState::Probing;
 					// Отправляем событие отключения устройства
+					ESP_LOGI("RS", "Device %u detached", static_cast<uint8_t>(type));
 					sendDetachEventToBus(type);
 				}
 				break;
@@ -124,6 +127,8 @@ public:
 
 	void handleAck(uint8_t aTranceiverUID, uint8_t aReturnCode) override
 	{
+		ESP_LOGV("RS", "Ack,Device: %u, Code: %u", aTranceiverUID, aReturnCode);
+
 		if (aTranceiverUID == devices.lower.device) {
 			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 		} else if (aTranceiverUID == devices.upper.device) {
@@ -133,6 +138,8 @@ public:
 
 	uint8_t handleAnswer(uint8_t aTranceiverUID, uint8_t aRequest, const uint8_t *aData, uint8_t aLength) override
 	{
+		ESP_LOGV("RS", "Answer,Device: %u, Req: %u", aTranceiverUID, aRequest);
+
 		if ((aTranceiverUID == devices.lower.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
 			devices.lower.lastAckTime = TimeWrapper::milliseconds();
 

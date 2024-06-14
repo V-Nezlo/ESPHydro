@@ -109,5 +109,6 @@ void sendParametersToEventBus(Settings *aSettings);
 void sendActionCommandToEventBus(Action aAction);
 void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec);
 void sendNewBrightnessToEventBus(uint8_t aDuty);
+void writeToLoggingPanel(const char *aData, int aSize);
 
 #endif // INCLUDE_UI_HPP_
