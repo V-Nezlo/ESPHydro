@@ -77,6 +77,7 @@ public:
 						state = DeviceState::Working;
 						// Отправляем событие подключения устройства
 						sendAttachEventToBus(type); // Как реагировать на событие пока непонятно
+						resetDeviceToInitialState(type); // Сбросим насос и дамбу при инициализации
 					}
 				}
 				break;
@@ -215,6 +216,22 @@ public:
 		ev.type = EventType::RsDeviceAttached;
 		ev.data.device = aDevice;
 		EventBus::throwEvent(&ev);
+	}
+
+	/// @brief Сбрасываем устройство в начальное состояние
+	/// @param aDevice
+	void resetDeviceToInitialState(DeviceType aDevice)
+	{
+		switch (aDevice) {
+			case DeviceType::Lower:
+				sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
+				break;
+			case DeviceType::Upper:
+				sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
+				break;
+			default:
+				break;
+		}
 	}
 
 	// AbstractEventObserver interface
