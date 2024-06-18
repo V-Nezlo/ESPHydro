@@ -53,7 +53,7 @@ private:
 			Event ev;
 			ev.type = EventType::SetError;
 			ev.data.error = SystemErrors::SystemInternalMemError;
-			EventBus::throwEvent(&ev);
+			EventBus::throwEvent(&ev, nullptr);
 
 			return false;
 		};

@@ -24,16 +24,13 @@ PumpController::PumpController() :
 	currentWaterLevel{0},
 	upperState{false},
 	damState{false},
-	mutex{}
+	mutex{xSemaphoreCreateMutex()}
 {
-	mutex = xSemaphoreCreateMutex();
 }
 
 EventResult PumpController::handleEvent(Event *e)
 {
 	switch(e->type) {
-		case EventType::SettingsFirstLoad:
-			// Fallthrough
 		case EventType::SettingsUpdated:
 			// Чтобы обеспечить нормальный переход между режимами - замутексуем
 			xSemaphoreTake(mutex, portMAX_DELAY);
@@ -131,7 +128,7 @@ void PumpController::throwErrorToEventBus(SystemErrors aError)
 	Event ev;
 	ev.type = EventType::SetError;
 	ev.data.error = aError;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, this);
 }
 
 void PumpController::clearErrorToEventBus(SystemErrors aError)
@@ -139,7 +136,7 @@ void PumpController::clearErrorToEventBus(SystemErrors aError)
 	Event ev;
 	ev.type = EventType::ClearError;
 	ev.data.error = aError;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, this);
 }
 
 void PumpController::sendCommandToPump(bool aNewPumpState)
@@ -147,7 +144,7 @@ void PumpController::sendCommandToPump(bool aNewPumpState)
 	Event ev;
 	ev.type = EventType::ActionRequest;
 	ev.data.action = aNewPumpState ? Action::TurnPumpOn : Action::TurnPumpOff;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, this);
 }
 
 void PumpController::sendCommandToDam(bool aNewDamState)
@@ -155,7 +152,7 @@ void PumpController::sendCommandToDam(bool aNewDamState)
 	Event ev;
 	ev.type = EventType::ActionRequest;
 	ev.data.action = aNewDamState ? Action::OpenDam : Action::CloseDam;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, this);
 }
 
 /// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг

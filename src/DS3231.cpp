@@ -22,17 +22,20 @@ DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) :
 	const auto result = probe();
 	if (result == ESP_OK) {
 		present = true;
+
+		if (!isConfigured()) {
+			initialConfigure();
+		}
 	} else {
 		ESP_LOGE("RTC", "DS3231 init failed, %i", static_cast<int>(result));
 
 		Event ev;
 		ev.type = EventType::SetError;
 		ev.data.error = SystemErrors::SystemRTCError;
-		EventBus::throwEvent(&ev);
-	}
+		EventBus::throwEvent(&ev, this);
 
-	if (present && !isConfigured()) {
-		initialConfigure();
+		// Уничтожим дескриптор за ненужностью
+		ESP_ERROR_CHECK(ds3231_free_desc(&dev));
 	}
 }
 
@@ -54,7 +57,7 @@ void DS3231::process(std::chrono::milliseconds aCurrentTime)
 			ev.data.time.hour = result.first.hour;
 			ev.data.time.minutes = result.first.minutes;
 			ev.data.time.seconds = result.first.seconds;
-			EventBus::throwEvent(&ev);
+			EventBus::throwEvent(&ev, this);
 		}
 	}
 }

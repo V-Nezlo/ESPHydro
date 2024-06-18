@@ -86,7 +86,7 @@ public:
 			applyNewCurrentTime(&e->data.time);
 			return EventResult::PASS_ON;
 
-		case EventType::SettingsFirstLoad:
+		case EventType::SettingsUpdated:
 			enterParameters(&e->data.settings);
 			return EventResult::PASS_ON;
 

@@ -35,7 +35,6 @@ public:
 	{
 		return std::chrono::seconds(esp_timer_get_time() / 1000000);
 	}
-
 };
 
 #endif // INCLUDE_TIMERWRAPPER_HPP_

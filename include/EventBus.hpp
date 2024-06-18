@@ -36,7 +36,6 @@ enum class EventType : uint8_t {
 	ClearError,
 	ActionRequest,
 	SettingsUpdated,
-	SettingsFirstLoad,
 	NewBrightness,
 	BuzzerSignal,
 	RsDeviceDetached,
@@ -94,13 +93,18 @@ public:
 
 class EventBus {
 public:
-	static void throwEvent(Event *aEvent)
+	static void throwEvent(Event *aEvent, AbstractEventObserver *aOwner)
 	{
 		for (auto &pos : observers) {
-			auto result = pos->handleEvent(aEvent);
-			// If result == PASS_ON or IGNORED - continue
-			if (result == EventResult::HANDLED) {
-				break;
+			// Для вызывающего throwEvent событие обработано не будет, в случае nullptr не проверяется
+			if (aOwner != nullptr && pos == aOwner) {
+				continue;
+			} else {
+				const auto result = pos->handleEvent(aEvent);
+				// If result == PASS_ON or IGNORED - continue
+				if (result == EventResult::HANDLED) {
+					break;
+				}
 			}
 		}
 	}

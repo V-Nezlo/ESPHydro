@@ -14,9 +14,8 @@ LightController::LightController() :
 	lampOffTime{0,0,0},
 	currentTime{0,0,0},
 	lastCheckTime{0},
-	mutex{}
+	mutex{xSemaphoreCreateMutex()}
 {
-	mutex = xSemaphoreCreateMutex();
 }
 
 EventResult LightController::handleEvent(Event *e)
@@ -26,8 +25,6 @@ EventResult LightController::handleEvent(Event *e)
 			currentTime = e->data.time;
 			return EventResult::PASS_ON;
 			break;
-		case EventType::SettingsFirstLoad:
-		// Fallthrough
 		case EventType::SettingsUpdated:
 			xSemaphoreTake(mutex, portMAX_DELAY);
 			enabled = e->data.settings.lamp.enabled;
@@ -45,10 +42,9 @@ EventResult LightController::handleEvent(Event *e)
 
 void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 {
-	xSemaphoreTake(mutex, portMAX_DELAY);
-
 	if (aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
 		lastCheckTime = aCurrentInternalTime;
+		xSemaphoreTake(mutex, portMAX_DELAY);
 
 		const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
 
@@ -57,9 +53,9 @@ void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 		} else if (enabled && !isNowIsActiveTime) {
 			sendCommandToEventBus(false);
 		}
-	}
 
-	xSemaphoreGive(mutex);
+		xSemaphoreGive(mutex);
+	}
 }
 
 void LightController::sendCommandToEventBus(bool aNewLampState)
@@ -67,7 +63,7 @@ void LightController::sendCommandToEventBus(bool aNewLampState)
 	Event ev;
 	ev.type = EventType::ActionRequest;
 	ev.data.action = aNewLampState ? Action::TurnLampOn : Action::TurnLampOff;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, this);
 }
 
 bool LightController::isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime) {

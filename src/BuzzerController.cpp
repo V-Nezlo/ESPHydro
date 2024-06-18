@@ -7,6 +7,7 @@
 */
 
 #include "BuzzerController.hpp"
+#include "Options.hpp"
 
 BuzzerController::BuzzerController(uint8_t aPin, uint8_t aPwmChannel) :
 	pwmInstance{},
@@ -18,7 +19,7 @@ BuzzerController::BuzzerController(uint8_t aPin, uint8_t aPwmChannel) :
 
 	config.pin_bl = aPin;             // Пин
 	config.invert = false;            // Инвертирование канала
-	config.freq   = 44100;            // Частота шим подсветки
+	config.freq   = 44100;            // Частота шим
 	config.pwm_channel = aPwmChannel; // Номер канала ШИМ для использования
 
 	pwmInstance.config(config);
@@ -43,12 +44,12 @@ void BuzzerController::process(std::chrono::milliseconds aCurrentTime)
 			return;
 			break;
 		case BuzzerSignal::Short:
-			if (aCurrentTime > lastActionTime + kShortBeepDuraction) {
+			if (aCurrentTime > lastActionTime + Options::kShortBeepDuraction) {
 				setBuzzerState(false);
 			}
 			break;
 		case BuzzerSignal::Long:
-			if (aCurrentTime > lastActionTime + kLongBeepDuraction) {
+			if (aCurrentTime > lastActionTime + Options::kLongBeepDuraction) {
 				setBuzzerState(false);
 			}
 			break;

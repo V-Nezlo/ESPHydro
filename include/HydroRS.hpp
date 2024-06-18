@@ -194,7 +194,7 @@ public:
 		ev.data.lowerData.waterLevel = aTelem.waterLevelPerc;
 		ev.data.lowerData.flags = aTelem.deviceFlags;
 
-		EventBus::throwEvent(&ev);
+		EventBus::throwEvent(&ev, this);
 	}
 
 	void processUpperTelemetry(UpperTelemetry &aTelem)
@@ -206,7 +206,7 @@ public:
 		ev.data.upperData.damState = aTelem.damState == 1 ? true : false;
 		ev.data.upperData.flags = aTelem.deviceFlags;
 
-		EventBus::throwEvent(&ev);
+		EventBus::throwEvent(&ev, this);
 	}
 
 	void sendDetachEventToBus(DeviceType aDevice)
@@ -214,7 +214,7 @@ public:
 		Event ev;
 		ev.type = EventType::RsDeviceDetached;
 		ev.data.device = aDevice;
-		EventBus::throwEvent(&ev);
+		EventBus::throwEvent(&ev, this);
 	}
 
 	void sendAttachEventToBus(DeviceType aDevice)
@@ -222,7 +222,7 @@ public:
 		Event ev;
 		ev.type = EventType::RsDeviceAttached;
 		ev.data.device = aDevice;
-		EventBus::throwEvent(&ev);
+		EventBus::throwEvent(&ev, this);
 	}
 
 	/// @brief Сбрасываем устройство в начальное состояние

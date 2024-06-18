@@ -21,9 +21,6 @@ class BuzzerController : public AbstractEventObserver, public AbstractLinearTask
 	BuzzerSignal currentSignal;
 	uint8_t pwmDuty;
 
-	const std::chrono::milliseconds kShortBeepDuraction{100};
-	const std::chrono::milliseconds kLongBeepDuraction{500};
-
 public:
 	BuzzerController(uint8_t aPin, uint8_t aPwmChannel);
 	EventResult handleEvent(Event *e) override;

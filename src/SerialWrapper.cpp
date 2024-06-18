@@ -7,6 +7,7 @@
 */
 
 #include "SerialWrapper.hpp"
+#include <esp_log.h>
 
 SerialWrapper::SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin) :
 	port{aPort},
@@ -35,11 +36,14 @@ size_t SerialWrapper::bytesAvaillable()
 
 size_t SerialWrapper::read(uint8_t *aBuffer, size_t aLength)
 {
-	size_t availlableDataSize{0};
-	uart_get_buffered_data_len(port, &availlableDataSize);
-	uart_read_bytes(port, aBuffer, availlableDataSize, 100);
+	size_t available{0};
+	uart_get_buffered_data_len(port, &available);
+	const ssize_t readed = uart_read_bytes(port, aBuffer, available, 100);
+	if (available != readed) {
+		ESP_LOGE("Serial", "Serial read op not completely ");
+	}
 	uart_flush(port);
-	return availlableDataSize;
+	return readed;
 }
 
 ssize_t SerialWrapper::write(const uint8_t *aData, size_t aLength)

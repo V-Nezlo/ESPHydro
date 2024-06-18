@@ -194,7 +194,7 @@ void sendParametersToEventBus(Settings *aSettings)
     Event ev;
     ev.type = EventType::SettingsUpdated;
     ev.data.settings = *aSettings;
-    EventBus::throwEvent(&ev);
+    EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendActionCommandToEventBus(Action aAction)
@@ -202,7 +202,7 @@ void sendActionCommandToEventBus(Action aAction)
     Event ev;
     ev.type = EventType::ActionRequest;
     ev.data.action = aAction;
-    EventBus::throwEvent(&ev);
+    EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendNewTimeToEventBus(Time aTime)
@@ -210,7 +210,7 @@ void sendNewTimeToEventBus(Time aTime)
     Event ev;
     ev.type = EventType::SetCurrentTime;
     ev.data.time = aTime;
-    EventBus::throwEvent(&ev);
+    EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendNewBrightnessToEventBus(uint8_t aDuty)
@@ -218,7 +218,7 @@ void sendNewBrightnessToEventBus(uint8_t aDuty)
 	Event ev;
 	ev.type = EventType::NewBrightness;
 	ev.data.brightness = aDuty;
-	EventBus::throwEvent(&ev);
+	EventBus::throwEvent(&ev, nullptr);
 }
 
 void writeToLoggingPanel(const char *aData, int aSize)
@@ -365,16 +365,6 @@ void pumpTypeEventHandler(lv_event_t *aEvent)
 			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 		} else {
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
-		}
-	}
-
-	if (manualPumpOnButton != NULL) {
-		if (mode == PumpModes::Maintance) {
-			lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
-			lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
-		} else {
-			lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
-			lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
 		}
 	}
 }
@@ -889,6 +879,17 @@ struct Settings *saveParameters()
 	currentSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
 	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
+
+	// Настроим Maintance при сохранении чтобы произошли все корректные переходы
+	if (manualPumpOnButton != NULL) {
+		if (currentSettings.pump.mode == PumpModes::Maintance) {
+			lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
+			lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
+		} else {
+			lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
+			lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
+		}
+	}
 
 	return &currentSettings;
 }

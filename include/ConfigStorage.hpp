@@ -20,7 +20,7 @@ public:
 		NVStorage::init();
 	}
 
-	bool sync(Settings *aSettings) // EventBus
+	bool sync(Settings *aSettings)
 	{
 		return NVStorage::writeSettings(aSettings);
 	}
@@ -30,9 +30,9 @@ public:
 		Settings loaded;
 		if (NVStorage::readSettings(&loaded)) {
 			Event ev;
-			ev.type = EventType::SettingsFirstLoad;
+			ev.type = EventType::SettingsUpdated;
 			ev.data.settings = loaded;
-			EventBus::throwEvent(&ev);
+			EventBus::throwEvent(&ev, this);
 			return true;
 		} else {
 			return false;

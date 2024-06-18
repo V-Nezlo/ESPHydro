@@ -36,20 +36,20 @@ void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 		Event ev;
 		ev.type = EventType::UpdateSystemData;
 		ev.data.systemData.flags = systemFlagStorage;
-		EventBus::throwEvent(&ev);
+		EventBus::throwEvent(&ev, this);
 		// Обновляем Health устройства System
 		Event ev2;
 		ev2.type = EventType::HealthUpdated;
 		ev2.data.healthUpdate.type = DeviceType::Master;
 		ev2.data.healthUpdate.health = health;
-		EventBus::throwEvent(&ev2);
+		EventBus::throwEvent(&ev2, this);
 
 		// Оповещаем буззером
 		if (signalNeeds == BuzzerSignal::Short || signalNeeds == BuzzerSignal::Long) {
 			Event ev;
 			ev.type = EventType::BuzzerSignal;
 			ev.data.buzSignal = signalNeeds;
-			EventBus::throwEvent(&ev);
+			EventBus::throwEvent(&ev, this);
 		}
 	}
 }
