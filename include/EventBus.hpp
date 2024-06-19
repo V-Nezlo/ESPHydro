@@ -23,6 +23,7 @@
 #include <variant>
 #include <chrono>
 #include <vector>
+#include <queue>
 
 using namespace std;
 
@@ -88,25 +89,14 @@ struct Event{
 
 class AbstractEventObserver {
 public:
-	virtual EventResult handleEvent(Event *e) = 0;
+	virtual EventResult handleEvent(const Event const e) = 0;
 };
 
 class EventBus {
 public:
-	static void throwEvent(Event *aEvent, AbstractEventObserver *aOwner)
+	static void throwEvent(Event aEvent, AbstractEventObserver *aOwner)
 	{
-		for (auto &pos : observers) {
-			// Для вызывающего throwEvent событие обработано не будет, в случае nullptr не проверяется
-			if (aOwner != nullptr && pos == aOwner) {
-				continue;
-			} else {
-				const auto result = pos->handleEvent(aEvent);
-				// If result == PASS_ON or IGNORED - continue
-				if (result == EventResult::HANDLED) {
-					break;
-				}
-			}
-		}
+		queue.push(std::make_pair(aEvent, aOwner));
 	}
 
 	static void registerObserver(AbstractEventObserver *aObserver)
@@ -118,8 +108,33 @@ public:
 		}
 	}
 
+	static void handler()
+	{
+		if (!queue.empty()) {
+			auto pair = queue.front();
+			queue.pop();
+
+			const auto event = pair.first;
+			const auto owner = pair.second;
+
+			for (auto &pos : observers){
+				// Для вызывающего throwEvent событие обработано не будет, в случае nullptr не проверяется
+				if (owner != nullptr && pos == owner) {
+					continue;
+				} else {
+					const auto result = pos->handleEvent(event);
+					// If result == PASS_ON or IGNORED - continue
+					if (result == EventResult::HANDLED) {
+						break;
+					}
+				}
+			}
+		}
+	}
+
 private:
 	static std::vector<AbstractEventObserver *> observers;
+	static std::queue<std::pair<Event, AbstractEventObserver *>> queue;
 };
 
 #endif // INCLUDE_EVENTBUS_HPP_
