@@ -34,8 +34,16 @@ esp_pthread_cfg_t updateThreadConfig(const char *name, int core_id, int stack, i
 	return cfg;
 }
 
-void displayThreadFunc()
+void displayThreadFunc(DisplayDriver *aDriver)
 {
+	static bool inited{false};
+	const auto time = TimeWrapper::seconds();
+	if (!inited && time > std::chrono::seconds{5}) {
+		// Показываем начальный экран ограниченное время
+		displayMainPage();
+		inited = true; // Больше не читаем время
+	}
+
 	while(true) {
 		lv_timer_handler();
 		lv_tick_inc(5);
@@ -100,7 +108,7 @@ void app_main()
 	auto cfg = esp_pthread_get_default_config();
 	cfg = updateThreadConfig("Display", 1, 5 * 1024, 5);
 	esp_pthread_set_cfg(&cfg);
-	std::thread displayTask(displayThreadFunc);
+	std::thread displayTask(displayThreadFunc, &displayDriver);
 	displayTask.detach();
 
 	while(true) {

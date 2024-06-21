@@ -26,6 +26,9 @@ private:
 	std::queue<HealthUpdate> queue;
 	uint8_t previousUpperFlags;
 	uint8_t previousLowerFlags;
+	bool isAlarmSoundsEnabled;
+
+	void sendSoundSignalIfAllowed();
 };
 
 #endif

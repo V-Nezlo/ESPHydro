@@ -42,7 +42,7 @@ public:
 		_panel_instance.setBus(&_bus_instance);      // バスをパネルにセットします。
 		}
 
-		{ 
+		{
 		auto cfg = _panel_instance.config();    // 表示パネル設定用の構造体を取得します。
 
 		cfg.pin_cs           =    Hardware::Display::kCsPin;  // CSが接続されているピン番号   (-1 = disable)
@@ -65,7 +65,7 @@ public:
 		_panel_instance.config(cfg);
 		}
 
-		{ 
+		{
 		auto cfg = _light_instance.config();    // バックライト設定用の構造体を取得します。
 
 		cfg.pin_bl = Hardware::Display::kBacklightPin;              // バックライトが接続されているピン番号
@@ -113,20 +113,20 @@ public:
 private:
 	void touchInit(int8_t aRstPin, int8_t aIntPin)
 	{
-        lgfx::pinMode(aRstPin, lgfx::pin_mode_t::output);
-        lgfx::pinMode(aIntPin, lgfx::pin_mode_t::output);
-        lgfx::gpio_lo(aRstPin);
-        lgfx::gpio_lo(aIntPin);
-        lgfx::delay(10);
+		lgfx::pinMode(aRstPin, lgfx::pin_mode_t::output);
+		lgfx::pinMode(aIntPin, lgfx::pin_mode_t::output);
+		lgfx::gpio_lo(aRstPin);
+		lgfx::gpio_lo(aIntPin);
+		lgfx::delay(10);
 
-        lgfx::gpio_hi(aIntPin);
-        lgfx::delayMicroseconds(100);
+		lgfx::gpio_hi(aIntPin);
+		lgfx::delayMicroseconds(100);
 
-        lgfx::gpio_hi(aRstPin);
-        lgfx::delay(5);
+		lgfx::gpio_hi(aRstPin);
+		lgfx::delay(5);
 
-        lgfx::gpio_lo(aIntPin);
-        lgfx::delay(50);
+		lgfx::gpio_lo(aIntPin);
+		lgfx::delay(50);
 	}
 };
 

@@ -61,7 +61,7 @@ namespace RTCI2C {
 } // namespace RTCI2C
 
 namespace Buzzer {
-	static constexpr int8_t kPwmPin = 27;
+	static constexpr int8_t kPwmPin = 12;
 	static constexpr int8_t kPwmChannel = 1;
 } // namespace Buzzer
 

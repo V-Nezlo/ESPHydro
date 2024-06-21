@@ -3,7 +3,8 @@
 DeviceMonitor::DeviceMonitor():
 	queue{},
 	previousUpperFlags{0xFF},
-	previousLowerFlags{0xFF}
+	previousLowerFlags{0xFF},
+	isAlarmSoundsEnabled{false}
 {
 }
 
@@ -15,16 +16,16 @@ EventResult DeviceMonitor::handleEvent(Event *e)
 			update.health = DeviceHealth::DeviceWorking;
 			update.type = e->data.device;
 			queue.push(update);
+			} return EventResult::PASS_ON;
 
-			return EventResult::PASS_ON;}
 		case EventType::RsDeviceDetached: {
 			HealthUpdate updated;
 			updated.health = DeviceHealth::DeviceDisabled;
 			updated.type = e->data.device;
 			queue.push(updated);
 
-			return EventResult::PASS_ON;
-			}
+			} return EventResult::PASS_ON;
+
 		case EventType::UpdateLowerData: {
 			if (e->data.lowerData.flags == previousLowerFlags) {
 				return EventResult::IGNORED;
@@ -45,8 +46,8 @@ EventResult DeviceMonitor::handleEvent(Event *e)
 				update.health = DeviceHealth::DeviceWorking;
 			}
 			queue.push(update);
+			} return EventResult::PASS_ON;
 
-			return EventResult::PASS_ON;}
 		case EventType::UpdateUpperData: {
 			if (e->data.upperData.flags == previousUpperFlags) {
 				return EventResult::IGNORED;
@@ -66,7 +67,12 @@ EventResult DeviceMonitor::handleEvent(Event *e)
 			}
 
 			queue.push(update);
-			return EventResult::PASS_ON;}
+			} return EventResult::PASS_ON;
+
+		case EventType::SettingsUpdated:
+			isAlarmSoundsEnabled = e->data.settings.common.alarmSoundEnabled;
+			return EventResult::PASS_ON;
+
 		default:
 			return EventResult::IGNORED;
 		}
@@ -81,7 +87,18 @@ void DeviceMonitor::process(std::chrono::milliseconds aCurrentTime)
 		ev.type = EventType::HealthUpdated;
 		ev.data.healthUpdate = entry;
 		EventBus::throwEvent(&ev, this);
+		sendSoundSignalIfAllowed();
 
 		queue.pop();
+	}
+}
+
+void DeviceMonitor::sendSoundSignalIfAllowed()
+{
+	if (isAlarmSoundsEnabled) {
+		Event ev;
+		ev.type = EventType::BuzzerSignal;
+		ev.data.buzSignal = BuzzerSignal::Long;
+		EventBus::throwEvent(&ev, this);
 	}
 }

@@ -12,13 +12,14 @@ SystemIntegrator::SystemIntegrator() :
 	systemFlagStorage{0},
 	lastCheckTime{0},
 	updated{false},
-	signalNeeds{BuzzerSignal::Disable}
+	signalNeeds{BuzzerSignal::Disable},
+	isAlarmSoundsEnabled{false}
 {
 }
 
 void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 {
-	if (aCurrentTime > lastCheckTime + std::chrono::milliseconds{1000} && updated) {
+	if (updated && aCurrentTime > lastCheckTime + std::chrono::milliseconds{1000}) {
 		lastCheckTime = aCurrentTime;
 		updated = false;
 
@@ -44,8 +45,8 @@ void SystemIntegrator::process(std::chrono::milliseconds aCurrentTime)
 		ev2.data.healthUpdate.health = health;
 		EventBus::throwEvent(&ev2, this);
 
-		// Оповещаем буззером
-		if (signalNeeds == BuzzerSignal::Short || signalNeeds == BuzzerSignal::Long) {
+		// Оповещаем буззером если разрешено
+		if (isAlarmSoundsEnabled && (signalNeeds == BuzzerSignal::Short || signalNeeds == BuzzerSignal::Long)) {
 			Event ev;
 			ev.type = EventType::BuzzerSignal;
 			ev.data.buzSignal = signalNeeds;
@@ -67,6 +68,10 @@ EventResult SystemIntegrator::handleEvent(Event *e)
 			systemFlagStorage &= ~e->data.error;
 			updated = true;
 			signalNeeds = BuzzerSignal::Short;
+			return EventResult::PASS_ON;
+
+		case EventType::SettingsUpdated:
+			isAlarmSoundsEnabled = e->data.settings.common.alarmSoundEnabled;
 			return EventResult::PASS_ON;
 
 		default:

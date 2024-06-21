@@ -19,20 +19,21 @@ extern "C" {
 
 typedef uint8_t lv_menu_builder_variant_t;
 
-void style_initialize();
-void menu_create(lv_obj_t *parent);
+void styleInitialize();
+void menuCreate(lv_obj_t *parent);
 void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset);
-void main_page_create(lv_obj_t * parent);
-void loading_screen_create(lv_obj_t * parent);
-void keyboard_create();
+void mainPageCreate(lv_obj_t * parent);
+void loadingScreenCreate(lv_obj_t * parent);
+void keyboardCreate();
 
-lv_obj_t * create_switch(lv_obj_t * parent, const char * icon, const char * txt, bool chk);
-lv_obj_t * create_slider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
-lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant);
+lv_obj_t *createSwitch(lv_obj_t * parent, const char * icon, const char * txt, bool chk);
+lv_obj_t *createSlider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
+lv_obj_t *createText(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant);
 
 void createAdditionalPanels();
 void settingsButtonEvent(lv_event_t * e);
 void uiInit(bool aDarkTheme);
+void displayMainPage();
 
 void textAreasReset(uint8_t aArea);
 bool textAreasApply(uint8_t aArea);
@@ -53,6 +54,7 @@ struct Settings *saveParameters();
 bool getLoggingState();
 void updateMainPagePumpTypeLabel();
 void updateDeviceHealth(struct HealthUpdate *aUpdate);
+void processTap(lv_event_t *);
 
 enum {
 	LV_MENU_ITEM_BUILDER_VARIANT_1,
@@ -110,5 +112,6 @@ void sendActionCommandToEventBus(Action aAction);
 void sendNewTimeToEventBus(uint8_t hour, uint8_t min, uint8_t sec);
 void sendNewBrightnessToEventBus(uint8_t aDuty);
 void writeToLoggingPanel(const char *aData, int aSize);
+void sendTapSoundToEventBus();
 
 #endif // INCLUDE_UI_HPP_

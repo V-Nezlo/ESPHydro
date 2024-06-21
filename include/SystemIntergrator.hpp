@@ -24,6 +24,7 @@ private:
 	std::chrono::milliseconds lastCheckTime;
 	bool updated;
 	BuzzerSignal signalNeeds;
+	bool isAlarmSoundsEnabled;
 };
 
 #endif // INCLUDE_SYSTEMINTERGRATOR_HPP_

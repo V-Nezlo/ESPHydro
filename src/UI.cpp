@@ -55,13 +55,13 @@ lv_style_t style_menu_panel;
 lv_style_t style_menu_subpanel;
 lv_style_t style_water_meter;
 
-lv_style_t style_disabled;
-lv_style_t style_warning;
-lv_style_t style_error;
-lv_style_t style_good;
+lv_style_t styleDisabled;
+lv_style_t styleWarning;
+lv_style_t styleError;
+lv_style_t styleGood;
 
-lv_style_t style_actuator_activated;
-lv_style_t style_actuator_not_activated;
+lv_style_t styleActuatorActivated;
+lv_style_t styleActuatorNotActivated;
 // Темы
 lv_theme_t *mainTheme;
 // Клавиатура
@@ -87,6 +87,7 @@ struct {
 	lv_obj_t *dam;
 	lv_obj_t *aux;
 } actuators;
+
 // Панель 2
 lv_obj_t *currentTimePanel;
 lv_obj_t *mainPageTime;
@@ -228,6 +229,14 @@ void writeToLoggingPanel(const char *aData, int aSize)
 	}
 }
 
+void sendTapSoundToEventBus()
+{
+	Event ev;
+	ev.type = EventType::BuzzerSignal;
+	ev.data.buzSignal = BuzzerSignal::Short;
+	EventBus::throwEvent(&ev, nullptr);
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -271,7 +280,7 @@ void uiInit(bool aDarkTheme)
 
 	lv_obj_set_style_text_font(lv_scr_act(), font_large, 0);
 
-	style_initialize();
+	styleInitialize();
 
 	// Создаем два экрана, один главный, другой - с настройками
 	mainPage = lv_obj_create(NULL);
@@ -282,15 +291,21 @@ void uiInit(bool aDarkTheme)
 	lampSettingsScr = lv_obj_create(NULL);
 	curTimeSettingsScr = lv_obj_create(NULL);
 
-	main_page_create(mainPage);
-	menu_create(settingsPage);
-	keyboard_create();
+	loadingScreenCreate(loadingScreen);
+	mainPageCreate(mainPage);
+	menuCreate(settingsPage);
+	keyboardCreate();
 	createAdditionalPanels();
 
 	// Placeholders
 	fillDevicePlaceholders(DeviceType::Master);
 	fillDevicePlaceholders(DeviceType::Lower);
 
+	lv_scr_load(loadingScreen);
+}
+
+void displayMainPage()
+{
 	lv_scr_load(mainPage);
 }
 
@@ -529,6 +544,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
 			}
 			break;
+
 		case DetailedUpperInfo:
 			if (isUpperPresent) {
 				static constexpr char kTopLevelStuckText[] = "Top Level Stuck \n";
@@ -555,6 +571,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
 			}
 			break;
+
 		case DetailedSystemInfo:
 			if (isSystemPresent) {
 				static constexpr char kRTCErrorText[] = "RTC Error \n";
@@ -594,6 +611,7 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
 			}
 			break;
+
 		case DetailedAuxInfo:
 			if (isAuxPresent) {
 				activeMessageBox = lv_msgbox_create(NULL, "AUX Information",
@@ -680,26 +698,26 @@ bool textAreasApply(uint8_t aArea)
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 {
 	if (aHealth == DeviceHealth::DeviceWorking) {
-		lv_obj_add_style(aModulePanel, &style_good, 0);
+		lv_obj_add_style(aModulePanel, &styleGood, 0);
 	} else if (aHealth == DeviceHealth::DeviceWarning) {
-		lv_obj_add_style(aModulePanel, &style_warning, 0);
+		lv_obj_add_style(aModulePanel, &styleWarning, 0);
 	} else if (aHealth == DeviceHealth::DeviceError) {
-		lv_obj_add_style(aModulePanel, &style_error, 0);
+		lv_obj_add_style(aModulePanel, &styleError, 0);
 	} else if (aHealth == DeviceHealth::DeviceError) {
-		lv_obj_add_style(aModulePanel, &style_error, 0);
+		lv_obj_add_style(aModulePanel, &styleError, 0);
 	} else if (aHealth == DeviceHealth::DeviceDisabled) {
-		lv_obj_add_style(aModulePanel, &style_disabled, 0);
+		lv_obj_add_style(aModulePanel, &styleDisabled, 0);
 	}
 }
 
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated)
 {
 	if (!aDevicePresent) {
-		lv_obj_add_style(aActuator, &style_disabled, 0);
+		lv_obj_add_style(aActuator, &styleDisabled, 0);
 	} else if (aActivated) {
-		lv_obj_add_style(aActuator, &style_actuator_activated, 0);
+		lv_obj_add_style(aActuator, &styleActuatorActivated, 0);
 	} else {
-		lv_obj_add_style(aActuator, &style_actuator_not_activated, 0);
+		lv_obj_add_style(aActuator, &styleActuatorNotActivated, 0);
 	}
 }
 
@@ -980,14 +998,33 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 	}
 }
 
+void processTap(lv_event_t *e)
+{
+	if (currentSettings.common.tapSoundEnabled) {
+		sendTapSoundToEventBus();
+	}
+}
+
 /**********************
  * Создание окон
  **********************/
 
-void loading_screen_create(lv_obj_t *parent)
-{ }
+void loadingScreenCreate(lv_obj_t *parent)
+{
+	lv_obj_t *firstString = lv_label_create(parent);
+	lv_obj_t *secondString = lv_label_create(parent);
+	lv_obj_t *thirdString = lv_label_create(parent);
 
-void keyboard_create()
+	lv_label_set_text_static(firstString, "ESPHydro");
+	lv_label_set_text_static(secondString, AUTO_VERSION);
+	lv_label_set_text_static(thirdString, "Copyright: V-Nezlo (vlladimirka@gmail.com)");
+
+	lv_obj_align_to(firstString, parent, LV_ALIGN_CENTER, 0, -20);
+	lv_obj_align_to(secondString, parent, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_align_to(thirdString, parent, LV_ALIGN_CENTER, 0, +20);
+}
+
+void keyboardCreate()
 {
 	pumpKeyboard = lv_keyboard_create(pumpSettingsScr);
 	lv_keyboard_set_mode(pumpKeyboard, LV_KEYBOARD_MODE_NUMBER);
@@ -1002,7 +1039,7 @@ void keyboard_create()
 	lv_obj_set_size(timeKeyboard, lv_disp_get_hor_res(NULL), 230);
 }
 
-void style_initialize()
+void styleInitialize()
 {
 	// Настройка стилей - основной стиль
 	lv_style_init(&style_menu_panel);
@@ -1032,70 +1069,70 @@ void style_initialize()
 	lv_style_set_border_width(&style_water_meter, 0);
 
 	// Стиль - disabled
-	lv_style_init(&style_disabled);
-	lv_style_set_bg_color(&style_disabled, lv_palette_main(LV_PALETTE_GREY));
-	lv_style_set_border_color(&style_disabled, lv_palette_lighten(LV_PALETTE_GREY, 3));
-	lv_style_set_border_width(&style_disabled, 0);
-	lv_style_set_radius(&style_disabled, 0);
-	lv_style_set_shadow_width(&style_disabled, 10);
-	lv_style_set_shadow_ofs_y(&style_disabled, 5);
-	lv_style_set_shadow_opa(&style_disabled, LV_OPA_50);
-	lv_style_set_text_color(&style_disabled, lv_color_white());
+	lv_style_init(&styleDisabled);
+	lv_style_set_bg_color(&styleDisabled, lv_palette_main(LV_PALETTE_GREY));
+	lv_style_set_border_color(&styleDisabled, lv_palette_lighten(LV_PALETTE_GREY, 3));
+	lv_style_set_border_width(&styleDisabled, 0);
+	lv_style_set_radius(&styleDisabled, 0);
+	lv_style_set_shadow_width(&styleDisabled, 10);
+	lv_style_set_shadow_ofs_y(&styleDisabled, 5);
+	lv_style_set_shadow_opa(&styleDisabled, LV_OPA_50);
+	lv_style_set_text_color(&styleDisabled, lv_color_white());
 
 	// Стиль - warning
-	lv_style_init(&style_warning);
-	lv_style_set_bg_color(&style_warning, lv_palette_main(LV_PALETTE_YELLOW));
-	lv_style_set_border_color(&style_warning, lv_palette_lighten(LV_PALETTE_YELLOW, 3));
-	lv_style_set_border_width(&style_warning, 0);
-	lv_style_set_radius(&style_warning, 0);
-	lv_style_set_shadow_width(&style_warning, 10);
-	lv_style_set_shadow_ofs_y(&style_warning, 5);
-	lv_style_set_shadow_opa(&style_warning, LV_OPA_50);
-	lv_style_set_text_color(&style_warning, lv_color_white());
+	lv_style_init(&styleWarning);
+	lv_style_set_bg_color(&styleWarning, lv_palette_main(LV_PALETTE_YELLOW));
+	lv_style_set_border_color(&styleWarning, lv_palette_lighten(LV_PALETTE_YELLOW, 3));
+	lv_style_set_border_width(&styleWarning, 0);
+	lv_style_set_radius(&styleWarning, 0);
+	lv_style_set_shadow_width(&styleWarning, 10);
+	lv_style_set_shadow_ofs_y(&styleWarning, 5);
+	lv_style_set_shadow_opa(&styleWarning, LV_OPA_50);
+	lv_style_set_text_color(&styleWarning, lv_color_white());
 
 	// Стиль - error
-	lv_style_init(&style_error);
-	lv_style_set_bg_color(&style_error, lv_palette_main(LV_PALETTE_RED));
-	lv_style_set_border_color(&style_error, lv_palette_lighten(LV_PALETTE_RED, 3));
-	lv_style_set_border_width(&style_error, 0);
-	lv_style_set_radius(&style_error, 0);
-	lv_style_set_shadow_width(&style_error, 10);
-	lv_style_set_shadow_ofs_y(&style_error, 5);
-	lv_style_set_shadow_opa(&style_error, LV_OPA_50);
-	lv_style_set_text_color(&style_error, lv_color_white());
+	lv_style_init(&styleError);
+	lv_style_set_bg_color(&styleError, lv_palette_main(LV_PALETTE_RED));
+	lv_style_set_border_color(&styleError, lv_palette_lighten(LV_PALETTE_RED, 3));
+	lv_style_set_border_width(&styleError, 0);
+	lv_style_set_radius(&styleError, 0);
+	lv_style_set_shadow_width(&styleError, 10);
+	lv_style_set_shadow_ofs_y(&styleError, 5);
+	lv_style_set_shadow_opa(&styleError, LV_OPA_50);
+	lv_style_set_text_color(&styleError, lv_color_white());
 
 	// Стиль - good
-	lv_style_init(&style_good);
-	lv_style_set_bg_color(&style_good, lv_palette_main(LV_PALETTE_GREEN));
-	lv_style_set_border_color(&style_good, lv_palette_lighten(LV_PALETTE_GREEN, 3));
-	lv_style_set_border_width(&style_good, 0);
-	lv_style_set_radius(&style_good, 0);
-	lv_style_set_shadow_width(&style_good, 10);
-	lv_style_set_shadow_ofs_y(&style_good, 5);
-	lv_style_set_shadow_opa(&style_good, LV_OPA_50);
-	lv_style_set_text_color(&style_good, lv_color_white());
+	lv_style_init(&styleGood);
+	lv_style_set_bg_color(&styleGood, lv_palette_main(LV_PALETTE_GREEN));
+	lv_style_set_border_color(&styleGood, lv_palette_lighten(LV_PALETTE_GREEN, 3));
+	lv_style_set_border_width(&styleGood, 0);
+	lv_style_set_radius(&styleGood, 0);
+	lv_style_set_shadow_width(&styleGood, 10);
+	lv_style_set_shadow_ofs_y(&styleGood, 5);
+	lv_style_set_shadow_opa(&styleGood, LV_OPA_50);
+	lv_style_set_text_color(&styleGood, lv_color_white());
 
 	// Стиль - not activated
-	lv_style_init(&style_actuator_not_activated);
-	lv_style_set_bg_color(&style_actuator_not_activated, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_color(&style_actuator_not_activated, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
-	lv_style_set_border_width(&style_actuator_not_activated, 0);
-	lv_style_set_radius(&style_actuator_not_activated, 0);
-	lv_style_set_shadow_width(&style_actuator_not_activated, 10);
-	lv_style_set_shadow_ofs_y(&style_actuator_not_activated, 5);
-	lv_style_set_shadow_opa(&style_actuator_not_activated, LV_OPA_50);
-	lv_style_set_text_color(&style_actuator_not_activated, lv_color_white());
+	lv_style_init(&styleActuatorNotActivated);
+	lv_style_set_bg_color(&styleActuatorNotActivated, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
+	lv_style_set_border_color(&styleActuatorNotActivated, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_border_width(&styleActuatorNotActivated, 0);
+	lv_style_set_radius(&styleActuatorNotActivated, 0);
+	lv_style_set_shadow_width(&styleActuatorNotActivated, 10);
+	lv_style_set_shadow_ofs_y(&styleActuatorNotActivated, 5);
+	lv_style_set_shadow_opa(&styleActuatorNotActivated, LV_OPA_50);
+	lv_style_set_text_color(&styleActuatorNotActivated, lv_color_white());
 
 	// Стиль - activated
-	lv_style_init(&style_actuator_activated);
-	lv_style_set_bg_color(&style_actuator_activated, lv_palette_main(LV_PALETTE_LIGHT_BLUE));
-	lv_style_set_border_color(&style_actuator_activated, lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 3));
-	lv_style_set_border_width(&style_actuator_activated, 0);
-	lv_style_set_radius(&style_actuator_activated, 0);
-	lv_style_set_shadow_width(&style_actuator_activated, 10);
-	lv_style_set_shadow_ofs_y(&style_actuator_activated, 5);
-	lv_style_set_shadow_opa(&style_actuator_activated, LV_OPA_50);
-	lv_style_set_text_color(&style_actuator_activated, lv_color_white());
+	lv_style_init(&styleActuatorActivated);
+	lv_style_set_bg_color(&styleActuatorActivated, lv_palette_main(LV_PALETTE_LIGHT_BLUE));
+	lv_style_set_border_color(&styleActuatorActivated, lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 3));
+	lv_style_set_border_width(&styleActuatorActivated, 0);
+	lv_style_set_radius(&styleActuatorActivated, 0);
+	lv_style_set_shadow_width(&styleActuatorActivated, 10);
+	lv_style_set_shadow_ofs_y(&styleActuatorActivated, 5);
+	lv_style_set_shadow_opa(&styleActuatorActivated, LV_OPA_50);
+	lv_style_set_text_color(&styleActuatorActivated, lv_color_white());
 }
 
 void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
@@ -1106,7 +1143,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.pump, LV_ALIGN_CENTER, 0, aYOffset);
 	lv_obj_set_size(actuators.pump, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.pump, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.pump, &style_disabled, 0);
+	lv_obj_add_style(actuators.pump, &styleDisabled, 0);
 	lv_obj_t *actuatorPumpLabel = lv_label_create(actuators.pump);
 	lv_label_set_text(actuatorPumpLabel, "P");
 	lv_obj_align(actuatorPumpLabel, LV_ALIGN_CENTER, 0, 0);
@@ -1115,7 +1152,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 45, aYOffset);
 	lv_obj_set_size(actuators.lamp, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.lamp, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.lamp, &style_disabled, 0);
+	lv_obj_add_style(actuators.lamp, &styleDisabled, 0);
 	lv_obj_t *actuatorLampLabel = lv_label_create(actuators.lamp);
 	lv_label_set_text(actuatorLampLabel, "L");
 	lv_obj_align(actuatorLampLabel, LV_ALIGN_CENTER, 0, 0);
@@ -1124,7 +1161,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -45, aYOffset);
 	lv_obj_set_size(actuators.topLev, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.topLev, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.topLev, &style_disabled, 0);
+	lv_obj_add_style(actuators.topLev, &styleDisabled, 0);
 	lv_obj_t *actuatorTopLevLabel = lv_label_create(actuators.topLev);
 	lv_label_set_text(actuatorTopLevLabel, "T");
 	lv_obj_align(actuatorTopLevLabel, LV_ALIGN_CENTER, 0, 0);
@@ -1133,7 +1170,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -45, aYOffset + 45);
 	lv_obj_set_size(actuators.dam, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.dam, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.dam, &style_disabled, 0);
+	lv_obj_add_style(actuators.dam, &styleDisabled, 0);
 	lv_obj_t *actuatorDamLabel = lv_label_create(actuators.dam);
 	lv_label_set_text(actuatorDamLabel, "D");
 	lv_obj_align(actuatorDamLabel, LV_ALIGN_CENTER, 0, 0);
@@ -1142,13 +1179,13 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 23, aYOffset + 45);
 	lv_obj_set_size(actuators.aux, kPanelSize * 2 + 5, kPanelSize);
 	lv_obj_clear_flag(actuators.aux, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.aux, &style_disabled, 0);
+	lv_obj_add_style(actuators.aux, &styleDisabled, 0);
 	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
 	lv_label_set_text(actuatorAuxLabel, "AUX");
 	lv_obj_align(actuatorAuxLabel, LV_ALIGN_CENTER, 0, 0);
 }
 
-void main_page_create(lv_obj_t *parent)
+void mainPageCreate(lv_obj_t *parent)
 {
 	static const uint16_t panelW = 155;
 	static const uint16_t panelH = 310;
@@ -1266,7 +1303,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(lowerStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(lowerStatusPanel, &style_disabled, 0);
+		lv_obj_add_style(lowerStatusPanel, &styleDisabled, 0);
 		lv_obj_add_event_cb(lowerStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedLowerInfoEnum);
 		// Текст LOWER
 		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
@@ -1278,7 +1315,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(auxStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(auxStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 25);
 		lv_obj_clear_flag(auxStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(auxStatusPanel, &style_disabled, 0);
+		lv_obj_add_style(auxStatusPanel, &styleDisabled, 0);
 		lv_obj_add_event_cb(auxStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedAuxInfoEnum);
 		// Текст AUX
 		lv_obj_t *auxStatusLabel = lv_label_create(auxStatusPanel);
@@ -1290,7 +1327,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(upperStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(upperStatusPanel, &style_disabled, 0);
+		lv_obj_add_style(upperStatusPanel, &styleDisabled, 0);
 		lv_obj_add_event_cb(upperStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedUpperInfoEnum);
 		// Текст UPPER
 		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
@@ -1302,7 +1339,7 @@ void main_page_create(lv_obj_t *parent)
 		lv_obj_set_size(systemStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(systemStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(systemStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(systemStatusPanel, &style_disabled, 0);
+		lv_obj_add_style(systemStatusPanel, &styleDisabled, 0);
 		lv_obj_add_event_cb(systemStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedSystemInfoEnum);
 		// Текст SYSTEM
 		lv_obj_t *systemStatusLabel = lv_label_create(systemStatusPanel);
@@ -1334,6 +1371,7 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(pumpOnTa, "123");
 	lv_obj_set_size(pumpOnTa, 200, 40);
 	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOnTa, processTap, LV_EVENT_ALL, NULL);
 
 	// Панель для установки времени PumpOff
 	pumpOffTa = lv_textarea_create(pumpSettingsScr);
@@ -1344,6 +1382,7 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(pumpOffTa, "456");
 	lv_obj_set_size(pumpOffTa, 200, 40);
 	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOffTa, processTap, LV_EVENT_ALL, NULL);
 
 	lv_obj_t *pumpOnSetText = lv_label_create(pumpSettingsScr);
 	lv_label_set_text(pumpOnSetText, "Pump on time: ");
@@ -1375,6 +1414,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOnHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
 	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(lampOnHourTa, processTap, LV_EVENT_ALL, NULL);
 	// Панель минут
 	lampOnMinTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOnMinTa, "0123456789");
@@ -1386,6 +1426,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOnMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
 	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(lampOnMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	lampOffHourTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOffHourTa, "0123456789");
@@ -1397,6 +1438,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOffHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
 	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(lampOffHourTa, processTap, LV_EVENT_ALL, NULL);
 
 	lampOffMinTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOffMinTa, "0123456789");
@@ -1408,6 +1450,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOffMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
 	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(lampOffMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	// Align для всех элементов
 	lv_obj_align_to(lampSettingsOnLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 12);
@@ -1428,6 +1471,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
 	lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(setTimeHourTa, processTap, LV_EVENT_ALL, NULL);
 
 	setTimeMinTa = lv_textarea_create(curTimeSettingsScr);
 	lv_textarea_set_accepted_chars(setTimeMinTa, "0123456789");
@@ -1439,6 +1483,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
 	lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(setTimeMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	setTimeSecTa = lv_textarea_create(curTimeSettingsScr);
 	lv_textarea_set_accepted_chars(setTimeSecTa, "0123456789");
@@ -1450,10 +1495,12 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeSecTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
 	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(setTimeSecTa, processTap, LV_EVENT_ALL, NULL);
 
 	sendNewTimeButton = lv_btn_create(curTimeSettingsScr);
 	lv_obj_set_size(sendNewTimeButton, 120, 40);
 	lv_obj_add_event_cb(sendNewTimeButton, setTimeButtonEventHandler, LV_EVENT_CLICKED, NULL);
+	lv_obj_add_event_cb(sendNewTimeButton, processTap, LV_EVENT_ALL, NULL);
 	lv_obj_t *setTimeButtonLabel = lv_label_create(sendNewTimeButton);
 	lv_obj_align_to(setTimeButtonLabel, sendNewTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
 	lv_label_set_text(setTimeButtonLabel, "Send to RTC");
@@ -1465,7 +1512,7 @@ void createAdditionalPanels()
 	lv_obj_align_to(sendNewTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
 }
 
-void menu_create(lv_obj_t *parent)
+void menuCreate(lv_obj_t *parent)
 {
 	menu = lv_menu_create(parent);
 	bg_color = lv_obj_get_style_bg_color(menu, 0);
@@ -1488,16 +1535,17 @@ void menu_create(lv_obj_t *parent)
 	lv_menu_separator_create(subPumpPage);
 	section = lv_menu_section_create(subPumpPage);
 	// Вкл или выкл насоса
-	pumpEnableButton = create_switch(section, LV_SYMBOL_SETTINGS, "Enable", true);
+	pumpEnableButton = createSwitch(section, LV_SYMBOL_SETTINGS, "Enable", true);
+	lv_obj_add_event_cb(pumpEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// Текст - Время включенного состояния насоса
-	lv_obj_t *pumpOnBaseText = create_text(section, NULL, "Pump on time", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *pumpOnBaseText = createText(section, NULL, "Pump on time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	pumpOnCornerText = lv_label_create(pumpOnBaseText);
 	lv_obj_align_to(pumpOnCornerText, pumpOnBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
 	lv_label_set_text(pumpOnCornerText, "0"); // Вот тут нужно взять проинициализированные данные
 
 	// Текст - Время выключенного состояния насоса
-	lv_obj_t *pumpOffBaseText = create_text(section, NULL, "Pump off time", LV_MENU_ITEM_BUILDER_VARIANT_2);
+	lv_obj_t *pumpOffBaseText = createText(section, NULL, "Pump off time", LV_MENU_ITEM_BUILDER_VARIANT_2);
 	pumpOffCornerText = lv_label_create(pumpOffBaseText);
 	lv_obj_align_to(pumpOffCornerText, pumpOffBaseText, LV_TEXT_ALIGN_RIGHT, 100, 0);
 	lv_label_set_text(pumpOffCornerText, "0"); // Вот тут нужно взять проинициализированные данные
@@ -1509,9 +1557,10 @@ void menu_create(lv_obj_t *parent)
 	lv_label_set_text(pumpOnButtonLabel, "Configure pump timings");
 	lv_obj_align_to(pumpOnButtonLabel, pumpConfigButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(pumpConfigButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// Выпадающий список с типами гидропоник
-	create_text(section, NULL, "Pump type", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	createText(section, NULL, "Pump type", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	pumpTypeDD = lv_dropdown_create(section);
 	lv_dropdown_set_options(pumpTypeDD,
 		"Normal\n"
@@ -1523,9 +1572,10 @@ void menu_create(lv_obj_t *parent)
 
 	lv_obj_align(pumpTypeDD, LV_ALIGN_TOP_MID, 0, 20);
 	lv_obj_add_event_cb(pumpTypeDD, pumpTypeEventHandler, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(pumpTypeDD, processTap, LV_EVENT_CLICKED, NULL);
 
 	// Поле - swing время (если режим не swing - неактивно)
-	pumpSwingTimeBase = create_text(section, LV_SYMBOL_SETTINGS, "Swing Time", LV_MENU_ITEM_BUILDER_VARIANT_2);
+	pumpSwingTimeBase = createText(section, LV_SYMBOL_SETTINGS, "Swing Time", LV_MENU_ITEM_BUILDER_VARIANT_2);
 	pumpSwingTimeText = lv_label_create(pumpSwingTimeBase);
 	lv_obj_align(pumpSwingTimeText, LV_ALIGN_RIGHT_MID, 0, 0);
 	lv_label_set_text(pumpSwingTimeText, "0s ");
@@ -1536,6 +1586,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_set_size(pumpSwingTimeSlider, 20, 10);
 	lv_slider_set_value(pumpSwingTimeSlider, 5, LV_ANIM_OFF);
 	lv_obj_add_event_cb(pumpSwingTimeSlider, pumpSwingTimeEvent, LV_EVENT_VALUE_CHANGED, NULL);
+	lv_obj_add_event_cb(pumpSwingTimeSlider, processTap, LV_EVENT_CLICKED, NULL);
 
 	// ********************************МЕНЮ ЛАМПЫ********************************
 	// Подменю с настройками лампы
@@ -1544,16 +1595,17 @@ void menu_create(lv_obj_t *parent)
 	lv_menu_separator_create(subLampPage);
 	section = lv_menu_section_create(subLampPage);
 	// Включение или выключение управления лампой
-	lampEnableButton = create_switch(section, LV_SYMBOL_SETTINGS, "Enable", true);
+	lampEnableButton = createSwitch(section, LV_SYMBOL_SETTINGS, "Enable", true);
+	lv_obj_add_event_cb(lampEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_menu_separator_create(section);
 
 	// Текст - время включения лампы
-	lv_obj_t *lampOnBaseText = create_text(section, NULL, "Lamp On Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *lampOnBaseText = createText(section, NULL, "Lamp On Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lampOnCornerText = lv_label_create(lampOnBaseText);
 	lv_label_set_text(lampOnCornerText, "00:00:00");
 	lv_obj_align_to(lampOnCornerText, lampOnBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
 
-	lv_obj_t *lampOffBaseText = create_text(section, NULL, "Lamp Off Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *lampOffBaseText = createText(section, NULL, "Lamp Off Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lampOffCornerText = lv_label_create(lampOffBaseText);
 	lv_label_set_text(lampOffCornerText, "00:00:00");
 	lv_obj_align_to(lampOffCornerText, lampOffBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
@@ -1565,6 +1617,7 @@ void menu_create(lv_obj_t *parent)
 	lv_label_set_text(lampButtonLabel, "Configure lamp timings");
 	lv_obj_align_to(lampButtonLabel, lampSettingsButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(lampSettingsButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampSettingsButton, processTap, LV_EVENT_CLICKED, NULL);
 
 	// ******************************** МЕНЮ ОБЩИХ НАСТРОЕК **********************************
 	subCommonPage = lv_menu_page_create(menu, NULL);
@@ -1573,15 +1626,18 @@ void menu_create(lv_obj_t *parent)
 	section = lv_menu_section_create(subCommonPage);
 
 	// Свитч для включения или выключения звука при тапе
-	tapSountEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Tap sound", false);
-	alarmSoundEnableButton = create_switch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
+	tapSountEnableButton = createSwitch(section, LV_SYMBOL_AUDIO, "Tap sound", false);
+	alarmSoundEnableButton = createSwitch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
+	lv_obj_add_event_cb(tapSountEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL); // ?
+	lv_obj_add_event_cb(alarmSoundEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 
-	brightnessSlider = create_slider(section, NULL, "Display brightness", 30, 255, 50);
+	brightnessSlider = createSlider(section, NULL, "Display brightness", 30, 255, 50);
 	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
+	lv_obj_add_event_cb(brightnessSlider, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_menu_separator_create(section);
 
 	// Настройка  текущего времени
-	lv_obj_t *setTimeBaseText = create_text(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *setTimeBaseText = createText(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	settingsPageTime = lv_label_create(setTimeBaseText);
 	lv_label_set_text(settingsPageTime, "00:00:00");
 	lv_obj_align_to(settingsPageTime, setTimeBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
@@ -1590,6 +1646,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_t *setTimeButton = lv_btn_create(section);
 	lv_obj_set_size(setTimeButton, 314, 35);
 	lv_obj_add_event_cb(setTimeButton, customTextAreaEvent, LV_EVENT_PRESSED, &editScrSelectorSetTime);
+	lv_obj_add_event_cb(setTimeButton, processTap, LV_EVENT_PRESSED, NULL);
 	lv_obj_align(setTimeButton, LV_ALIGN_CENTER, 0, -40);
 	// Надпись на кнопке
 	lv_obj_t *setTimeLabel = lv_label_create(setTimeButton);
@@ -1628,6 +1685,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align_to(manualPumpOnButtonLabel, manualPumpOnButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_center(manualPumpOnButtonLabel);
 	lv_obj_add_event_cb(manualPumpOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOnEnum);
+	lv_obj_add_event_cb(manualPumpOnButton, processTap, LV_EVENT_CLICKED, NULL);
 	lv_obj_set_grid_cell(manualPumpOnButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
 
 	manualPumpOffButton = lv_btn_create(buttonContainer);
@@ -1636,6 +1694,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align_to(manualPumpOffButtonLabel, manualPumpOffButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_center(manualPumpOffButtonLabel);
 	lv_obj_add_event_cb(manualPumpOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOffEnum);
+	lv_obj_add_event_cb(manualPumpOffButton, processTap, LV_EVENT_CLICKED, NULL);
 	lv_obj_set_grid_cell(manualPumpOffButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
 	manualLampOnButton = lv_btn_create(buttonContainer);
@@ -1644,6 +1703,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align_to(manualLampOnButtonLabel, manualLampOnButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_center(manualLampOnButtonLabel);
 	lv_obj_add_event_cb(manualLampOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOnEnum);
+	lv_obj_add_event_cb(manualLampOnButton, processTap, LV_EVENT_CLICKED, NULL);
 	lv_obj_set_grid_cell(manualLampOnButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
 
 	manualLampOffButton = lv_btn_create(buttonContainer);
@@ -1652,9 +1712,11 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align_to(manualLampOffButtonLabel, manualLampOffButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_center(manualLampOffButtonLabel);
 	lv_obj_add_event_cb(manualLampOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOffEnum);
+	lv_obj_add_event_cb(manualLampOffButton, processTap, LV_EVENT_CLICKED, NULL);
 	lv_obj_set_grid_cell(manualLampOffButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
-	loggingSwitch = create_switch(section, LV_SYMBOL_WARNING, "Logging", false);
+	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
+	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
 	lv_obj_set_size(loggingTextarea, 315, 125);
 	lv_textarea_set_text(loggingTextarea, "");
@@ -1665,17 +1727,17 @@ void menu_create(lv_obj_t *parent)
 	lv_menu_separator_create(subAboutPage);
 	section = lv_menu_section_create(subAboutPage);
 
-	lv_obj_t *versionContaiter = create_text(section, NULL, "Version:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *versionContaiter = createText(section, NULL, "Version:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutVersionFiller = lv_label_create(versionContaiter);
 	lv_label_set_text(aboutVersionFiller, AUTO_VERSION);
 	lv_obj_align(aboutVersionFiller, LV_ALIGN_LEFT_MID, 0,0);
 
-	lv_obj_t *wifiPresentContainer = create_text(section, NULL, "Wifi status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *wifiPresentContainer = createText(section, NULL, "Wifi status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutWifiPresentFiller = lv_label_create(wifiPresentContainer);
 	lv_label_set_text(aboutWifiPresentFiller, "UNSUPPORTED");
 	lv_obj_align(aboutWifiPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
 
-	lv_obj_t *mqttPresentContainer = create_text(section, NULL, "MQTT status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *mqttPresentContainer = createText(section, NULL, "MQTT status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutMqttPresentFiller = lv_label_create(mqttPresentContainer);
 	lv_label_set_text(aboutMqttPresentFiller, "UNSUPPORTED");
 	lv_obj_align(aboutMqttPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
@@ -1691,6 +1753,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_set_size(exitWithSaveButton, 290, 50);
 	lv_obj_align(exitWithSaveButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(exitWithSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &exitWithSaveButtonCallbackData);
+	lv_obj_add_event_cb(exitWithSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWithSaveLabel = lv_label_create(exitWithSaveButton);
 	lv_label_set_text(exitWithSaveLabel, "Save and exit");
@@ -1702,6 +1765,7 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_align(exitWnoSaveButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(
 		exitWnoSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &exitWithoutSaveButtonCallbackData);
+	lv_obj_add_event_cb(exitWnoSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWnoSaveLabel = lv_label_create(exitWnoSaveButton);
 	lv_label_set_text(exitWnoSaveLabel, "Exit without saving");
@@ -1711,26 +1775,26 @@ void menu_create(lv_obj_t *parent)
 	lv_obj_t *root_page = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
 	section = lv_menu_section_create(root_page);
-	cont = create_text(section, LV_SYMBOL_TINT, "Pump", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_TINT, "Pump", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subPumpPage);
-	cont = create_text(section, LV_SYMBOL_UP, "Light", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_UP, "Light", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subLampPage);
-	cont = create_text(section, LV_SYMBOL_SETTINGS, "Common", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_SETTINGS, "Common", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subCommonPage);
-	cont = create_text(section, LV_SYMBOL_WARNING, "Service", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_WARNING, "Service", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subManualPage);
-	cont = create_text(section, LV_SYMBOL_LIST, "About", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_LIST, "About", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subAboutPage);
 
-	create_text(root_page, NULL, "Others", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	createText(root_page, NULL, "Others", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	section = lv_menu_section_create(root_page);
-	cont = create_text(section, LV_SYMBOL_CLOSE, "Exit", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	cont = createText(section, LV_SYMBOL_CLOSE, "Exit", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subExitPage);
 	lv_menu_set_sidebar_page(menu, root_page);
 	lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(menu), 0), 0), LV_EVENT_CLICKED, NULL);
 }
 
-lv_obj_t *create_text(lv_obj_t *parent, const char *icon, const char *txt, lv_menu_builder_variant_t builder_variant)
+lv_obj_t *createText(lv_obj_t *parent, const char *icon, const char *txt, lv_menu_builder_variant_t builder_variant)
 {
 	lv_obj_t *obj = lv_menu_cont_create(parent);
 
@@ -1757,9 +1821,9 @@ lv_obj_t *create_text(lv_obj_t *parent, const char *icon, const char *txt, lv_me
 	return obj;
 }
 
-lv_obj_t *create_slider(lv_obj_t *parent, const char *icon, const char *txt, int32_t min, int32_t max, int32_t val)
+lv_obj_t *createSlider(lv_obj_t *parent, const char *icon, const char *txt, int32_t min, int32_t max, int32_t val)
 {
-	lv_obj_t *obj = create_text(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_2);
+	lv_obj_t *obj = createText(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_2);
 
 	lv_obj_t *slider = lv_slider_create(obj);
 	lv_obj_set_flex_grow(slider, 1);
@@ -1773,9 +1837,9 @@ lv_obj_t *create_slider(lv_obj_t *parent, const char *icon, const char *txt, int
 	return slider;
 }
 
-lv_obj_t *create_switch(lv_obj_t *parent, const char *icon, const char *txt, bool chk)
+lv_obj_t *createSwitch(lv_obj_t *parent, const char *icon, const char *txt, bool chk)
 {
-	lv_obj_t *obj = create_text(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_1);
+	lv_obj_t *obj = createText(parent, icon, txt, LV_MENU_ITEM_BUILDER_VARIANT_1);
 
 	lv_obj_t *sw = lv_switch_create(obj);
 	lv_obj_add_state(sw, chk ? LV_STATE_CHECKED : 0);
