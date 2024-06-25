@@ -21,7 +21,6 @@ typedef enum {
 } disp_size_t;
 
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
-enum ManualActionEnum {ManualActionPumpOn = 1, ManualActionPumpOff, ManualActionLampOn, ManualActionLampOff };
 enum DetailedModuleInfoEnum {DetailedLowerInfo = 1, DetailedUpperInfo = 2, DetailedAuxInfo = 3, DetailedSystemInfo = 4};
 
 /**********************
@@ -150,16 +149,6 @@ lv_obj_t *loggingSwitch;
 uint8_t editScrSelectorPumpSetttins = PumpSettingsScrNumber;
 uint8_t editScrSelectorLampSettings = LampSettingsScrNumber;
 uint8_t editScrSelectorSetTime = CurrentTimeSettingsScrNumber;
-// Кнопки для мануального управления насосом
-lv_obj_t *manualPumpOnButton;
-lv_obj_t *manualPumpOffButton;
-lv_obj_t *manualLampOnButton;
-lv_obj_t *manualLampOffButton;
-// Энумератор для панели сервиса
-uint8_t manualActionPumpOnEnum = ManualActionPumpOn;
-uint8_t manualActionPumpOffEnum = ManualActionPumpOff;
-uint8_t manualActionLampOnEnum = ManualActionLampOn;
-uint8_t manualActionLampOffEnum = ManualActionLampOff;
 // Энумератор для подробного описания модулей
 uint8_t detailedLowerInfoEnum = DetailedLowerInfo;
 uint8_t detailedUpperInfoEnum = DetailedUpperInfo;
@@ -290,6 +279,7 @@ void uiInit(bool aDarkTheme)
 	pumpSettingsScr = lv_obj_create(NULL);
 	lampSettingsScr = lv_obj_create(NULL);
 	curTimeSettingsScr = lv_obj_create(NULL);
+	loadingScreen = lv_obj_create(NULL);
 
 	loadingScreenCreate(loadingScreen);
 	mainPageCreate(mainPage);
@@ -313,27 +303,9 @@ void displayMainPage()
  * Обработчики событий
  **********************/
 
-void manualActionEvent(lv_event_t *aEvent)
-{
-	const uint8_t *data = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
-	const uint8_t action = *data;
-
-	if (action == manualActionPumpOnEnum) {
-		sendActionCommandToEventBus(Action::TurnPumpOn);
-	} else if (action == manualActionPumpOffEnum) {
-		sendActionCommandToEventBus(Action::TurnPumpOff);
-	} else if (action == manualActionLampOnEnum) {
-		sendActionCommandToEventBus(Action::TurnLampOn);
-	} else if (action == manualActionLampOffEnum) {
-		sendActionCommandToEventBus(Action::TurnLampOff);
-	} else {
-		return;
-	}
-}
-
 void customTextAreaEvent(lv_event_t *aEvent)
 {
-	uint8_t *data = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	uint8_t *data = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	switch (*data) {
 		case PumpSettingsScrNumber:
@@ -387,7 +359,7 @@ void pumpTypeEventHandler(lv_event_t *aEvent)
 void formattedAreaCommonCallback(lv_event_t *aEvent)
 {
 	lv_obj_t *ta = lv_event_get_target(aEvent);
-	uint8_t *editType = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	uint8_t *editType = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	const char *currentText = lv_textarea_get_text(ta);
 	uint8_t representedValue = atoi(currentText);
@@ -408,7 +380,7 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 {
 	lv_event_code_t code = lv_event_get_code(aEvent);
 	lv_obj_t *ta = lv_event_get_target(aEvent);
-	uint8_t *editedSpec = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	uint8_t *editedSpec = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	lv_obj_t *keyboard = pumpKeyboard;
 	if (*editedSpec == EditScrs::PumpSettingsScrNumber) {
@@ -452,7 +424,7 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 
 void exitButtonEventHandler(lv_event_t *aEvent)
 {
-	uint8_t *operation = reinterpret_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	if (*operation == 1) {
 
@@ -493,7 +465,7 @@ void brightnessSliderEventHandler(lv_event_t *)
 
 void detailedModuleInfoEventHandler(lv_event_t *e)
 {
-	uint8_t *operation = reinterpret_cast<uint8_t *>(lv_event_get_user_data(e));
+	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(e));
 
 	static constexpr char kNoProblemsText[] = "Status OK";
 	static constexpr char kProblemsText[] = "Problems: \n";
@@ -622,6 +594,67 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 			break;
 		default:
 			break;
+	}
+}
+
+void actuatorPressedButtonEventHandler(lv_event_t *e)
+{
+	const lv_obj_t *actuator = static_cast<const lv_obj_t *>(lv_event_get_user_data(e));
+	const char *btnPressed = lv_msgbox_get_active_btn_text(activeMessageBox);
+	bool value{false};
+	if (!strcmp(btnPressed, "ON") || !strcmp(btnPressed, "CLOSE")) {
+		value = true;
+	} else if (!strcmp(btnPressed, "OFF") || !strcmp(btnPressed, "OPEN")) {
+		value = false;
+	}
+
+	if (actuator == actuators.pump) {
+		if (value) {
+			sendActionCommandToEventBus(Action::TurnPumpOn);
+		} else {
+			sendActionCommandToEventBus(Action::TurnPumpOff);
+		}
+	} else if (actuator == actuators.lamp) {
+		if (value) {
+			sendActionCommandToEventBus(Action::TurnLampOn);
+		} else {
+			sendActionCommandToEventBus(Action::TurnLampOff);
+		}
+	} else if (actuator == actuators.dam) {
+		if (value) {
+			sendActionCommandToEventBus(Action::OpenDam);
+		} else {
+			sendActionCommandToEventBus(Action::CloseDam);
+		}
+	} else if (actuator == actuators.aux) {
+		return;
+	} else {
+		return;
+	}
+}
+
+void actuatorPressedEventHandler(lv_event_t *e)
+{
+	const lv_obj_t *target = lv_event_get_current_target(e);
+	static const char *btns[] = {"ON", "OFF", ""};
+	static const char *damBtns[] = {"CLOSE", "OPEN", ""};
+	const PumpModes mode = static_cast<PumpModes>(currentSettings.pump.mode);
+
+	if (mode == PumpModes::Maintance && target == actuators.pump && isLowerPresent) {
+		activeMessageBox = lv_msgbox_create(NULL, "PUMP", "Pump manual action", btns, true);
+	} else if (mode == PumpModes::Maintance && target == actuators.lamp && isUpperPresent) {
+		activeMessageBox = lv_msgbox_create(NULL, "LAMP", "Lamp manual action", btns, true);
+	} else if (mode == PumpModes::Maintance && target == actuators.dam && isUpperPresent) {
+		activeMessageBox = lv_msgbox_create(NULL, "DAM", "Dam manual action", damBtns, true);
+	} else if (mode == PumpModes::Maintance && target == actuators.aux && isAuxPresent) {
+		activeMessageBox = lv_msgbox_create(NULL, "AUX", "Aux manual action", btns, true);
+
+	} else {
+		return;
+	}
+	if (activeMessageBox != NULL) {
+		lv_obj_add_event_cb(activeMessageBox, actuatorPressedButtonEventHandler, LV_EVENT_VALUE_CHANGED, &target);
+		lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 	}
 }
 
@@ -898,17 +931,6 @@ struct Settings *saveParameters()
 	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
 
-	// Настроим Maintance при сохранении чтобы произошли все корректные переходы
-	if (manualPumpOnButton != NULL) {
-		if (currentSettings.pump.mode == PumpModes::Maintance) {
-			lv_obj_clear_state(manualPumpOnButton, LV_STATE_DISABLED);
-			lv_obj_clear_state(manualPumpOffButton, LV_STATE_DISABLED);
-		} else {
-			lv_obj_add_state(manualPumpOnButton, LV_STATE_DISABLED);
-			lv_obj_add_state(manualPumpOffButton, LV_STATE_DISABLED);
-		}
-	}
-
 	return &currentSettings;
 }
 
@@ -1147,6 +1169,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_t *actuatorPumpLabel = lv_label_create(actuators.pump);
 	lv_label_set_text(actuatorPumpLabel, "P");
 	lv_obj_align(actuatorPumpLabel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(actuators.pump, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.lamp = lv_obj_create(parent);
 	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 45, aYOffset);
@@ -1156,6 +1179,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_t *actuatorLampLabel = lv_label_create(actuators.lamp);
 	lv_label_set_text(actuatorLampLabel, "L");
 	lv_obj_align(actuatorLampLabel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(actuators.lamp, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.topLev = lv_obj_create(parent);
 	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -45, aYOffset);
@@ -1165,6 +1189,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_t *actuatorTopLevLabel = lv_label_create(actuators.topLev);
 	lv_label_set_text(actuatorTopLevLabel, "T");
 	lv_obj_align(actuatorTopLevLabel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(actuators.topLev, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.dam = lv_obj_create(parent);
 	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -45, aYOffset + 45);
@@ -1174,6 +1199,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_t *actuatorDamLabel = lv_label_create(actuators.dam);
 	lv_label_set_text(actuatorDamLabel, "D");
 	lv_obj_align(actuatorDamLabel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(actuators.dam, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.aux = lv_obj_create(parent);
 	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 23, aYOffset + 45);
@@ -1183,6 +1209,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
 	lv_label_set_text(actuatorAuxLabel, "AUX");
 	lv_obj_align(actuatorAuxLabel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(actuators.aux, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 }
 
 void mainPageCreate(lv_obj_t *parent)
@@ -1678,42 +1705,6 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_set_size(buttonContainer, 315, 120);
 	lv_obj_set_layout(buttonContainer, LV_LAYOUT_GRID);
 	lv_obj_center(buttonContainer);
-
-	manualPumpOnButton = lv_btn_create(buttonContainer);
-	lv_obj_t *manualPumpOnButtonLabel = lv_label_create(manualPumpOnButton);
-	lv_label_set_text(manualPumpOnButtonLabel, "Pump ON");
-	lv_obj_align_to(manualPumpOnButtonLabel, manualPumpOnButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_center(manualPumpOnButtonLabel);
-	lv_obj_add_event_cb(manualPumpOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOnEnum);
-	lv_obj_add_event_cb(manualPumpOnButton, processTap, LV_EVENT_CLICKED, NULL);
-	lv_obj_set_grid_cell(manualPumpOnButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-
-	manualPumpOffButton = lv_btn_create(buttonContainer);
-	lv_obj_t *manualPumpOffButtonLabel = lv_label_create(manualPumpOffButton);
-	lv_label_set_text(manualPumpOffButtonLabel, "Pump OFF");
-	lv_obj_align_to(manualPumpOffButtonLabel, manualPumpOffButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_center(manualPumpOffButtonLabel);
-	lv_obj_add_event_cb(manualPumpOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionPumpOffEnum);
-	lv_obj_add_event_cb(manualPumpOffButton, processTap, LV_EVENT_CLICKED, NULL);
-	lv_obj_set_grid_cell(manualPumpOffButton, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
-
-	manualLampOnButton = lv_btn_create(buttonContainer);
-	lv_obj_t *manualLampOnButtonLabel = lv_label_create(manualLampOnButton);
-	lv_label_set_text(manualLampOnButtonLabel, "Lamp ON");
-	lv_obj_align_to(manualLampOnButtonLabel, manualLampOnButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_center(manualLampOnButtonLabel);
-	lv_obj_add_event_cb(manualLampOnButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOnEnum);
-	lv_obj_add_event_cb(manualLampOnButton, processTap, LV_EVENT_CLICKED, NULL);
-	lv_obj_set_grid_cell(manualLampOnButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 0, 1);
-
-	manualLampOffButton = lv_btn_create(buttonContainer);
-	lv_obj_t *manualLampOffButtonLabel = lv_label_create(manualLampOffButton);
-	lv_label_set_text(manualLampOffButtonLabel, "Lamp OFF");
-	lv_obj_align_to(manualLampOffButtonLabel, manualLampOffButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_center(manualLampOffButtonLabel);
-	lv_obj_add_event_cb(manualLampOffButton, manualActionEvent, LV_EVENT_CLICKED, &manualActionLampOffEnum);
-	lv_obj_add_event_cb(manualLampOffButton, processTap, LV_EVENT_CLICKED, NULL);
-	lv_obj_set_grid_cell(manualLampOffButton, LV_GRID_ALIGN_STRETCH, 1, 1, LV_GRID_ALIGN_STRETCH, 1, 1);
 
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);

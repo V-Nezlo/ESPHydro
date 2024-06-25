@@ -37,11 +37,12 @@ esp_pthread_cfg_t updateThreadConfig(const char *name, int core_id, int stack, i
 void displayThreadFunc(DisplayDriver *aDriver)
 {
 	static bool inited{false};
-	const auto time = TimeWrapper::seconds();
-	if (!inited && time > std::chrono::seconds{5}) {
-		// Показываем начальный экран ограниченное время
-		displayMainPage();
-		inited = true; // Больше не читаем время
+	if (!inited) {
+		const auto time = TimeWrapper::seconds();
+		if (time > std::chrono::seconds{5}) {
+			displayMainPage();
+			inited = true; // Больше не читаем время
+		}
 	}
 
 	while(true) {
