@@ -432,10 +432,10 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 		updateMainPagePumpTypeLabel();
 		sendParametersToEventBus(newSettings);
 
-		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, false);
+		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, true);
 	} else {
 		enterParameters(&currentSettings);
-		activeMessageBox = lv_msgbox_create(NULL, "Parameters were not applied", "Tap to continue", NULL, false);
+		activeMessageBox = lv_msgbox_create(NULL, "Parameters were not applied", "Tap to continue", NULL, true);
 	}
 
 	lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
@@ -672,6 +672,11 @@ void actuatorPressedEventHandler(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, actuatorPressedButtonEventHandler, LV_EVENT_VALUE_CHANGED, &target);
 		lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 	}
+}
+
+void returnToSettingsEventHandler(lv_event_t *)
+{
+	lv_scr_load(settingsPage);
 }
 
 /********************************
@@ -1443,6 +1448,14 @@ void createAdditionalPanels()
 	lv_obj_t *lampSettingsOffLabel = lv_label_create(lampSettingsScr);
 	lv_label_set_text(lampSettingsOffLabel, "Lamp Off - HH:MM");
 
+	lv_obj_t *returnButton = lv_btn_create(pumpSettingsScr);
+	lv_obj_set_size(returnButton, 70, 70);
+	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
+	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
+	lv_obj_t *returnButtonLabel = lv_label_create(returnButton);
+	lv_label_set_text(returnButtonLabel, "Return");
+	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
+
 #define CLOCK_SET_TA_WIDHT 45
 #define CLOCK_SET_TA_HEIGH 45
 
@@ -1503,6 +1516,14 @@ void createAdditionalPanels()
 	lv_obj_align_to(lampOnMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 2);
 	lv_obj_align_to(lampOffMinTa, lampSettingsScr, LV_ALIGN_TOP_RIGHT, -230, 47);
 
+	returnButton = lv_btn_create(lampSettingsScr);
+	lv_obj_set_size(returnButton, 70, 70);
+	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
+	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
+	returnButtonLabel = lv_label_create(returnButton);
+	lv_label_set_text(returnButtonLabel, "Return");
+	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
+
 	// Панель установки времени
 	setTimeHourTa = lv_textarea_create(curTimeSettingsScr);
 	lv_textarea_set_accepted_chars(setTimeHourTa, "0123456789");
@@ -1553,6 +1574,14 @@ void createAdditionalPanels()
 	lv_obj_align_to(setTimeMinTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 70, 20);
 	lv_obj_align_to(setTimeSecTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 120, 20);
 	lv_obj_align_to(sendNewTimeButton, curTimeSettingsScr, LV_ALIGN_TOP_RIGHT, -170, 20);
+
+	returnButton = lv_btn_create(curTimeSettingsScr);
+	lv_obj_set_size(returnButton, 70, 70);
+	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
+	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
+	returnButtonLabel = lv_label_create(returnButton);
+	lv_label_set_text(returnButtonLabel, "Return");
+	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
 }
 
 void menuCreate(lv_obj_t *parent)
@@ -1566,7 +1595,7 @@ void menuCreate(lv_obj_t *parent)
 		lv_obj_set_style_bg_color(menu, lv_color_darken(lv_obj_get_style_bg_color(menu, 0), 50), 0);
 	}
 
-	//Сознательно отключаю кнопку назад, поскольку это будет отдельный пункт меню
+	// Сознательно отключаю кнопку назад, поскольку это будет отдельный пункт меню
 	lv_menu_set_mode_root_back_btn(menu, LV_MENU_ROOT_BACK_BTN_DISABLED);
 	lv_obj_set_size(menu, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
 	lv_obj_center(menu);
@@ -1713,19 +1742,10 @@ void menuCreate(lv_obj_t *parent)
 	section = lv_menu_section_create(subManualPage);
 	lv_obj_clear_flag(section, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 
-	static const int16_t containerColumnDescriber[] = {133, 133, LV_GRID_TEMPLATE_LAST};
-	static const int16_t containerRowDescriber[] = {35, 35, LV_GRID_TEMPLATE_LAST};
-	lv_obj_t *buttonContainer = lv_obj_create(section);
-    lv_obj_set_style_grid_column_dsc_array(buttonContainer, containerColumnDescriber, 0);
-    lv_obj_set_style_grid_row_dsc_array(buttonContainer, containerRowDescriber, 0);
-	lv_obj_set_size(buttonContainer, 315, 120);
-	lv_obj_set_layout(buttonContainer, LV_LAYOUT_GRID);
-	lv_obj_center(buttonContainer);
-
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
-	lv_obj_set_size(loggingTextarea, 315, 125);
+	lv_obj_set_size(loggingTextarea, 315, 250);
 	lv_textarea_set_text(loggingTextarea, "");
 
 	// ******************************** МЕНЮ ABOUT **********************************
