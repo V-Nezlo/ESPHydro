@@ -114,4 +114,9 @@ void sendNewBrightnessToEventBus(uint8_t aDuty);
 void writeToLoggingPanel(const char *aData, int aSize);
 void sendTapSoundToEventBus();
 
+static inline bool isPlaceholder(const char *aText)
+{
+	return (!strncmp(aText, "", 1));
+}
+
 #endif // INCLUDE_UI_HPP_

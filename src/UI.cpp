@@ -449,12 +449,28 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 
 void setTimeButtonEventHandler(lv_event_t *aEvent)
 {
-	Time time;
-	time.hour = atoi(lv_textarea_get_text(setTimeHourTa));
-	time.minutes = atoi(lv_textarea_get_text(setTimeMinTa));
-	time.seconds = atoi(lv_textarea_get_text(setTimeSecTa));
+	const char *textHour = lv_textarea_get_text(setTimeHourTa);
+	const char *textMin = lv_textarea_get_text(setTimeMinTa);
+	const char *textSec = lv_textarea_get_text(setTimeSecTa);
 
-	sendNewTimeToEventBus(time);
+	if (isPlaceholder(textHour) || isPlaceholder(textMin) || isPlaceholder(textSec)) {
+		activeMessageBox = lv_msgbox_create(NULL, "Error", "Fill all fields!", NULL, true);
+		lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
+	} else {
+		Time time;
+		time.hour = atoi(textHour);
+		time.minutes = atoi(textMin);
+		time.seconds = atoi(textSec);
+
+		sendNewTimeToEventBus(time);
+		// Возврат к меню настроек
+		lv_scr_load(settingsPage);
+
+		// Сброс текстовых полей после установки времени
+		lv_textarea_set_text(setTimeHourTa, "");
+		lv_textarea_set_text(setTimeMinTa, "");
+		lv_textarea_set_text(setTimeSecTa, "");
+	}
 }
 
 void brightnessSliderEventHandler(lv_event_t *)
@@ -1587,7 +1603,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// Выпадающий список с типами гидропоник
-	createText(section, NULL, "Pump type", LV_MENU_ITEM_BUILDER_VARIANT_1);
+	createText(section, NULL, "Hydroponic type", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	pumpTypeDD = lv_dropdown_create(section);
 	lv_dropdown_set_options(pumpTypeDD,
 		"Normal\n"
