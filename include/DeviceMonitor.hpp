@@ -18,7 +18,6 @@
 class DeviceMonitor : public AbstractEventObserver, public AbstractLinearTask {
 public:
 	DeviceMonitor();
-
 	EventResult handleEvent(Event *e) override;
 	void process(std::chrono::milliseconds aCurrentTime);
 

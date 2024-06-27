@@ -29,46 +29,54 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 	private:
 		milliseconds lastActionTime;
 		LedState state;
-		Gpio &gpio;
+		Gpio *gpio;
 		bool active;
+		const bool present;
 
 	public:
-		SmartLed(Gpio &aGpio):
+		SmartLed(Gpio *aGpio):
 			lastActionTime{0},
 			state{LedState::Disabled},
 			gpio{aGpio},
-			active{false}
+			active{false},
+			present{aGpio != nullptr}
 		{
-			gpio.reset();
+			if (gpio != nullptr) {
+				gpio->reset();
+			}
 		}
 
 		void process(milliseconds aCurrentTime)
 		{
+			if (!present) {
+				return;
+			}
+
 			switch(state) {
 				case LedState::Disabled:
 					if (active) {
 						active = false;
-						gpio.reset();
+						gpio->reset();
 					}
 					break;
 				case LedState::Stably:
 					if (!active) {
 						active = true;
-						gpio.set();
+						gpio->set();
 					}
 					break;
 				case LedState::FastBlinking:
 					if (aCurrentTime > lastActionTime + milliseconds{200}) {
 						lastActionTime = aCurrentTime;
 						active = !active;
-						gpio.setState(active);
+						gpio->setState(active);
 					}
 					break;
 				case LedState::LongBlinking:
 					if (aCurrentTime > lastActionTime + milliseconds{1000}) {
 						lastActionTime = aCurrentTime;
 						active = !active;
-						gpio.setState(active);
+						gpio->setState(active);
 					}
 					break;
 			}
@@ -78,22 +86,27 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 		{
 			state = aState;
 		}
+
+		bool isPresent()
+		{
+			return present;
+		}
 	};
 
 public:
-	LedController(Gpio &aGreen, Gpio &aBlue, Gpio &aRed):
+	LedController(Gpio *aGreen, Gpio *aBlue, Gpio *aRed):
 		green{aGreen},
 		blue{aBlue},
 		red{aRed}
 	{
-
+		green.setState(SmartLed::LedState::LongBlinking);
 	}
 
 	void process(milliseconds aCurrentTime) override
 	{
-		green.process(aCurrentTime);
-		blue.process(aCurrentTime);
-		red.process(aCurrentTime);
+		if (green.isPresent()) green.process(aCurrentTime);
+		if (blue.isPresent()) blue.process(aCurrentTime);
+		if (red.isPresent()) red.process(aCurrentTime);
 	}
 
 	EventResult handleEvent(Event *e) override
@@ -102,8 +115,10 @@ public:
 			case EventType::UpdateSystemData:
 				if (e->data.systemData.flags != 0) {
 					red.setState(SmartLed::LedState::LongBlinking);
+					green.setState(SmartLed::LedState::FastBlinking);
 				} else {
 					red.setState(SmartLed::LedState::Disabled);
+					green.setState(SmartLed::LedState::LongBlinking);
 				}
 				return EventResult::PASS_ON;
 			default:

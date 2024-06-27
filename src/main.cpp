@@ -36,16 +36,17 @@ esp_pthread_cfg_t updateThreadConfig(const char *name, int core_id, int stack, i
 
 void displayThreadFunc(DisplayDriver *aDriver)
 {
-	static bool inited{false};
-	if (!inited) {
-		const auto time = TimeWrapper::seconds();
-		if (time > std::chrono::seconds{5}) {
-			displayMainPage();
-			inited = true; // Больше не читаем время
-		}
-	}
-
 	while(true) {
+		static bool inited{false};
+
+		if (!inited) {
+			const auto time = TimeWrapper::seconds();
+			if (time > std::chrono::seconds{5}) {
+				displayMainPage();
+				inited = true;
+			}
+		}
+
 		lv_timer_handler();
 		lv_tick_inc(5);
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -73,8 +74,7 @@ void app_main()
 
 	Gpio greenLed{Hardware::Leds::kGreenPin, GPIO_MODE_OUTPUT};
 	Gpio blueLed{Hardware::Leds::kBluePin, GPIO_MODE_OUTPUT};
-	Gpio redLed{Hardware::Leds::kRedPin, GPIO_MODE_OUTPUT};
-	LedController ledControl(greenLed, blueLed, redLed);
+	LedController ledControl(&greenLed, &blueLed, nullptr);
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
