@@ -194,6 +194,7 @@ LV_IMG_DECLARE(EbbSwing);
 LV_IMG_DECLARE(PumpActuator);
 LV_IMG_DECLARE(LampActuator);
 LV_IMG_DECLARE(DamActuator);
+LV_IMG_DECLARE(FloatActuator);
 
 void sendParametersToEventBus(Settings * aSettings)
 {
@@ -1235,9 +1236,11 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_set_size(actuators.topLev, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.topLev, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.topLev, &styleDisabled, 0);
-	lv_obj_t *actuatorTopLevLabel = lv_label_create(actuators.topLev);
-	lv_label_set_text(actuatorTopLevLabel, "T");
-	lv_obj_align(actuatorTopLevLabel, LV_ALIGN_CENTER, 0, 0);
+
+	lv_obj_t *floatActuatorImage = lv_img_create(actuators.topLev);
+	lv_img_set_src(floatActuatorImage, &FloatActuator);
+	lv_obj_center(floatActuatorImage);
+
 	lv_obj_add_event_cb(actuators.topLev, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.dam = lv_obj_create(parent);
