@@ -32,7 +32,7 @@ lv_obj_t *createText(lv_obj_t * parent, const char * icon, const char * txt, lv_
 
 void createAdditionalPanels();
 void settingsButtonEvent(lv_event_t * e);
-void uiInit(bool aDarkTheme);
+void uiInit();
 void displayMainPage();
 
 void textAreasReset(uint8_t aArea);

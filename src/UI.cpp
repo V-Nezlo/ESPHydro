@@ -52,12 +52,12 @@ lv_obj_t *curTimeSettingsScr;
 // Стили
 lv_style_t style_menu_panel;
 lv_style_t style_menu_subpanel;
-lv_style_t style_water_meter;
 
 lv_style_t styleDisabled;
 lv_style_t styleWarning;
 lv_style_t styleError;
 lv_style_t styleGood;
+lv_style_t styleImageHolder;
 
 lv_style_t styleActuatorActivated;
 lv_style_t styleActuatorNotActivated;
@@ -75,9 +75,8 @@ lv_obj_t *panel1;
 lv_obj_t *panel2;
 lv_obj_t *panel3;
 // Панель 1
-lv_obj_t *waterLevelLabel;
-lv_obj_t *waterMeter;
 lv_obj_t *currentModeLabel;
+lv_obj_t *hydroTypeImage;
 
 struct {
 	lv_obj_t *pump;
@@ -92,6 +91,7 @@ lv_obj_t *currentTimePanel;
 lv_obj_t *mainPageTime;
 lv_obj_t *mainPagePH;
 lv_obj_t *mainPagePPM;
+lv_obj_t *waterLevelLabel;
 lv_obj_t *mainPageWaterTemp;
 lv_obj_t *mainPageWaterLev;
 
@@ -176,31 +176,47 @@ uint8_t exitWithSaveButtonCallbackData = 1;
 uint8_t exitWithoutSaveButtonCallbackData = 2;
 lv_obj_t *activeMessageBox;
 // Временный буффер для перевода всяких штук в другие штуки
-
 Settings currentSettings;
+// Используемые цвета
+static const lv_color_t kMainBGColor = lv_color_hex(0x5F88C0);
+static const lv_color_t kLightGreyColor = lv_color_hex(0xD9D9D9);
+static const lv_color_t kGreyColor = lv_color_hex(0x8097BA);
+static const lv_color_t kYellowColor = lv_color_hex(0xC7D740);
+static const lv_color_t kRedColor = lv_color_hex(0xAF4460);
+static const lv_color_t kGreenColor = lv_color_hex(0x30C460);
+static const lv_color_t kBlueColor = lv_color_hex(0x4FB2D1);
+// Картинки типов гидропоники
+LV_IMG_DECLARE(Drip);
+LV_IMG_DECLARE(EbbDam);
+LV_IMG_DECLARE(EbbNormal);
+LV_IMG_DECLARE(EbbSwing);
+// Картинки актуаторовы
+LV_IMG_DECLARE(PumpActuator);
+LV_IMG_DECLARE(LampActuator);
+LV_IMG_DECLARE(DamActuator);
 
-void sendParametersToEventBus(Settings *aSettings)
+void sendParametersToEventBus(Settings * aSettings)
 {
-    Event ev;
-    ev.type = EventType::SettingsUpdated;
-    ev.data.settings = *aSettings;
-    EventBus::throwEvent(&ev, nullptr);
+	Event ev;
+	ev.type = EventType::SettingsUpdated;
+	ev.data.settings = *aSettings;
+	EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendActionCommandToEventBus(Action aAction)
 {
-    Event ev;
-    ev.type = EventType::ActionRequest;
-    ev.data.action = aAction;
-    EventBus::throwEvent(&ev, nullptr);
+	Event ev;
+	ev.type = EventType::ActionRequest;
+	ev.data.action = aAction;
+	EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendNewTimeToEventBus(Time aTime)
 {
-    Event ev;
-    ev.type = EventType::SetCurrentTime;
-    ev.data.time = aTime;
-    EventBus::throwEvent(&ev, nullptr);
+	Event ev;
+	ev.type = EventType::SetCurrentTime;
+	ev.data.time = aTime;
+	EventBus::throwEvent(&ev, nullptr);
 }
 
 void sendNewBrightnessToEventBus(uint8_t aDuty)
@@ -230,7 +246,7 @@ void sendTapSoundToEventBus()
 extern "C" {
 #endif
 
-void uiInit(bool aDarkTheme)
+void uiInit()
 {
 	// Выбираем размер экрана, у нас будет 320х480
 	if (LV_HOR_RES <= 320)
@@ -243,14 +259,7 @@ void uiInit(bool aDarkTheme)
 	// Выбираем шрифты
 	font_large = LV_FONT_DEFAULT;
 	font_normal = LV_FONT_DEFAULT;
-
-	if (aDarkTheme) {
-		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_CYAN), lv_palette_main(LV_PALETTE_CYAN),
-			LV_THEME_DEFAULT_TRANSITION_TIME, font_large);
-	} else {
-		mainTheme = lv_theme_default_init(NULL, lv_palette_main(LV_PALETTE_LIGHT_GREEN),
-			lv_palette_main(LV_PALETTE_RED), LV_THEME_DEFAULT_DARK, font_large);
-	}
+	mainTheme = lv_theme_default_init(NULL, kMainBGColor, kBlueColor, false, font_large);
 
 	// Стили
 	lv_style_init(&style_text_muted);
@@ -273,6 +282,7 @@ void uiInit(bool aDarkTheme)
 
 	// Создаем два экрана, один главный, другой - с настройками
 	mainPage = lv_obj_create(NULL);
+	lv_obj_add_style(mainPage, &style_menu_panel, 0);
 	settingsPage = lv_obj_create(NULL);
 
 	// Доп экраны для раздельных настроек
@@ -427,19 +437,12 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	if (*operation == 1) {
-
 		auto newSettings = saveParameters();
 		updateMainPagePumpTypeLabel();
 		sendParametersToEventBus(newSettings);
-
-		activeMessageBox = lv_msgbox_create(NULL, "Parameters applied", "Tap to continue", NULL, true);
 	} else {
 		enterParameters(&currentSettings);
-		activeMessageBox = lv_msgbox_create(NULL, "Parameters were not applied", "Tap to continue", NULL, true);
 	}
-
-	lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
 
 	lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(menu), 0), 0), LV_EVENT_CLICKED, NULL);
 	lv_menu_set_page(menu, NULL);
@@ -971,26 +974,41 @@ void updateMainPagePumpTypeLabel()
 			lv_label_set_text(currentModeLabel, "EBB-FLOW");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+
+			lv_img_set_src(hydroTypeImage, &EbbNormal);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
 			break;
 		case PumpModes::EBBSwing: // Swing
 			lv_label_set_text(currentModeLabel, "EBB-SWING");
 			lv_obj_center(currentModeLabel);
 			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+
+			lv_img_set_src(hydroTypeImage, &EbbSwing);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
 			break;
 		case PumpModes::Maintance: // Maintance
 			lv_label_set_text(currentModeLabel, "MAINTANCE");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+
+			lv_img_set_src(hydroTypeImage, &EbbNormal);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
 			break;
 		case PumpModes::Dripping: // Drip
 			lv_label_set_text(currentModeLabel, "DRIP");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+
+			lv_img_set_src(hydroTypeImage, &Drip);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
 			break;
 		case PumpModes::EBBDam: // DAM
 			lv_label_set_text(currentModeLabel, "EBB-DAM");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
+
+			lv_img_set_src(hydroTypeImage, &EbbDam);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
 			break;
 		default:
 			break;
@@ -1086,124 +1104,134 @@ void styleInitialize()
 {
 	// Настройка стилей - основной стиль
 	lv_style_init(&style_menu_panel);
-	lv_style_set_bg_color(&style_menu_panel, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_color(&style_menu_panel, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_bg_color(&style_menu_panel, kMainBGColor);
+	lv_style_set_border_color(&style_menu_panel, kMainBGColor);
 	lv_style_set_border_width(&style_menu_panel, 0);
 	lv_style_set_radius(&style_menu_panel, 0);
-	lv_style_set_shadow_width(&style_menu_panel, 10);
-	lv_style_set_shadow_ofs_y(&style_menu_panel, 5);
-	lv_style_set_shadow_opa(&style_menu_panel, LV_OPA_50);
-	lv_style_set_text_color(&style_menu_panel, lv_color_white());
+	lv_style_set_shadow_width(&style_menu_panel, 0);
+	lv_style_set_shadow_ofs_y(&style_menu_panel, 0);
+	lv_style_set_shadow_opa(&style_menu_panel, LV_OPA_20);
+	lv_style_set_text_color(&style_menu_panel, lv_color_black());
 
 	// Стили субпанелей
 	lv_style_init(&style_menu_subpanel);
-	lv_style_set_bg_color(&style_menu_subpanel, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_color(&style_menu_subpanel, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_bg_color(&style_menu_subpanel, kLightGreyColor);
+	lv_style_set_border_color(&style_menu_subpanel, kLightGreyColor);
 	lv_style_set_border_width(&style_menu_subpanel, 0);
-	lv_style_set_radius(&style_menu_subpanel, 0);
-	lv_style_set_shadow_width(&style_menu_subpanel, 10);
-	lv_style_set_shadow_ofs_y(&style_menu_subpanel, 5);
-	lv_style_set_shadow_opa(&style_menu_subpanel, LV_OPA_50);
-	lv_style_set_text_color(&style_menu_subpanel, lv_color_white());
-
-	// Стиль для ватерметра
-	lv_style_init(&style_water_meter);
-	lv_style_set_bg_color(&style_water_meter, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_width(&style_water_meter, 0);
+	lv_style_set_radius(&style_menu_subpanel, 3);
+	lv_style_set_shadow_width(&style_menu_subpanel, 4);
+	lv_style_set_shadow_ofs_y(&style_menu_subpanel, 4);
+	lv_style_set_shadow_opa(&style_menu_subpanel, LV_OPA_20);
+	lv_style_set_text_color(&style_menu_subpanel, lv_color_black());
 
 	// Стиль - disabled
 	lv_style_init(&styleDisabled);
-	lv_style_set_bg_color(&styleDisabled, lv_palette_main(LV_PALETTE_GREY));
-	lv_style_set_border_color(&styleDisabled, lv_palette_lighten(LV_PALETTE_GREY, 3));
+	lv_style_set_bg_color(&styleDisabled, kGreyColor);
+	lv_style_set_border_color(&styleDisabled, kGreyColor);
 	lv_style_set_border_width(&styleDisabled, 0);
-	lv_style_set_radius(&styleDisabled, 0);
-	lv_style_set_shadow_width(&styleDisabled, 10);
-	lv_style_set_shadow_ofs_y(&styleDisabled, 5);
-	lv_style_set_shadow_opa(&styleDisabled, LV_OPA_50);
-	lv_style_set_text_color(&styleDisabled, lv_color_white());
+	lv_style_set_radius(&styleDisabled, 3);
+	lv_style_set_shadow_width(&styleDisabled, 4);
+	lv_style_set_shadow_ofs_y(&styleDisabled, 4);
+	lv_style_set_shadow_opa(&styleDisabled, LV_OPA_20);
+	lv_style_set_text_color(&styleDisabled, lv_color_black());
 
 	// Стиль - warning
 	lv_style_init(&styleWarning);
-	lv_style_set_bg_color(&styleWarning, lv_palette_main(LV_PALETTE_YELLOW));
-	lv_style_set_border_color(&styleWarning, lv_palette_lighten(LV_PALETTE_YELLOW, 3));
+	lv_style_set_bg_color(&styleWarning, kYellowColor);
+	lv_style_set_border_color(&styleWarning, kYellowColor);
 	lv_style_set_border_width(&styleWarning, 0);
-	lv_style_set_radius(&styleWarning, 0);
-	lv_style_set_shadow_width(&styleWarning, 10);
-	lv_style_set_shadow_ofs_y(&styleWarning, 5);
-	lv_style_set_shadow_opa(&styleWarning, LV_OPA_50);
-	lv_style_set_text_color(&styleWarning, lv_color_white());
+	lv_style_set_radius(&styleWarning, 3);
+	lv_style_set_shadow_width(&styleWarning, 4);
+	lv_style_set_shadow_ofs_y(&styleWarning, 4);
+	lv_style_set_shadow_opa(&styleWarning, LV_OPA_20);
+	lv_style_set_text_color(&styleWarning, lv_color_black());
 
 	// Стиль - error
 	lv_style_init(&styleError);
-	lv_style_set_bg_color(&styleError, lv_palette_main(LV_PALETTE_RED));
-	lv_style_set_border_color(&styleError, lv_palette_lighten(LV_PALETTE_RED, 3));
+	lv_style_set_bg_color(&styleError, kRedColor);
+	lv_style_set_border_color(&styleError, kRedColor);
 	lv_style_set_border_width(&styleError, 0);
-	lv_style_set_radius(&styleError, 0);
-	lv_style_set_shadow_width(&styleError, 10);
-	lv_style_set_shadow_ofs_y(&styleError, 5);
-	lv_style_set_shadow_opa(&styleError, LV_OPA_50);
-	lv_style_set_text_color(&styleError, lv_color_white());
+	lv_style_set_radius(&styleError, 3);
+	lv_style_set_shadow_width(&styleError, 4);
+	lv_style_set_shadow_ofs_y(&styleError, 4);
+	lv_style_set_shadow_opa(&styleError, LV_OPA_20);
+	lv_style_set_text_color(&styleError, lv_color_black());
 
 	// Стиль - good
 	lv_style_init(&styleGood);
-	lv_style_set_bg_color(&styleGood, lv_palette_main(LV_PALETTE_GREEN));
-	lv_style_set_border_color(&styleGood, lv_palette_lighten(LV_PALETTE_GREEN, 3));
+	lv_style_set_bg_color(&styleGood, kGreenColor);
+	lv_style_set_border_color(&styleGood, kGreenColor);
 	lv_style_set_border_width(&styleGood, 0);
-	lv_style_set_radius(&styleGood, 0);
-	lv_style_set_shadow_width(&styleGood, 10);
-	lv_style_set_shadow_ofs_y(&styleGood, 5);
-	lv_style_set_shadow_opa(&styleGood, LV_OPA_50);
-	lv_style_set_text_color(&styleGood, lv_color_white());
+	lv_style_set_radius(&styleGood, 3);
+	lv_style_set_shadow_width(&styleGood, 4);
+	lv_style_set_shadow_ofs_y(&styleGood, 4);
+	lv_style_set_shadow_opa(&styleGood, LV_OPA_20);
+	lv_style_set_text_color(&styleGood, lv_color_black());
 
 	// Стиль - not activated
 	lv_style_init(&styleActuatorNotActivated);
-	lv_style_set_bg_color(&styleActuatorNotActivated, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
-	lv_style_set_border_color(&styleActuatorNotActivated, lv_palette_lighten(LV_PALETTE_LIGHT_GREEN, 3));
+	lv_style_set_bg_color(&styleActuatorNotActivated, kGreenColor);
+	lv_style_set_border_color(&styleActuatorNotActivated, kGreenColor);
 	lv_style_set_border_width(&styleActuatorNotActivated, 0);
-	lv_style_set_radius(&styleActuatorNotActivated, 0);
-	lv_style_set_shadow_width(&styleActuatorNotActivated, 10);
-	lv_style_set_shadow_ofs_y(&styleActuatorNotActivated, 5);
-	lv_style_set_shadow_opa(&styleActuatorNotActivated, LV_OPA_50);
-	lv_style_set_text_color(&styleActuatorNotActivated, lv_color_white());
+	lv_style_set_radius(&styleActuatorNotActivated, 3);
+	lv_style_set_shadow_width(&styleActuatorNotActivated, 4);
+	lv_style_set_shadow_ofs_y(&styleActuatorNotActivated, 4);
+	lv_style_set_shadow_opa(&styleActuatorNotActivated, LV_OPA_20);
+	lv_style_set_text_color(&styleActuatorNotActivated, lv_color_black());
 
 	// Стиль - activated
 	lv_style_init(&styleActuatorActivated);
-	lv_style_set_bg_color(&styleActuatorActivated, lv_palette_main(LV_PALETTE_LIGHT_BLUE));
-	lv_style_set_border_color(&styleActuatorActivated, lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 3));
+	lv_style_set_bg_color(&styleActuatorActivated, kBlueColor);
+	lv_style_set_border_color(&styleActuatorActivated, kBlueColor);
 	lv_style_set_border_width(&styleActuatorActivated, 0);
-	lv_style_set_radius(&styleActuatorActivated, 0);
-	lv_style_set_shadow_width(&styleActuatorActivated, 10);
-	lv_style_set_shadow_ofs_y(&styleActuatorActivated, 5);
-	lv_style_set_shadow_opa(&styleActuatorActivated, LV_OPA_50);
-	lv_style_set_text_color(&styleActuatorActivated, lv_color_white());
+	lv_style_set_radius(&styleActuatorActivated, 3);
+	lv_style_set_shadow_width(&styleActuatorActivated, 4);
+	lv_style_set_shadow_ofs_y(&styleActuatorActivated, 4);
+	lv_style_set_shadow_opa(&styleActuatorActivated, LV_OPA_20);
+	lv_style_set_text_color(&styleActuatorActivated, lv_color_black());
+
+	// Стиль - хранитель картинок
+	lv_style_init(&styleImageHolder);
+	lv_style_set_bg_color(&styleImageHolder, kLightGreyColor);
+	lv_style_set_border_color(&styleImageHolder, kLightGreyColor);
+	lv_style_set_border_width(&styleImageHolder, 0);
+	lv_style_set_radius(&styleImageHolder, 60);
+	lv_style_set_shadow_width(&styleImageHolder, 4);
+	lv_style_set_shadow_ofs_y(&styleImageHolder, 4);
+	lv_style_set_shadow_opa(&styleImageHolder, LV_OPA_20);
+	lv_style_set_text_color(&styleImageHolder, lv_color_black());
 }
 
 void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 {
-	static constexpr uint8_t kPanelSize = 40;
+	static constexpr uint8_t kPanelSize = 36;
 
 	actuators.pump = lv_obj_create(parent);
 	lv_obj_align(actuators.pump, LV_ALIGN_CENTER, 0, aYOffset);
 	lv_obj_set_size(actuators.pump, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.pump, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.pump, &styleDisabled, 0);
-	lv_obj_t *actuatorPumpLabel = lv_label_create(actuators.pump);
-	lv_label_set_text(actuatorPumpLabel, "P");
-	lv_obj_align(actuatorPumpLabel, LV_ALIGN_CENTER, 0, 0);
+
+	lv_obj_t *pumpActuatorImage = lv_img_create(actuators.pump);
+	lv_img_set_src(pumpActuatorImage, &PumpActuator);
+	lv_obj_center(pumpActuatorImage);
+
 	lv_obj_add_event_cb(actuators.pump, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.lamp = lv_obj_create(parent);
-	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 45, aYOffset);
+	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 46, aYOffset);
 	lv_obj_set_size(actuators.lamp, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.lamp, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.lamp, &styleDisabled, 0);
-	lv_obj_t *actuatorLampLabel = lv_label_create(actuators.lamp);
-	lv_label_set_text(actuatorLampLabel, "L");
-	lv_obj_align(actuatorLampLabel, LV_ALIGN_CENTER, 0, 0);
+
+	lv_obj_t *lampActuatorImage = lv_img_create(actuators.lamp);
+	lv_img_set_src(lampActuatorImage, &LampActuator);
+	lv_obj_center(lampActuatorImage);
+
 	lv_obj_add_event_cb(actuators.lamp, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.topLev = lv_obj_create(parent);
-	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -45, aYOffset);
+	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -46, aYOffset);
 	lv_obj_set_size(actuators.topLev, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.topLev, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.topLev, &styleDisabled, 0);
@@ -1213,18 +1241,20 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_add_event_cb(actuators.topLev, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.dam = lv_obj_create(parent);
-	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -45, aYOffset + 45);
+	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -46, aYOffset + 46);
 	lv_obj_set_size(actuators.dam, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.dam, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.dam, &styleDisabled, 0);
-	lv_obj_t *actuatorDamLabel = lv_label_create(actuators.dam);
-	lv_label_set_text(actuatorDamLabel, "D");
-	lv_obj_align(actuatorDamLabel, LV_ALIGN_CENTER, 0, 0);
+
+	lv_obj_t *damActuatorImage = lv_img_create(actuators.dam);
+	lv_img_set_src(damActuatorImage, &DamActuator);
+	lv_obj_center(damActuatorImage);
+
 	lv_obj_add_event_cb(actuators.dam, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 
 	actuators.aux = lv_obj_create(parent);
-	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 23, aYOffset + 45);
-	lv_obj_set_size(actuators.aux, kPanelSize * 2 + 5, kPanelSize);
+	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 24, aYOffset + 46);
+	lv_obj_set_size(actuators.aux, kPanelSize * 2 + 10, kPanelSize);
 	lv_obj_clear_flag(actuators.aux, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.aux, &styleDisabled, 0);
 	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
@@ -1240,11 +1270,9 @@ void mainPageCreate(lv_obj_t *parent)
 	static const uint16_t miniPanelW = 130;
 
 	// Панель с аркой, уровнем воды и температурой воды
-	LV_IMG_DECLARE(HydroTypeExtended);
-	panel1 = lv_img_create(parent);
-	lv_img_set_src(panel1, &HydroTypeExtended);
-	lv_obj_set_size(panel1, panelW, panelH);
-	lv_obj_align_to(panel1, parent, LV_ALIGN_LEFT_MID, 5, 0);
+	panel1 = lv_obj_create(parent);
+	lv_obj_set_size(panel1, panelW + 10, panelH + 10);
+	lv_obj_align_to(panel1, parent, LV_ALIGN_LEFT_MID, 0, 0);
 	lv_obj_clear_flag(panel1, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 	lv_obj_add_style(panel1, &style_menu_panel, 0);
 
@@ -1266,12 +1294,19 @@ void mainPageCreate(lv_obj_t *parent)
 		// Отображение текущего режима
 		lv_obj_t *currentModePanel = lv_obj_create(panel1);
 		lv_obj_set_size(currentModePanel, miniPanelW, 30);
-		lv_obj_align_to(currentModePanel, panel1, LV_ALIGN_TOP_MID, 0, 10);
+		lv_obj_align_to(currentModePanel, panel1, LV_ALIGN_TOP_MID, 0, -5);
 		lv_obj_clear_flag(currentModePanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(currentModePanel, &style_menu_subpanel, 0);
 		currentModeLabel = lv_label_create(currentModePanel);
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
 		lv_label_set_text(currentModeLabel, "Error");
+
+		lv_obj_t *hydroTypePanel = lv_obj_create(panel1);
+		lv_obj_add_style(hydroTypePanel, &styleImageHolder, 0);
+		lv_obj_set_size(hydroTypePanel, 160, 190);
+		lv_obj_align_to(hydroTypePanel, panel1, LV_ALIGN_TOP_MID, -2, 170);
+
+		hydroTypeImage = lv_img_create(hydroTypePanel);
 	}
 	{ // ******************************************************* ПАНЕЛЬ 2 *******************************************************
 		// Панель для времени
@@ -1395,11 +1430,11 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_align_to(systemStatusLabel, systemStatusPanel, LV_ALIGN_TOP_MID, 0, -10);
 
 		// Кнопка с картинкой настроек
-		LV_IMG_DECLARE(global_settings);
+		LV_IMG_DECLARE(SettingsWhite);
 		lv_obj_t *settingsButton = lv_imgbtn_create(panel3);
 		lv_obj_set_size(settingsButton, 125, 125);
 		lv_obj_align_to(settingsButton, panel3, LV_ALIGN_BOTTOM_MID, 0, 0);
-		lv_imgbtn_set_src(settingsButton, LV_IMGBTN_STATE_RELEASED, &global_settings, NULL, NULL);
+		lv_imgbtn_set_src(settingsButton, LV_IMGBTN_STATE_RELEASED, &SettingsWhite, NULL, NULL);
 		lv_obj_add_event_cb(settingsButton, &settingsButtonEvent, LV_EVENT_CLICKED, NULL);
 	}
 
@@ -1802,6 +1837,9 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_t *root_page = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
 	section = lv_menu_section_create(root_page);
+	//	Колбек для нажатий по панели слева, работает через эвент Draw
+	lv_obj_add_event_cb(section, processTap, LV_EVENT_DRAW_POST_BEGIN, NULL);
+
 	cont = createText(section, LV_SYMBOL_TINT, "Pump", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lv_menu_set_load_page_event(menu, cont, subPumpPage);
 	cont = createText(section, LV_SYMBOL_UP, "Light", LV_MENU_ITEM_BUILDER_VARIANT_1);
