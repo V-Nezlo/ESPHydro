@@ -43,19 +43,14 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 		TelemetryUnit(DeviceType aDevice) : device{aDevice} {}
 	};
 
-	struct Devices {
-		TelemetryUnit lower{DeviceType::Lower};
-		TelemetryUnit upper{DeviceType::Upper};
-	} devices;
-
+	std::array<TelemetryUnit, 2> devices;
 	Gpio &latch;
 public:
 	HydroRS(Interface &aInterface, uint8_t aNodeUID, Gpio &aLatchPin):
 		BaseType{aInterface, aNodeUID},
-		devices{},
+		devices{TelemetryUnit{DeviceType::Lower}, TelemetryUnit{DeviceType::Upper}},
 		latch{aLatchPin}
 	{
-
 	}
 
 	void processDevice(TelemetryUnit &aUnit, std::chrono::milliseconds aCurrentTime)
@@ -115,8 +110,18 @@ public:
 
 	void process(std::chrono::milliseconds aCurrentTime) override
 	{
-		processDevice(devices.lower, aCurrentTime);
-		processDevice(devices.upper, aCurrentTime);
+		static std::chrono::milliseconds lastDeviceCallTime{0};
+		static uint8_t deviceToCall{0};
+
+		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{100}) {
+			processDevice(devices[deviceToCall], aCurrentTime);
+
+			if (deviceToCall == (devices.size() - 1)){
+				deviceToCall = 0;
+			} else {
+				++deviceToCall;
+			}
+		}
 	}
 
 	// UtilitaryRS interface
@@ -129,10 +134,10 @@ public:
 	{
 		ESP_LOGV("RS", "Ack,Device: %u, Code: %u", aTranceiverUID, aReturnCode);
 
-		if (aTranceiverUID == devices.lower.device) {
-			devices.lower.lastAckTime = TimeWrapper::milliseconds();
-		} else if (aTranceiverUID == devices.upper.device) {
-			devices.upper.lastAckTime = TimeWrapper::milliseconds();
+		if (aTranceiverUID == devices[0].device) {
+			devices[0].lastAckTime = TimeWrapper::milliseconds();
+		} else if (aTranceiverUID == devices[1].device) {
+			devices[1].lastAckTime = TimeWrapper::milliseconds();
 		}
 	}
 
@@ -140,8 +145,8 @@ public:
 	{
 		ESP_LOGV("RS", "Answer,Device: %u, Req: %u", aTranceiverUID, aRequest);
 
-		if ((aTranceiverUID == devices.lower.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
-			devices.lower.lastAckTime = TimeWrapper::milliseconds();
+		if ((aTranceiverUID == devices[0].device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+			devices[0].lastAckTime = TimeWrapper::milliseconds();
 
 			// Если ожидаемая длина не сходится - ошибка
 			if (aLength != sizeof(LowerTelemetry)) {
@@ -153,8 +158,8 @@ public:
 			processLowerTelemetry(telemetry);
 
 			return 1;
-		} else if ((aTranceiverUID == devices.upper.device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
-			devices.lower.lastAckTime = TimeWrapper::milliseconds();
+		} else if ((aTranceiverUID == devices[1].device) && (aRequest == static_cast<uint8_t>(Requests::RequestTelemetry))) {
+			devices[1].lastAckTime = TimeWrapper::milliseconds();
 
 			// Если ожидаемая длина не сходится - ошибка
 			if (aLength != sizeof(UpperTelemetry)) {
@@ -248,37 +253,37 @@ public:
 			case EventType::ActionRequest:
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
-						if (devices.lower.state != DeviceState::Disabled) {
+						if (devices[0].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnPumpOff:
-						if (devices.lower.state != DeviceState::Disabled) {
+						if (devices[0].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOn:
-						if (devices.upper.state != DeviceState::Disabled) {
+						if (devices[1].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOff:
-						if (devices.upper.state != DeviceState::Disabled) {
+						if (devices[1].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 0);
 						}
 						return EventResult::HANDLED;
 
 					case Action::OpenDam:
-						if (devices.upper.state != DeviceState::Disabled) {
+						if (devices[1].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
 						}
 						return EventResult::HANDLED;
 
 					case Action::CloseDam:
-						if (devices.upper.state != DeviceState::Disabled) {
+						if (devices[1].state != DeviceState::Disabled) {
 							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 0);
 						}
 						return EventResult::HANDLED;
