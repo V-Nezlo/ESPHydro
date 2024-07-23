@@ -11,7 +11,7 @@
 SystemIntegrator::SystemIntegrator() :
 	systemFlagStorage{0},
 	lastCheckTime{0},
-	updated{false},
+	updated{true},
 	signalNeeds{BuzzerSignal::Disable},
 	isAlarmSoundsEnabled{false}
 {

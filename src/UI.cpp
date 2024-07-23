@@ -58,6 +58,7 @@ lv_style_t styleWarning;
 lv_style_t styleError;
 lv_style_t styleGood;
 lv_style_t styleImageHolder;
+lv_style_t styleImageHolderBotCover;
 
 lv_style_t styleActuatorActivated;
 lv_style_t styleActuatorNotActivated;
@@ -977,7 +978,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
 			lv_img_set_src(hydroTypeImage, &EbbNormal);
-			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBSwing: // Swing
 			lv_label_set_text(currentModeLabel, "EBB-SWING");
@@ -985,7 +986,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
 			lv_img_set_src(hydroTypeImage, &EbbSwing);
-			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::Maintance: // Maintance
 			lv_label_set_text(currentModeLabel, "MAINTANCE");
@@ -993,7 +994,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
 			lv_img_set_src(hydroTypeImage, &EbbNormal);
-			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::Dripping: // Drip
 			lv_label_set_text(currentModeLabel, "DRIP");
@@ -1001,7 +1002,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
 			lv_img_set_src(hydroTypeImage, &Drip);
-			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBDam: // DAM
 			lv_label_set_text(currentModeLabel, "EBB-DAM");
@@ -1009,7 +1010,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
 			lv_img_set_src(hydroTypeImage, &EbbDam);
-			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -20);
+			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		default:
 			break;
@@ -1197,10 +1198,21 @@ void styleInitialize()
 	lv_style_set_border_color(&styleImageHolder, kLightGreyColor);
 	lv_style_set_border_width(&styleImageHolder, 0);
 	lv_style_set_radius(&styleImageHolder, 60);
-	lv_style_set_shadow_width(&styleImageHolder, 4);
-	lv_style_set_shadow_ofs_y(&styleImageHolder, 4);
+	lv_style_set_shadow_width(&styleImageHolder, 0);
+	lv_style_set_shadow_ofs_y(&styleImageHolder, 0);
 	lv_style_set_shadow_opa(&styleImageHolder, LV_OPA_20);
 	lv_style_set_text_color(&styleImageHolder, lv_color_black());
+
+	// Стиль - хранитель картинок - нижняя планка
+	lv_style_init(&styleImageHolderBotCover);
+	lv_style_set_bg_color(&styleImageHolderBotCover, kLightGreyColor);
+	lv_style_set_border_color(&styleImageHolderBotCover, kLightGreyColor);
+	lv_style_set_border_width(&styleImageHolderBotCover, 0);
+	lv_style_set_radius(&styleImageHolderBotCover, 0);
+	lv_style_set_shadow_width(&styleImageHolderBotCover, 4);
+	lv_style_set_shadow_ofs_y(&styleImageHolderBotCover, 4);
+	lv_style_set_shadow_opa(&styleImageHolderBotCover, LV_OPA_20);
+	lv_style_set_text_color(&styleImageHolderBotCover, lv_color_black());
 }
 
 void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
@@ -1304,12 +1316,21 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
 		lv_label_set_text(currentModeLabel, "Error");
 
+		lv_obj_t *hydroTypePanelBot = lv_obj_create(panel1);
+		lv_obj_add_style(hydroTypePanelBot, &styleImageHolderBotCover, 0);
+		lv_obj_set_size(hydroTypePanelBot, 160, 62);
+		lv_obj_align_to(hydroTypePanelBot, panel1, LV_ALIGN_BOTTOM_MID, -2, 20);
+		lv_obj_clear_flag(hydroTypePanelBot, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+
 		lv_obj_t *hydroTypePanel = lv_obj_create(panel1);
 		lv_obj_add_style(hydroTypePanel, &styleImageHolder, 0);
-		lv_obj_set_size(hydroTypePanel, 160, 190);
+		lv_obj_set_size(hydroTypePanel, 160, 130);
 		lv_obj_align_to(hydroTypePanel, panel1, LV_ALIGN_TOP_MID, -2, 170);
+		lv_obj_clear_flag(hydroTypePanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 
 		hydroTypeImage = lv_img_create(hydroTypePanel);
+		lv_obj_clear_flag(hydroTypePanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+		lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, -50);
 	}
 	{ // ******************************************************* ПАНЕЛЬ 2 *******************************************************
 		// Панель для времени
