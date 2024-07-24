@@ -570,10 +570,11 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 				static constexpr char kRTCErrorText[] = "RTC Error \n";
 				static constexpr char kInternalMemErrorText[] = "InternalMemError \n";
 				static constexpr char kRSBusErrorText[] = "RS Bus Error \n";
-				static constexpr char kNotFloodTimeText[] = "Tank not flooded in time \n";
-				static constexpr char kLeakageText[] = "LEAK LEAK LEAK \n";
+				static constexpr char kNotFloodTimeText[] = "Pump timeout \n";
+				static constexpr char kLeakageText[] = "LEAK \n";
+				static constexpr char kPumpNotOperate[] = "Pump not operate \n";
 				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kRTCErrorText) + sizeof(kInternalMemErrorText) +
-					sizeof(kRSBusErrorText) + sizeof(kNotFloodTimeText) + sizeof(kLeakageText);
+					sizeof(kRSBusErrorText) + sizeof(kNotFloodTimeText) + sizeof(kLeakageText) + sizeof(kPumpNotOperate);
 				char infoPanel[kDetailedFullSize] = {};
 
 				if (systemFlags == 0) {
@@ -595,6 +596,9 @@ void detailedModuleInfoEventHandler(lv_event_t *e)
 					}
 					if (systemFlags & SystemErrors::SystemRSBusError) {
 						strcat(infoPanel, kRSBusErrorText);
+					}
+					if (systemFlags & SystemErrors::SystemPumpNotOperate) {
+						strcat(infoPanel, kPumpNotOperate);
 					}
 				}
 

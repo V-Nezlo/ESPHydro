@@ -74,6 +74,10 @@ private:
 	void sendCommandToPump(bool aNewPumpState);
 	void sendCommandToDam(bool aNewDamState);
 
+	/// @brief Функция проверки разрешения работы насоса
+	/// @return true если включение насоса разрешено
+	bool permitForAction() const;
+
 	/// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг
 	void processEBBNormalMode(std::chrono::milliseconds aCurrentTime);
 
@@ -86,6 +90,7 @@ private:
 	/// @brief Самый простой режим, просто вкл-выкл насоса по времени
 	void processDripMode(std::chrono::milliseconds aCurrentTime);
 
+	/// @brief
 	void processMaintanceMode();
 };
 

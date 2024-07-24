@@ -18,6 +18,7 @@ static constexpr std::chrono::milliseconds kShortBeepDuraction{100};
 static constexpr std::chrono::milliseconds kLongBeepDuraction{500};
 
 static constexpr std::chrono::seconds kMaxTimeForFullFlooding{30}; ///< Время, за которое рабочий резервуар должен успеть полностью заполниться
+static constexpr uint8_t kMinWaterLevelForWork{20}; ///< Минимальный уровень воды для работы
 
 }
 

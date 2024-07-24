@@ -155,6 +155,11 @@ void PumpController::sendCommandToDam(bool aNewDamState)
 	EventBus::throwEvent(&ev, this);
 }
 
+bool PumpController::permitForAction() const
+{
+	return currentWaterLevel > Options::kMinWaterLevelForWork;
+}
+
 /// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг
 void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime)
 {
@@ -170,14 +175,21 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
 				lastActionTime = aCurrentTime;
-				setPumpState(ControlState::PumpOn);
+				if (permitForAction()) {
+					setPumpState(ControlState::PumpOn);
+				} else {
+					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+				}
 			}
 			break;
 	}
 
-	if (controlState == ControlState::PumpOn && aCurrentTime > waterFillingTimer ) {
+	if (controlState == ControlState::PumpOn && aCurrentTime > waterFillingTimer) {
 		setPumpState(ControlState::PumpOff);
 		throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
+	} else if (controlState == ControlState::PumpOn && !permitForAction()) {
+		setPumpState(ControlState::PumpOff);
+		throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
 	}
 }
 
@@ -195,7 +207,11 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(ControlState::PumpOn);
+				if (permitForAction()) {
+					setPumpState(ControlState::PumpOn);
+				} else {
+					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+				}
 			}
 			break;
 	}
@@ -213,6 +229,10 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
 			setPumpState(ControlState::PumpOff);
 			swingState = SwingState::SwingOff;
+		} else if (swingState == SwingState::SwingOn && !permitForAction()) {
+			setPumpState(ControlState::PumpOff);
+			swingState = SwingState::SwingOff;
+			throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
 		}
 	}
 }
@@ -231,7 +251,11 @@ void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(ControlState::PumpOn);
+				if (permitForAction()) {
+					setPumpState(ControlState::PumpOn);
+				} else {
+					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+				}
 			}
 			break;
 	}
@@ -263,8 +287,12 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 		case ControlState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				setPumpState(ControlState::PumpOn);
 				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
+				if (permitForAction()) {
+					setPumpState(ControlState::PumpOn);
+				} else {
+					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+				}
 			}
 			break;
 	}
