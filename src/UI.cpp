@@ -24,6 +24,7 @@ typedef enum {
 
 enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
 enum DetailedModuleInfoEnum {DetailedLowerInfo = 1, DetailedUpperInfo = 2, DetailedAuxInfo = 3, DetailedSystemInfo = 4};
+enum ActuatorStatus {Disabled = 0, Present = 1, Activated = 2};
 
 /**********************
  *  Всякое
@@ -54,16 +55,11 @@ lv_obj_t *curTimeSettingsScr;
 // Стили
 lv_style_t style_menu_panel;
 lv_style_t style_menu_subpanel;
+lv_style_t style_menu_base;
 
-lv_style_t styleDisabled;
-lv_style_t styleWarning;
-lv_style_t styleError;
-lv_style_t styleGood;
 lv_style_t styleImageHolder;
-lv_style_t styleImageHolderBotCover;
 
-lv_style_t styleActuatorActivated;
-lv_style_t styleActuatorNotActivated;
+lv_style_t styleActuator;
 // Темы
 lv_theme_t *mainTheme;
 // Клавиатура
@@ -87,6 +83,47 @@ struct {
 	lv_obj_t *topLev;
 	lv_obj_t *dam;
 	lv_obj_t *aux;
+
+	ActuatorStatus pumpStatus{ActuatorStatus::Disabled};
+	ActuatorStatus lampStatus{ActuatorStatus::Disabled};
+	ActuatorStatus topLevStatus{ActuatorStatus::Disabled};
+	ActuatorStatus damStatus{ActuatorStatus::Disabled};
+	ActuatorStatus auxStatus{ActuatorStatus::Disabled};
+
+	ActuatorStatus getStatusByActuatorPtr(lv_obj_t *aPtr) 
+	{
+		if (aPtr == pump) {
+			return pumpStatus;
+		} else if (aPtr == lamp) {
+			return lampStatus;
+		} else if (aPtr == topLev) {
+			return topLevStatus;
+		} else if (aPtr == dam) {
+			return damStatus;
+		} else if (aPtr == aux) {
+			return auxStatus;
+		} else {
+			return ActuatorStatus::Disabled;
+		}
+	}
+
+	void setActuatorStatus(lv_obj_t *aPtr, ActuatorStatus aNewStatus)
+	{
+		if (aPtr == pump) {
+			pumpStatus = aNewStatus;
+		} else if (aPtr == lamp) {
+			lampStatus = aNewStatus;
+		} else if (aPtr == topLev) {
+			topLevStatus = aNewStatus;
+		} else if (aPtr == dam) {
+			damStatus = aNewStatus;
+		} else if (aPtr == aux) {
+			auxStatus = aNewStatus;
+		} else {
+			return;
+		}
+	}
+
 } actuators;
 
 // Панель 2
@@ -461,7 +498,8 @@ void setTimeButtonEventHandler(lv_event_t *aEvent)
 	const char *textSec = lv_textarea_get_text(setTimeSecTa);
 
 	if (isPlaceholder(textHour) || isPlaceholder(textMin) || isPlaceholder(textSec)) {
-		activeMessageBox = lv_msgbox_create(NULL, "Error", "Fill all fields!", NULL, true);
+		activeMessageBox = lv_msgbox_create(curTimeSettingsScr, "Error", "Fill all fields!", NULL, false);
+		lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
 		lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 	} else {
 		Time time;
@@ -486,202 +524,25 @@ void brightnessSliderEventHandler(lv_event_t *)
 	sendNewBrightnessToEventBus(newSliderValue);
 }
 
-void detailedModuleInfoEventHandler(lv_event_t *e)
-{
-	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(e));
-
-	static constexpr char kNoProblemsText[] = "Status OK";
-	static constexpr char kProblemsText[] = "Problems: \n";
-
-	switch(*operation) {
-		case DetailedLowerInfo:
-			if (isLowerPresent) {
-
-				static constexpr char kOverCurrentText[] = "Pump Overcurrent \n";
-				static constexpr char kNoWaterText[] = "No Water \n";
-				static constexpr char kTempSensorErrorText[] = "Temp Sensor Error \n";
-				static constexpr char kPHSensorErrorFlag[] = "PH Sensor Error \n";
-				static constexpr char kPPMSensorErrorFlag[] = "PPM Sensor Error \n";
-				static constexpr char kPumpNoCurrentText[] = "Pump low current \n";
-
-				static constexpr size_t kDetailedPanelFullSize = sizeof(kNoProblemsText) + sizeof(kOverCurrentText) + sizeof(kNoWaterText) +
-					sizeof(kTempSensorErrorText) + sizeof(kPHSensorErrorFlag) + sizeof(kPPMSensorErrorFlag) + sizeof(kPumpNoCurrentText);
-
-				char infoPanel[kDetailedPanelFullSize] = {};
-				if (lowerFlags == 0) {
-					strcat(infoPanel, kNoProblemsText);
-				} else {
-					strcat(infoPanel, kProblemsText);
-
-					if (lowerFlags & LowerFlags::LowerPumpOverCurrentFlag) {
-						strcat(infoPanel, kOverCurrentText);
-					}
-					if (lowerFlags & LowerFlags::LowerNoWaterFlag) {
-						strcat(infoPanel, kNoWaterText);
-					}
-					if (lowerFlags & LowerFlags::LowerTempSensorErrorFlag) {
-						strcat(infoPanel, kTempSensorErrorText);
-					}
-					if (lowerFlags & LowerFlags::LowerPHSensorErrorFlag) {
-						strcat(infoPanel, kPHSensorErrorFlag);
-					}
-					if (lowerFlags & LowerFlags::LowerPPMSensorErrorFlag) {
-						strcat(infoPanel, kPPMSensorErrorFlag);
-					}
-					if (lowerFlags & LowerFlags::LowerPumpLowCurrentFlag) {
-						strcat(infoPanel, kPumpNoCurrentText);
-					}
-				}
-
-				activeMessageBox = lv_msgbox_create(NULL, "Lower Information",
-				infoPanel , NULL, false);
-				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
-				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
-			}
-			break;
-
-		case DetailedUpperInfo:
-			if (isUpperPresent) {
-				static constexpr char kTopLevelStuckText[] = "Top Level Stuck \n";
-				static constexpr char kPowerErrorText[] = "Power Error \n";
-				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kTopLevelStuckText) + sizeof(kPowerErrorText);
-
-				char infoPanel[kDetailedFullSize] = {};
-				if (upperFlags == 0) {
-					strcat(infoPanel, kNoProblemsText);
-				} else {
-					strcat(infoPanel, kProblemsText);
-
-					if (upperFlags & UpperFlags::UpperTopWaterLevelStuck) {
-						strcat(infoPanel, kTopLevelStuckText);
-					}
-					if (upperFlags & UpperFlags::UpperPowerError) {
-						strcat(infoPanel, kPowerErrorText);
-					}
-				}
-
-				activeMessageBox = lv_msgbox_create(NULL, "Upper Information",
-				infoPanel , NULL, false);
-				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
-				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
-			}
-			break;
-
-		case DetailedSystemInfo:
-			if (isSystemPresent) {
-				static constexpr char kRTCErrorText[] = "RTC Error \n";
-				static constexpr char kInternalMemErrorText[] = "InternalMemError \n";
-				static constexpr char kRSBusErrorText[] = "RS Bus Error \n";
-				static constexpr char kNotFloodTimeText[] = "Pump timeout \n";
-				static constexpr char kLeakageText[] = "LEAK \n";
-				static constexpr char kPumpNotOperate[] = "Pump not operate \n";
-				static constexpr size_t kDetailedFullSize = sizeof(kNoProblemsText) + sizeof(kRTCErrorText) + sizeof(kInternalMemErrorText) +
-					sizeof(kRSBusErrorText) + sizeof(kNotFloodTimeText) + sizeof(kLeakageText) + sizeof(kPumpNotOperate);
-				char infoPanel[kDetailedFullSize] = {};
-
-				if (systemFlags == 0) {
-					strcat(infoPanel, kNoProblemsText);
-				} else {
-					strcat(infoPanel, kProblemsText);
-
-					if (systemFlags & SystemErrors::SystemLeak) {
-						strcat(infoPanel, kLeakageText);
-					}
-					if (systemFlags & SystemErrors::SystemTankNotFloodedInTime) {
-						strcat(infoPanel, kNotFloodTimeText);
-					}
-					if (systemFlags & SystemErrors::SystemRTCError) {
-						strcat(infoPanel, kRTCErrorText);
-					}
-					if (systemFlags & SystemErrors::SystemInternalMemError) {
-						strcat(infoPanel, kInternalMemErrorText);
-					}
-					if (systemFlags & SystemErrors::SystemRSBusError) {
-						strcat(infoPanel, kRSBusErrorText);
-					}
-					if (systemFlags & SystemErrors::SystemPumpNotOperate) {
-						strcat(infoPanel, kPumpNotOperate);
-					}
-				}
-
-				activeMessageBox = lv_msgbox_create(NULL, "System Information",
-				infoPanel , NULL, false);
-				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
-				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
-			}
-			break;
-
-		case DetailedAuxInfo:
-			if (isAuxPresent) {
-				activeMessageBox = lv_msgbox_create(NULL, "AUX Information",
-				"Not supported" , NULL, false);
-				lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
-				lv_obj_add_event_cb(activeMessageBox, msgBoxCallback, LV_EVENT_CLICKED, NULL);
-			}
-			break;
-		default:
-			break;
-	}
-}
-
-void actuatorPressedButtonEventHandler(lv_event_t *e)
-{
-	const lv_obj_t *actuator = static_cast<const lv_obj_t *>(lv_event_get_user_data(e));
-	const char *btnPressed = lv_msgbox_get_active_btn_text(activeMessageBox);
-	bool value{false};
-	if (!strcmp(btnPressed, "ON") || !strcmp(btnPressed, "CLOSE")) {
-		value = true;
-	} else if (!strcmp(btnPressed, "OFF") || !strcmp(btnPressed, "OPEN")) {
-		value = false;
-	}
-
-	if (actuator == actuators.pump) {
-		if (value) {
-			sendActionCommandToEventBus(Action::TurnPumpOn);
-		} else {
-			sendActionCommandToEventBus(Action::TurnPumpOff);
-		}
-	} else if (actuator == actuators.lamp) {
-		if (value) {
-			sendActionCommandToEventBus(Action::TurnLampOn);
-		} else {
-			sendActionCommandToEventBus(Action::TurnLampOff);
-		}
-	} else if (actuator == actuators.dam) {
-		if (value) {
-			sendActionCommandToEventBus(Action::OpenDam);
-		} else {
-			sendActionCommandToEventBus(Action::CloseDam);
-		}
-	} else if (actuator == actuators.aux) {
-		return;
-	} else {
-		return;
-	}
-}
-
 void actuatorPressedEventHandler(lv_event_t *e)
 {
 	const lv_obj_t *target = lv_event_get_current_target(e);
-	static const char *btns[] = {"ON", "OFF", ""};
-	static const char *damBtns[] = {"CLOSE", "OPEN", ""};
 	const PumpModes mode = static_cast<PumpModes>(currentSettings.pump.mode);
 
 	if (mode == PumpModes::Maintance && target == actuators.pump && isLowerPresent) {
-		activeMessageBox = lv_msgbox_create(NULL, "PUMP", "Pump manual action", btns, true);
+		if (actuators.pumpStatus == ActuatorStatus::Present) {
+			sendActionCommandToEventBus(Action::TurnPumpOn);
+		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
+			sendActionCommandToEventBus(Action::TurnPumpOff);
+		}
 	} else if (mode == PumpModes::Maintance && target == actuators.lamp && isUpperPresent) {
-		activeMessageBox = lv_msgbox_create(NULL, "LAMP", "Lamp manual action", btns, true);
+		
 	} else if (mode == PumpModes::Maintance && target == actuators.dam && isUpperPresent) {
-		activeMessageBox = lv_msgbox_create(NULL, "DAM", "Dam manual action", damBtns, true);
+		
 	} else if (mode == PumpModes::Maintance && target == actuators.aux && isAuxPresent) {
-		activeMessageBox = lv_msgbox_create(NULL, "AUX", "Aux manual action", btns, true);
-
+		
 	} else {
 		return;
-	}
-	if (activeMessageBox != NULL) {
-		lv_obj_add_event_cb(activeMessageBox, actuatorPressedButtonEventHandler, LV_EVENT_VALUE_CHANGED, &target);
-		lv_obj_align(activeMessageBox, LV_ALIGN_CENTER, 0, 0);
 	}
 }
 
@@ -762,26 +623,25 @@ bool textAreasApply(uint8_t aArea)
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 {
-	// REFACTOR
 	if (aHealth == DeviceHealth::DeviceWorking) {
-		lv_obj_add_style(aModulePanel, &styleGood, 0);
+		lv_obj_set_style_bg_color(aModulePanel, kGreenColor, 0);
 	} else if (aHealth == DeviceHealth::DeviceWarning) {
-		lv_obj_add_style(aModulePanel, &styleWarning, 0);
+		lv_obj_set_style_bg_color(aModulePanel, kYellowColor, 0);
 	} else if (aHealth == DeviceHealth::DeviceError) {
-		lv_obj_add_style(aModulePanel, &styleError, 0);
-	} else if (aHealth == DeviceHealth::DeviceError) {
-		lv_obj_add_style(aModulePanel, &styleError, 0);
+		lv_obj_set_style_bg_color(aModulePanel, kRedColor, 0);
+	} else if (aHealth == DeviceHealth::DeviceCritical) {
+		lv_obj_set_style_bg_color(aModulePanel, kRedColor, 0);
 	} else if (aHealth == DeviceHealth::DeviceDisabled) {
-		lv_obj_add_style(aModulePanel, &styleDisabled, 0);
+		lv_obj_set_style_bg_color(aModulePanel, kGreyColor, 0);
 	}
 }
 
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated)
 {
-	static bool present = aDevicePresent;
-	static bool activated = aActivated;
+	ActuatorStatus oldStatus = actuators.getStatusByActuatorPtr(aActuator);
+	ActuatorStatus newStatus = aActivated ? ActuatorStatus::Activated : ActuatorStatus::Present;
 
-	if (aDevicePresent != present || aActivated != activated) {
+	if (oldStatus != newStatus) {
 		if (!aDevicePresent) {
 			lv_obj_set_style_bg_color(aActuator, kRedColor, 0);
 		} else if (aActivated) {
@@ -790,6 +650,8 @@ void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActiv
 			lv_obj_set_style_bg_color(aActuator, kGreenColor, 0);
 		}
 	}
+
+	actuators.setActuatorStatus(aActuator, newStatus);
 }
 
 void updateSystemData(struct SystemData *aData)
@@ -989,7 +851,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
-			lv_img_set_src(hydroTypeImage, &EbbNormal);
+			// lv_img_set_src(hydroTypeImage, &EbbNormal);
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBSwing: // Swing
@@ -1037,6 +899,7 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 
 			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
 				isLowerPresent = false;
+				actuators.pumpStatus = ActuatorStatus::Present;
 			} else {
 				isLowerPresent = true;
 			}
@@ -1138,93 +1001,38 @@ void styleInitialize()
 	lv_style_set_shadow_opa(&style_menu_subpanel, LV_OPA_20);
 	lv_style_set_text_color(&style_menu_subpanel, lv_color_black());
 
-	// Стиль - disabled
-	lv_style_init(&styleDisabled);
-	lv_style_set_bg_color(&styleDisabled, kGreyColor);
-	lv_style_set_border_color(&styleDisabled, kGreyColor);
-	lv_style_set_border_width(&styleDisabled, 0);
-	lv_style_set_radius(&styleDisabled, 3);
-	lv_style_set_shadow_width(&styleDisabled, 4);
-	lv_style_set_shadow_ofs_y(&styleDisabled, 4);
-	lv_style_set_shadow_opa(&styleDisabled, LV_OPA_20);
-	lv_style_set_text_color(&styleDisabled, lv_color_black());
+	// Базовый стиль
+	lv_style_init(&style_menu_base);
+	lv_style_set_bg_color(&style_menu_base, kGreyColor);
+	lv_style_set_border_color(&style_menu_base, kGreyColor);
+	lv_style_set_border_width(&style_menu_base, 0);
+	lv_style_set_radius(&style_menu_base, 3);
+	lv_style_set_shadow_width(&style_menu_base, 4);
+	lv_style_set_shadow_ofs_y(&style_menu_base, 4);
+	lv_style_set_shadow_opa(&style_menu_base, LV_OPA_20);
+	lv_style_set_text_color(&style_menu_base, lv_color_black());
 
-	// Стиль - warning
-	lv_style_init(&styleWarning);
-	lv_style_set_bg_color(&styleWarning, kYellowColor);
-	lv_style_set_border_color(&styleWarning, kYellowColor);
-	lv_style_set_border_width(&styleWarning, 0);
-	lv_style_set_radius(&styleWarning, 3);
-	lv_style_set_shadow_width(&styleWarning, 4);
-	lv_style_set_shadow_ofs_y(&styleWarning, 4);
-	lv_style_set_shadow_opa(&styleWarning, LV_OPA_20);
-	lv_style_set_text_color(&styleWarning, lv_color_black());
-
-	// Стиль - error
-	lv_style_init(&styleError);
-	lv_style_set_bg_color(&styleError, kRedColor);
-	lv_style_set_border_color(&styleError, kRedColor);
-	lv_style_set_border_width(&styleError, 0);
-	lv_style_set_radius(&styleError, 3);
-	lv_style_set_shadow_width(&styleError, 4);
-	lv_style_set_shadow_ofs_y(&styleError, 4);
-	lv_style_set_shadow_opa(&styleError, LV_OPA_20);
-	lv_style_set_text_color(&styleError, lv_color_black());
-
-	// Стиль - good
-	lv_style_init(&styleGood);
-	lv_style_set_bg_color(&styleGood, kGreenColor);
-	lv_style_set_border_color(&styleGood, kGreenColor);
-	lv_style_set_border_width(&styleGood, 0);
-	lv_style_set_radius(&styleGood, 3);
-	lv_style_set_shadow_width(&styleGood, 4);
-	lv_style_set_shadow_ofs_y(&styleGood, 4);
-	lv_style_set_shadow_opa(&styleGood, LV_OPA_20);
-	lv_style_set_text_color(&styleGood, lv_color_black());
-
-	// Стиль - not activated
-	lv_style_init(&styleActuatorNotActivated);
-	lv_style_set_bg_color(&styleActuatorNotActivated, kGreenColor);
-	lv_style_set_border_color(&styleActuatorNotActivated, kGreenColor);
-	lv_style_set_border_width(&styleActuatorNotActivated, 0);
-	lv_style_set_radius(&styleActuatorNotActivated, 3);
-	lv_style_set_shadow_width(&styleActuatorNotActivated, 4);
-	lv_style_set_shadow_ofs_y(&styleActuatorNotActivated, 4);
-	lv_style_set_shadow_opa(&styleActuatorNotActivated, LV_OPA_20);
-	lv_style_set_text_color(&styleActuatorNotActivated, lv_color_black());
-
-	// Стиль - activated
-	lv_style_init(&styleActuatorActivated);
-	lv_style_set_bg_color(&styleActuatorActivated, kBlueColor);
-	lv_style_set_border_color(&styleActuatorActivated, kBlueColor);
-	lv_style_set_border_width(&styleActuatorActivated, 0);
-	lv_style_set_radius(&styleActuatorActivated, 3);
-	lv_style_set_shadow_width(&styleActuatorActivated, 4);
-	lv_style_set_shadow_ofs_y(&styleActuatorActivated, 4);
-	lv_style_set_shadow_opa(&styleActuatorActivated, LV_OPA_20);
-	lv_style_set_text_color(&styleActuatorActivated, lv_color_black());
+	// Стиль актуаторов
+	lv_style_init(&styleActuator);
+	lv_style_set_bg_color(&styleActuator, kGreenColor);
+	lv_style_set_border_color(&styleActuator, kGreenColor);
+	lv_style_set_border_width(&styleActuator, 0);
+	lv_style_set_radius(&styleActuator, 3);
+	lv_style_set_shadow_width(&styleActuator, 4);
+	lv_style_set_shadow_ofs_y(&styleActuator, 4);
+	lv_style_set_shadow_opa(&styleActuator, LV_OPA_20);
+	lv_style_set_text_color(&styleActuator, lv_color_black());
 
 	// Стиль - хранитель картинок
 	lv_style_init(&styleImageHolder);
 	lv_style_set_bg_color(&styleImageHolder, kLightGreyColor);
 	lv_style_set_border_color(&styleImageHolder, kLightGreyColor);
 	lv_style_set_border_width(&styleImageHolder, 0);
-	lv_style_set_radius(&styleImageHolder, 60);
+	lv_style_set_radius(&styleImageHolder, 15);
 	lv_style_set_shadow_width(&styleImageHolder, 0);
 	lv_style_set_shadow_ofs_y(&styleImageHolder, 0);
 	lv_style_set_shadow_opa(&styleImageHolder, LV_OPA_20);
 	lv_style_set_text_color(&styleImageHolder, lv_color_black());
-
-	// Стиль - хранитель картинок - нижняя планка
-	lv_style_init(&styleImageHolderBotCover);
-	lv_style_set_bg_color(&styleImageHolderBotCover, kLightGreyColor);
-	lv_style_set_border_color(&styleImageHolderBotCover, kLightGreyColor);
-	lv_style_set_border_width(&styleImageHolderBotCover, 0);
-	lv_style_set_radius(&styleImageHolderBotCover, 0);
-	lv_style_set_shadow_width(&styleImageHolderBotCover, 4);
-	lv_style_set_shadow_ofs_y(&styleImageHolderBotCover, 4);
-	lv_style_set_shadow_opa(&styleImageHolderBotCover, LV_OPA_20);
-	lv_style_set_text_color(&styleImageHolderBotCover, lv_color_black());
 }
 
 void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
@@ -1235,7 +1043,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.pump, LV_ALIGN_CENTER, 0, aYOffset);
 	lv_obj_set_size(actuators.pump, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.pump, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.pump, &styleDisabled, 0);
+	lv_obj_add_style(actuators.pump, &style_menu_base, 0);
 
 	lv_obj_t *pumpActuatorImage = lv_img_create(actuators.pump);
 	lv_img_set_src(pumpActuatorImage, &PumpActuator);
@@ -1247,7 +1055,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.lamp, LV_ALIGN_CENTER, 46, aYOffset);
 	lv_obj_set_size(actuators.lamp, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.lamp, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.lamp, &styleDisabled, 0);
+	lv_obj_add_style(actuators.lamp, &style_menu_base, 0);
 
 	lv_obj_t *lampActuatorImage = lv_img_create(actuators.lamp);
 	lv_img_set_src(lampActuatorImage, &LampActuator);
@@ -1259,7 +1067,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.topLev, LV_ALIGN_CENTER, -46, aYOffset);
 	lv_obj_set_size(actuators.topLev, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.topLev, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.topLev, &styleDisabled, 0);
+	lv_obj_add_style(actuators.topLev, &style_menu_base, 0);
 
 	lv_obj_t *floatActuatorImage = lv_img_create(actuators.topLev);
 	lv_img_set_src(floatActuatorImage, &FloatActuator);
@@ -1271,7 +1079,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.dam, LV_ALIGN_CENTER, -46, aYOffset + 46);
 	lv_obj_set_size(actuators.dam, kPanelSize, kPanelSize);
 	lv_obj_clear_flag(actuators.dam, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.dam, &styleDisabled, 0);
+	lv_obj_add_style(actuators.dam, &style_menu_base, 0);
 
 	lv_obj_t *damActuatorImage = lv_img_create(actuators.dam);
 	lv_img_set_src(damActuatorImage, &DamActuator);
@@ -1283,7 +1091,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_align(actuators.aux, LV_ALIGN_CENTER, 24, aYOffset + 46);
 	lv_obj_set_size(actuators.aux, kPanelSize * 2 + 10, kPanelSize);
 	lv_obj_clear_flag(actuators.aux, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_add_style(actuators.aux, &styleDisabled, 0);
+	lv_obj_add_style(actuators.aux, &style_menu_base, 0);
 	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
 	lv_label_set_text(actuatorAuxLabel, "AUX");
 	lv_obj_align(actuatorAuxLabel, LV_ALIGN_CENTER, 0, 0);
@@ -1327,12 +1135,6 @@ void mainPageCreate(lv_obj_t *parent)
 		currentModeLabel = lv_label_create(currentModePanel);
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
 		lv_label_set_text(currentModeLabel, "Error");
-
-		lv_obj_t *hydroTypePanelBot = lv_obj_create(panel1);
-		lv_obj_add_style(hydroTypePanelBot, &styleImageHolderBotCover, 0);
-		lv_obj_set_size(hydroTypePanelBot, 160, 62);
-		lv_obj_align_to(hydroTypePanelBot, panel1, LV_ALIGN_BOTTOM_MID, -2, 20);
-		lv_obj_clear_flag(hydroTypePanelBot, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 
 		lv_obj_t *hydroTypePanel = lv_obj_create(panel1);
 		lv_obj_add_style(hydroTypePanel, &styleImageHolder, 0);
@@ -1422,8 +1224,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_set_size(lowerStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(lowerStatusPanel, &styleDisabled, 0);
-		lv_obj_add_event_cb(lowerStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedLowerInfoEnum);
+		lv_obj_add_style(lowerStatusPanel, &style_menu_base, 0);
 		// Текст LOWER
 		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
 		lv_label_set_text_static(lowerStatusLabel, "LOWER");
@@ -1434,8 +1235,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_set_size(auxStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(auxStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 25);
 		lv_obj_clear_flag(auxStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(auxStatusPanel, &styleDisabled, 0);
-		lv_obj_add_event_cb(auxStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedAuxInfoEnum);
+		lv_obj_add_style(auxStatusPanel, &style_menu_base, 0);
 		// Текст AUX
 		lv_obj_t *auxStatusLabel = lv_label_create(auxStatusPanel);
 		lv_label_set_text_static(auxStatusLabel, "AUX");
@@ -1446,8 +1246,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_set_size(upperStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(upperStatusPanel, &styleDisabled, 0);
-		lv_obj_add_event_cb(upperStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedUpperInfoEnum);
+		lv_obj_add_style(upperStatusPanel, &style_menu_base, 0);
 		// Текст UPPER
 		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
 		lv_label_set_text_static(upperStatusLabel, "UPPER");
@@ -1458,8 +1257,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_set_size(systemStatusPanel, miniPanelW, 30);
 		lv_obj_align_to(systemStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 95);
 		lv_obj_clear_flag(systemStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
-		lv_obj_add_style(systemStatusPanel, &styleDisabled, 0);
-		lv_obj_add_event_cb(systemStatusPanel, detailedModuleInfoEventHandler, LV_EVENT_CLICKED, &detailedSystemInfoEnum);
+		lv_obj_add_style(systemStatusPanel, &style_menu_base, 0);
 		// Текст SYSTEM
 		lv_obj_t *systemStatusLabel = lv_label_create(systemStatusPanel);
 		lv_label_set_text_static(systemStatusLabel, "SYSTEM");
