@@ -25,17 +25,7 @@
 #include <functional>
 #include <thread>
 
-esp_pthread_cfg_t updateThreadConfig(const char *name, int core_id, int stack, int prio)
-{
-	auto cfg = esp_pthread_get_default_config();
-	cfg.thread_name = name;
-	cfg.pin_to_core = core_id;
-	cfg.stack_size = stack;
-	cfg.prio = prio;
-	return cfg;
-}
-
-void displayThreadFunc(DisplayDriver *aDriver)
+void displayTaskFunc(void *pvParameters)
 {
 	while(true) {
 		static bool inited{false};
@@ -50,6 +40,7 @@ void displayThreadFunc(DisplayDriver *aDriver)
 
 		lv_timer_handler();
 		lv_tick_inc(5);
+		esp_task_wdt_reset();
 		vTaskDelay(5 / portTICK_PERIOD_MS);
 	}
 }
@@ -102,11 +93,9 @@ void app_main()
 	paramStorage.firstLoad();
 
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
-	auto cfg = esp_pthread_get_default_config();
-	cfg = updateThreadConfig("Display", 1, 10 * 1024, 5);
-	esp_pthread_set_cfg(&cfg);
-	std::thread displayTask(displayThreadFunc, &displayDriver);
-	displayTask.detach();
+	TaskHandle_t displayTask;
+	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &displayDriver, 5, &displayTask, 1);
+	esp_task_wdt_add(displayTask);
 
 	while(true) {
 		// Обработка SmartBus

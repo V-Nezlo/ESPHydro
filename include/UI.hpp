@@ -42,7 +42,7 @@ void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated);
 
 void updateSystemData(struct SystemData *aData);
-void updateLowerData(struct LowerInternalData *aData);
+void updateLowerData(const struct LowerInternalData *aData);
 void updateUpperData(struct UpperInternalData *aData);
 void updateAUXData(struct AuxData *aData);
 

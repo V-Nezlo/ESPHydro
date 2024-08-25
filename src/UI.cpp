@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <esp_log.h>
+
 /**********************
  *      Типы
  **********************/
@@ -760,6 +762,7 @@ bool textAreasApply(uint8_t aArea)
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 {
+	// REFACTOR
 	if (aHealth == DeviceHealth::DeviceWorking) {
 		lv_obj_add_style(aModulePanel, &styleGood, 0);
 	} else if (aHealth == DeviceHealth::DeviceWarning) {
@@ -775,12 +778,17 @@ void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
 
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated)
 {
-	if (!aDevicePresent) {
-		lv_obj_add_style(aActuator, &styleDisabled, 0);
-	} else if (aActivated) {
-		lv_obj_add_style(aActuator, &styleActuatorActivated, 0);
-	} else {
-		lv_obj_add_style(aActuator, &styleActuatorNotActivated, 0);
+	static bool present = aDevicePresent;
+	static bool activated = aActivated;
+
+	if (aDevicePresent != present || aActivated != activated) {
+		if (!aDevicePresent) {
+			lv_obj_set_style_bg_color(aActuator, kRedColor, 0);
+		} else if (aActivated) {
+			lv_obj_set_style_bg_color(aActuator, kBlueColor, 0);
+		} else {
+			lv_obj_set_style_bg_color(aActuator, kGreenColor, 0);
+		}
 	}
 }
 
@@ -789,7 +797,7 @@ void updateSystemData(struct SystemData *aData)
 	systemFlags = aData->flags;
 }
 
-void updateLowerData(struct LowerInternalData *aData)
+void updateLowerData(const struct LowerInternalData *aData)
 {
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
