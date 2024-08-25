@@ -526,21 +526,32 @@ void brightnessSliderEventHandler(lv_event_t *)
 
 void actuatorPressedEventHandler(lv_event_t *e)
 {
-	const lv_obj_t *target = lv_event_get_current_target(e);
+	const lv_obj_t * target = lv_event_get_current_target(e);
 	const PumpModes mode = static_cast<PumpModes>(currentSettings.pump.mode);
 
-	if (mode == PumpModes::Maintance && target == actuators.pump && isLowerPresent) {
+	if (mode != PumpModes::Maintance) {
+		return;
+	}
+	if (target == actuators.pump && isLowerPresent) {
 		if (actuators.pumpStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnPumpOn);
 		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnPumpOff);
 		}
-	} else if (mode == PumpModes::Maintance && target == actuators.lamp && isUpperPresent) {
-		
-	} else if (mode == PumpModes::Maintance && target == actuators.dam && isUpperPresent) {
-		
-	} else if (mode == PumpModes::Maintance && target == actuators.aux && isAuxPresent) {
-		
+	} else if (target == actuators.lamp && isUpperPresent) {
+		if (actuators.lampStatus == ActuatorStatus::Present) {
+			sendActionCommandToEventBus(Action::TurnLampOn);
+		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
+			sendActionCommandToEventBus(Action::TurnLampOff);
+		}
+	} else if (target == actuators.dam && isUpperPresent) {
+		if (actuators.damStatus == ActuatorStatus::Present) {
+			sendActionCommandToEventBus(Action::OpenDam);
+		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
+			sendActionCommandToEventBus(Action::CloseDam);
+		}
+	} else if (target == actuators.aux && isAuxPresent) {
+		// Nothing
 	} else {
 		return;
 	}
