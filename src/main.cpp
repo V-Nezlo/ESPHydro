@@ -20,6 +20,7 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 #include <esp_pthread.h>
+#include <esp_task_wdt.h>
 
 #include <functional>
 #include <thread>
@@ -49,7 +50,7 @@ void displayThreadFunc(DisplayDriver *aDriver)
 
 		lv_timer_handler();
 		lv_tick_inc(5);
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		vTaskDelay(5 / portTICK_PERIOD_MS);
 	}
 }
 
@@ -61,8 +62,8 @@ void app_main()
 	UiEventObserver uiObserver;
 
 	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
-	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin);
-	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master, rsLatch);
+	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin, rsLatch);
+	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
 
@@ -71,10 +72,6 @@ void app_main()
 	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 	DeviceMonitor deviceMonitor;
-
-	Gpio greenLed{Hardware::Leds::kGreenPin, GPIO_MODE_OUTPUT};
-	Gpio blueLed{Hardware::Leds::kBluePin, GPIO_MODE_OUTPUT};
-	LedController ledControl(&greenLed, &blueLed, nullptr);
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
@@ -85,7 +82,6 @@ void app_main()
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&systemIntegrator);
 	EventBus::registerObserver(&buzzController);
-	EventBus::registerObserver(&ledControl);
 	EventBus::registerObserver(&deviceMonitor);
 
 	LinearSched sched;
@@ -94,7 +90,6 @@ void app_main()
 	sched.registerTask(&lightController);
 	sched.registerTask(&systemIntegrator);
 	sched.registerTask(&buzzController);
-	sched.registerTask(&ledControl);
 	sched.registerTask(&deviceMonitor);
 	sched.registerTask(&smartBus);
 
@@ -108,7 +103,7 @@ void app_main()
 
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	auto cfg = esp_pthread_get_default_config();
-	cfg = updateThreadConfig("Display", 1, 5 * 1024, 5);
+	cfg = updateThreadConfig("Display", 1, 10 * 1024, 5);
 	esp_pthread_set_cfg(&cfg);
 	std::thread displayTask(displayThreadFunc, &displayDriver);
 	displayTask.detach();

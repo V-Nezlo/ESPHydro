@@ -23,6 +23,8 @@ DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) :
 	if (result == ESP_OK) {
 		present = true;
 
+		ESP_LOGI("RTC", "RTC Initialized");
+
 		if (!isConfigured()) {
 			initialConfigure();
 		}

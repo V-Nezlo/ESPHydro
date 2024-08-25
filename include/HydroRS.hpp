@@ -44,12 +44,10 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 	};
 
 	std::array<TelemetryUnit, 2> devices;
-	Gpio &latch;
 public:
-	HydroRS(Interface &aInterface, uint8_t aNodeUID, Gpio &aLatchPin):
+	HydroRS(Interface &aInterface, uint8_t aNodeUID):
 		BaseType{aInterface, aNodeUID},
-		devices{TelemetryUnit{DeviceType::Lower}, TelemetryUnit{DeviceType::Upper}},
-		latch{aLatchPin}
+		devices{TelemetryUnit{DeviceType::Lower}, TelemetryUnit{DeviceType::Upper}}
 	{
 	}
 
@@ -183,9 +181,7 @@ public:
 
 	void sendCommand(uint8_t aReceiverUID, uint8_t aCommand, uint8_t aArgument)
 	{
-		latch.set();
 		return BaseType::sendCommand(aReceiverUID, aCommand, aArgument);
-		latch.reset();
 	}
 
 	void processLowerTelemetry(LowerTelemetry &aTelem)

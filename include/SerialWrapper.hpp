@@ -9,6 +9,7 @@
 #ifndef INCLUDE_SERIALWRAPPER_HPP_
 #define INCLUDE_SERIALWRAPPER_HPP_
 
+#include "GpioWrapper.hpp"
 #include <driver/uart.h>
 
 #include <iostream>
@@ -22,7 +23,7 @@ class SerialWrapper {
 public:
 	SerialWrapper(const SerialWrapper &) = delete;
 	SerialWrapper() = delete;
-	SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin);
+	SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin, Gpio &aLatch);
 
 	// Interfaces
 	size_t bytesAvaillable();
@@ -33,6 +34,7 @@ private:
 	const uart_port_t port;
 	const uart_config_t config;
 	QueueHandle_t queue;
+	Gpio &latch;
 };
 
 #endif // INCLUDE_SERIALWRAPPER_HPP_

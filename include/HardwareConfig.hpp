@@ -67,7 +67,7 @@ namespace Buzzer {
 
 namespace SerialRS {
 	static constexpr int8_t kLatchPin = 25;
-	static constexpr int8_t kUsartPort = 0;
+	static constexpr int8_t kUsartPort = 1;
 	static constexpr int8_t aRxPin = 26;
 	static constexpr int8_t aTxPin = 27;
 } // namespace SerialRS
