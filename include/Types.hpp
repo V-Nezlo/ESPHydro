@@ -61,7 +61,7 @@ struct LowerInternalData {
 	uint8_t flags;
 	uint8_t waterLevel;
 	bool pumpState;
-	int8_t waterTemp10;
+	int16_t waterTemp10;
 	uint8_t ph10;
 	uint16_t ppm;
 };

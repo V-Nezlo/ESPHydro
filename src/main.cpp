@@ -32,7 +32,7 @@ void displayTaskFunc(void *pvParameters)
 
 		if (!inited) {
 			const auto time = TimeWrapper::seconds();
-			if (time > std::chrono::seconds{2}) {
+			if (time > std::chrono::seconds{1}) {
 				displayMainPage();
 				inited = true;
 			}

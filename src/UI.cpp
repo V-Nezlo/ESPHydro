@@ -862,7 +862,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
-			// lv_img_set_src(hydroTypeImage, &EbbNormal);
+			lv_img_set_src(hydroTypeImage, &EbbNormal);
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBSwing: // Swing
