@@ -484,8 +484,8 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
 	if (*operation == 1) {
-		auto newSettings = saveParameters();
 		updateMainPagePumpTypeLabel();
+		auto newSettings = saveParameters();
 		sendParametersToEventBus(newSettings);
 	} else {
 		enterParameters(&currentSettings);
@@ -834,10 +834,15 @@ bool getLoggingState()
 void updateMainPagePumpTypeLabel()
 {
 	// Update pump mode
-	const uint8_t modeNumber = lv_dropdown_get_selected(pumpTypeDD);
-	const PumpModes mode = static_cast<PumpModes>(modeNumber);
+	const uint8_t newModeNumber = lv_dropdown_get_selected(pumpTypeDD);
+	const PumpModes newMode = static_cast<PumpModes>(newModeNumber);
+	const PumpModes oldMode = currentSettings.pump.mode;
 
-	switch (mode) {
+	if (newMode == oldMode) {
+		return;
+	}
+
+	switch (newMode) {
 		case PumpModes::EBBNormal: // Normal
 			lv_label_set_text_static(currentModeLabel, "EBB-FLOW");
 			lv_obj_center(currentModeLabel);
