@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <esp_log.h>
-
 /**********************
  *      Типы
  **********************/
@@ -209,6 +207,19 @@ uint8_t auxFlags{0};
 lv_obj_t *aboutVersionFiller;
 lv_obj_t *aboutWifiPresentFiller;
 lv_obj_t *aboutMqttPresentFiller;
+// Статические буфферы для текста
+char phLabelText[5] = "?.?";
+char ppmLabelText[6] = "????";
+char tempLabelText[5] = "??.?";
+char waterLevelLabelText[6] = "??";
+char currentTimeLabelText[19] = "?? : ?? : ??";
+
+char settingsPumpOnTimeText[6] = "0";
+char settingsPumpOffTimeText[6] = "0";
+char settingsPumpSwingTimeText[7] = "0s ";
+
+char settingsLampOnTime[13] = "00:00:00";
+char settingsLampOffTime[13] = "00:00:00";
 
 uint8_t editScrFormattedHourEnum = 1;
 uint8_t editScrFormattedMinSecEnum = 2;
@@ -338,10 +349,6 @@ void uiInit()
 	keyboardCreate();
 	createAdditionalPanels();
 
-	// Placeholders
-	fillDevicePlaceholders(DeviceType::Master);
-	fillDevicePlaceholders(DeviceType::Lower);
-
 	lv_scr_load(loadingScreen);
 }
 
@@ -387,9 +394,8 @@ void msgBoxCallback(lv_event_t *aEvent)
 void pumpSwingTimeEvent(lv_event_t *aEvent)
 {
 	uint16_t currentValue = lv_slider_get_value(pumpSwingTimeSlider);
-	char text[7];
-	sprintf(text, "%us", currentValue);
-	lv_label_set_text(pumpSwingTimeText, text);
+	sprintf(settingsPumpSwingTimeText, "%us", currentValue);
+	lv_label_set_text_static(pumpSwingTimeText, NULL);
 }
 
 void pumpTypeEventHandler(lv_event_t *aEvent)
@@ -594,12 +600,15 @@ bool textAreasApply(uint8_t aArea)
 			const char *taTextOn = lv_textarea_get_text(pumpOnTa);
 			const char *taTextOff = lv_textarea_get_text(pumpOffTa);
 
+			sprintf(settingsPumpOnTimeText, "%s", taTextOn);
+			sprintf(settingsPumpOffTimeText, "%s", taTextOff);
+
 			const uint32_t onTime = atoi(taTextOn);
 			const uint32_t offTime = atoi(taTextOff);
 
 			if (onTime != 0 && offTime != 0) {
-				lv_label_set_text(pumpOnCornerText, taTextOn);
-				lv_label_set_text(pumpOffCornerText, taTextOff);
+				lv_label_set_text_static(pumpOnCornerText, NULL);
+				lv_label_set_text_static(pumpOffCornerText, NULL);
 				return true;
 			} else {
 				return false;
@@ -613,11 +622,10 @@ bool textAreasApply(uint8_t aArea)
 			const char *taTextOffHour = lv_textarea_get_text(lampOffHourTa);
 			const char *taTextOffMin = lv_textarea_get_text(lampOffMinTa);
 
-			char newData[13];
-			sprintf(newData, "%02u:%02u:00", (uint8_t)atoi(taTextOnHour), (uint8_t)atoi(taTextOnMin));
-			lv_label_set_text(lampOnCornerText, newData);
-			sprintf(newData, "%02u:%02u:00", (uint8_t)atoi(taTextOffHour), (uint8_t)atoi(taTextOffMin));
-			lv_label_set_text(lampOffCornerText, newData);
+			sprintf(settingsLampOnTime, "%02u:%02u:00", (uint8_t)atoi(taTextOnHour), (uint8_t)atoi(taTextOnMin));
+			lv_label_set_text_static(lampOnCornerText, NULL);
+			sprintf(settingsLampOffTime, "%02u:%02u:00", (uint8_t)atoi(taTextOffHour), (uint8_t)atoi(taTextOffMin));
+			lv_label_set_text_static(lampOffCornerText, NULL);
 
 			return true;
 			break;
@@ -675,43 +683,21 @@ void updateLowerData(const struct LowerInternalData *aData)
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
 
-	char phData[5];
-	sprintf(phData, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
-	lv_label_set_text(mainPagePH, phData);
+	sprintf(ppmLabelText, "%4u", aData->ppm);
+	sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
+	sprintf(waterLevelLabelText, "%3u %%", aData->waterLevel);
+	sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 
-	char ppmData[6];
-	sprintf(ppmData, "%4u", aData->ppm);
-	lv_label_set_text(mainPagePPM, ppmData);
-
-	char tempData[5];
-	sprintf(tempData, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
-	lv_label_set_text(mainPageWaterTemp, tempData);
-
-	char waterLevelData[6];
-	sprintf(waterLevelData, "%3u %%", aData->waterLevel);
-	lv_label_set_text(mainPageWaterLev, waterLevelData);
+	// Сигнал для обновления текстов
+	lv_label_set_text_static(mainPageWaterTemp, NULL);
+	lv_label_set_text_static(mainPagePPM, NULL);
+	lv_label_set_text_static(mainPagePH, NULL);
+	lv_label_set_text_static(mainPageWaterLev, NULL);
 }
 
 void updateAUXData(struct AuxData *aData)
 {
 	auxFlags = aData->flags;
-}
-
-void fillDevicePlaceholders(DeviceType aDevice)
-{
-	switch (aDevice) {
-		case DeviceType::Master:
-			systemFlags = 0;
-			break;
-		case DeviceType::Lower:
-			lv_label_set_text(mainPagePH, "?");
-			lv_label_set_text(mainPagePPM, "?");
-			lv_label_set_text(mainPageWaterTemp, "?");
-			lv_label_set_text(mainPageWaterLev, "?");
-			break;
-		default:
-			break;
-	}
 }
 
 void updateUpperData(struct UpperInternalData *aData)
@@ -728,13 +714,12 @@ void applyNewCurrentTime(struct Time *aTime)
 	lv_obj_t *currentScreen = lv_scr_act();
 
 	if (currentScreen == mainPage || currentScreen == settingsPage) {
-		char newTime[19];
-		sprintf(newTime, "%02u : %02u : %02u", aTime->hour, aTime->minutes, aTime->seconds);
+		sprintf(currentTimeLabelText, "%02u : %02u : %02u", aTime->hour, aTime->minutes, aTime->seconds);
 
 		if (currentScreen == mainPage) {
-			lv_label_set_text(mainPageTime, newTime);
+			lv_label_set_text_static(mainPageTime, NULL);
 		} else if (currentScreen == settingsPage) {
-			lv_label_set_text(settingsPageTime, newTime);
+			lv_label_set_text_static(settingsPageTime, NULL);
 		}
 	}
 }
@@ -751,13 +736,11 @@ void enterParameters(struct Settings *aParams)
 		lv_obj_clear_state(pumpEnableButton, LV_STATE_CHECKED);
 	}
 
-	char pumpOnTimeText[6];
-	char pumpOffTimeText[6];
-	sprintf(pumpOnTimeText, "%4u", aParams->pump.onTime);
-	sprintf(pumpOffTimeText, "%4u", aParams->pump.offTime);
+	sprintf(settingsPumpOnTimeText, "%4u", aParams->pump.onTime);
+	sprintf(settingsPumpOffTimeText, "%4u", aParams->pump.offTime);
 
-	lv_label_set_text(pumpOnCornerText, pumpOnTimeText);
-	lv_label_set_text(pumpOffCornerText, pumpOffTimeText);
+	lv_label_set_text_static(pumpOnCornerText, NULL);
+	lv_label_set_text_static(pumpOffCornerText, NULL);
 
 	lv_dropdown_set_selected(pumpTypeDD, static_cast<uint8_t>(aParams->pump.mode));
 	// Вызываю коллбек для DD руками чтобы обновился текст на главной странице
@@ -773,13 +756,11 @@ void enterParameters(struct Settings *aParams)
 		lv_obj_clear_state(pumpEnableButton, LV_STATE_CHECKED);
 	}
 
-	char lampOnTime[13];
-	char lampOffTime[13];
-	sprintf(lampOnTime, "%02u:%02u:00", aParams->lamp.lampOnHour, aParams->lamp.lampOnMin);
-	sprintf(lampOffTime, "%02u:%02u:00", aParams->lamp.lampOffHour, aParams->lamp.lampOffMin);
+	sprintf(settingsLampOnTime, "%02u:%02u:00", aParams->lamp.lampOnHour, aParams->lamp.lampOnMin);
+	sprintf(settingsLampOffTime, "%02u:%02u:00", aParams->lamp.lampOffHour, aParams->lamp.lampOffMin);
 
-	lv_label_set_text(lampOnCornerText, lampOnTime);
-	lv_label_set_text(lampOffCornerText, lampOffTime);
+	lv_label_set_text_static(lampOnCornerText, NULL);
+	lv_label_set_text_static(lampOffCornerText, NULL);
 
 	// Настроим прочие настройки
 
@@ -858,7 +839,7 @@ void updateMainPagePumpTypeLabel()
 
 	switch (mode) {
 		case PumpModes::EBBNormal: // Normal
-			lv_label_set_text(currentModeLabel, "EBB-FLOW");
+			lv_label_set_text_static(currentModeLabel, "EBB-FLOW");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
@@ -866,7 +847,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBSwing: // Swing
-			lv_label_set_text(currentModeLabel, "EBB-SWING");
+			lv_label_set_text_static(currentModeLabel, "EBB-SWING");
 			lv_obj_center(currentModeLabel);
 			lv_obj_clear_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
@@ -874,7 +855,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::Maintance: // Maintance
-			lv_label_set_text(currentModeLabel, "MAINTANCE");
+			lv_label_set_text_static(currentModeLabel, "MAINTANCE");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
@@ -882,7 +863,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::Dripping: // Drip
-			lv_label_set_text(currentModeLabel, "DRIP");
+			lv_label_set_text_static(currentModeLabel, "DRIP");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
@@ -890,7 +871,7 @@ void updateMainPagePumpTypeLabel()
 			lv_obj_align(hydroTypeImage, LV_ALIGN_CENTER, 0, 0);
 			break;
 		case PumpModes::EBBDam: // DAM
-			lv_label_set_text(currentModeLabel, "EBB-DAM");
+			lv_label_set_text_static(currentModeLabel, "EBB-DAM");
 			lv_obj_center(currentModeLabel);
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 
@@ -951,6 +932,26 @@ void processTap(lv_event_t *e)
 {
 	if (currentSettings.common.tapSoundEnabled) {
 		sendTapSoundToEventBus();
+	}
+}
+
+void fillDevicePlaceholders(DeviceType aDevice)
+{
+	switch (aDevice) {
+		case DeviceType::Lower:
+			sprintf(phLabelText, "?.?");
+			sprintf(ppmLabelText, "????");
+			sprintf(tempLabelText, "??.?");
+			sprintf(waterLevelLabelText, "??");
+
+			// Сигнал для обновления текстов
+			lv_label_set_text_static(mainPageWaterTemp, NULL);
+			lv_label_set_text_static(mainPagePPM, NULL);
+			lv_label_set_text_static(mainPagePH, NULL);
+			lv_label_set_text_static(mainPageWaterLev, NULL);
+			break;
+		default:
+			break;
 	}
 }
 
@@ -1104,7 +1105,7 @@ void actuatorsCreate(lv_obj_t *parent, uint16_t aYOffset)
 	lv_obj_clear_flag(actuators.aux, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_style(actuators.aux, &style_menu_base, 0);
 	lv_obj_t *actuatorAuxLabel = lv_label_create(actuators.aux);
-	lv_label_set_text(actuatorAuxLabel, "AUX");
+	lv_label_set_text_static(actuatorAuxLabel, "AUX");
 	lv_obj_align(actuatorAuxLabel, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(actuators.aux, actuatorPressedEventHandler, LV_EVENT_CLICKED, NULL);
 }
@@ -1145,7 +1146,6 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_add_style(currentModePanel, &style_menu_subpanel, 0);
 		currentModeLabel = lv_label_create(currentModePanel);
 		lv_obj_align_to(currentModeLabel, currentModePanel, LV_ALIGN_TOP_MID, 0, -10);
-		lv_label_set_text(currentModeLabel, "Error");
 
 		lv_obj_t *hydroTypePanel = lv_obj_create(panel1);
 		lv_obj_add_style(hydroTypePanel, &styleImageHolder, 0);
@@ -1167,7 +1167,7 @@ void mainPageCreate(lv_obj_t *parent)
 
 		// Текст с текущим временем
 		mainPageTime = lv_label_create(currentTimePanel);
-		lv_label_set_text_static(mainPageTime, "?? : ?? : ??");
+		lv_label_set_text_static(mainPageTime, currentTimeLabelText);
 		lv_obj_align_to(mainPageTime, currentTimePanel, LV_ALIGN_BOTTOM_MID, 0, 10);
 		// Панель для PH
 		lv_obj_t *pHPanel = lv_obj_create(panel2);
@@ -1178,11 +1178,11 @@ void mainPageCreate(lv_obj_t *parent)
 
 		// Текст для PH
 		lv_obj_t *mainPagePHLabel = lv_label_create(pHPanel);
-		lv_label_set_text(mainPagePHLabel, "PH: ");
+		lv_label_set_text_static(mainPagePHLabel, "PH: ");
 		lv_obj_align_to(mainPagePHLabel, pHPanel, LV_ALIGN_LEFT_MID, 20, 0);
 
 		mainPagePH = lv_label_create(pHPanel);
-		lv_label_set_text_static(mainPagePH, "7.5");
+		lv_label_set_text_static(mainPagePH, phLabelText);
 		lv_obj_align_to(mainPagePH, pHPanel, LV_ALIGN_RIGHT_MID, -25, 0);
 		// Панель для PPM
 		lv_obj_t *ppmPanel = lv_obj_create(panel2);
@@ -1192,11 +1192,11 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_add_style(ppmPanel, &style_menu_subpanel, 0);
 		// Текст для PPM
 		lv_obj_t *mainPagePPMLabel = lv_label_create(ppmPanel);
-		lv_label_set_text(mainPagePPMLabel, "PPM: ");
+		lv_label_set_text_static(mainPagePPMLabel, "PPM: ");
 		lv_obj_align_to(mainPagePPMLabel, ppmPanel, LV_ALIGN_LEFT_MID, 10, 0);
 
 		mainPagePPM = lv_label_create(ppmPanel);
-		lv_label_set_text_static(mainPagePPM, "1800");
+		lv_label_set_text_static(mainPagePPM, ppmLabelText);
 		lv_obj_align_to(mainPagePPM, ppmPanel, LV_ALIGN_RIGHT_MID, -10, 0);
 		// Панель для температуры воды
 		lv_obj_t *waterTempPanel = lv_obj_create(panel2);
@@ -1206,11 +1206,11 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_add_style(waterTempPanel, &style_menu_subpanel, 0);
 		// Текст для температуры воды
 		lv_obj_t *mainPageWaterTempLabel = lv_label_create(waterTempPanel);
-		lv_label_set_text(mainPageWaterTempLabel, "Temp: ");
+		lv_label_set_text_static(mainPageWaterTempLabel, "Temp: ");
 		lv_obj_align_to(mainPageWaterTempLabel, waterTempPanel, LV_ALIGN_LEFT_MID, 5, 0);
 
 		mainPageWaterTemp = lv_label_create(waterTempPanel);
-		lv_label_set_text_static(mainPageWaterTemp, "18.2");
+		lv_label_set_text_static(mainPageWaterTemp, tempLabelText);
 		lv_obj_align_to(mainPageWaterTemp, waterTempPanel, LV_ALIGN_RIGHT_MID, -10, 0);
 
 		// Индикатор уровня воды
@@ -1222,11 +1222,11 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_add_style(waterLevelPanel, &style_menu_subpanel, 0);
 		// Текст для уровня воды
 		lv_obj_t *mainPageWaterLevelLabel = lv_label_create(waterLevelPanel);
-		lv_label_set_text(mainPageWaterLevelLabel, "Water: ");
+		lv_label_set_text_static(mainPageWaterLevelLabel, "Water: ");
 		lv_obj_align_to(mainPageWaterLevelLabel, waterLevelPanel, LV_ALIGN_LEFT_MID, 5, 0);
 
 		mainPageWaterLev = lv_label_create(waterLevelPanel);
-		lv_label_set_text_static(mainPageWaterLev, "70");
+		lv_label_set_text_static(mainPageWaterLev, waterLevelLabelText);
 		lv_obj_align_to(mainPageWaterLev, waterLevelPanel, LV_ALIGN_RIGHT_MID, -15, 0);
 	}
 	{ // ******************************************************* ПАНЕЛЬ 3 *******************************************************
@@ -1313,9 +1313,9 @@ void createAdditionalPanels()
 	lv_obj_add_event_cb(pumpOffTa, processTap, LV_EVENT_ALL, NULL);
 
 	lv_obj_t *pumpOnSetText = lv_label_create(pumpSettingsScr);
-	lv_label_set_text(pumpOnSetText, "Pump on time: ");
+	lv_label_set_text_static(pumpOnSetText, "Pump on time: ");
 	lv_obj_t *pumpOffSetText = lv_label_create(pumpSettingsScr);
-	lv_label_set_text(pumpOffSetText, "Pump off time: ");
+	lv_label_set_text_static(pumpOffSetText, "Pump off time: ");
 
 	lv_obj_align_to(pumpOnTa, pumpSettingsScr, LV_ALIGN_TOP_RIGHT, -120, 5);
 	lv_obj_align_to(pumpOffTa, pumpSettingsScr, LV_ALIGN_TOP_RIGHT, -120, 50);
@@ -1324,16 +1324,16 @@ void createAdditionalPanels()
 
 	// Панель с настройкой времени включения и выключения лампы
 	lv_obj_t *lampSettingsOnLabel = lv_label_create(lampSettingsScr);
-	lv_label_set_text(lampSettingsOnLabel, "Lamp On - HH:MM");
+	lv_label_set_text_static(lampSettingsOnLabel, "Lamp On - HH:MM");
 	lv_obj_t *lampSettingsOffLabel = lv_label_create(lampSettingsScr);
-	lv_label_set_text(lampSettingsOffLabel, "Lamp Off - HH:MM");
+	lv_label_set_text_static(lampSettingsOffLabel, "Lamp Off - HH:MM");
 
 	lv_obj_t *returnButton = lv_btn_create(pumpSettingsScr);
 	lv_obj_set_size(returnButton, 70, 70);
 	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
 	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
 	lv_obj_t *returnButtonLabel = lv_label_create(returnButton);
-	lv_label_set_text(returnButtonLabel, "Return");
+	lv_label_set_text_static(returnButtonLabel, "Return");
 	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
 
 #define CLOCK_SET_TA_WIDHT 45
@@ -1401,7 +1401,7 @@ void createAdditionalPanels()
 	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
 	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
 	returnButtonLabel = lv_label_create(returnButton);
-	lv_label_set_text(returnButtonLabel, "Return");
+	lv_label_set_text_static(returnButtonLabel, "Return");
 	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
 
 	// Панель установки времени
@@ -1447,7 +1447,7 @@ void createAdditionalPanels()
 	lv_obj_add_event_cb(sendNewTimeButton, processTap, LV_EVENT_ALL, NULL);
 	lv_obj_t *setTimeButtonLabel = lv_label_create(sendNewTimeButton);
 	lv_obj_align_to(setTimeButtonLabel, sendNewTimeButton, LV_ALIGN_LEFT_MID, 0, 0);
-	lv_label_set_text(setTimeButtonLabel, "Send to RTC");
+	lv_label_set_text_static(setTimeButtonLabel, "Send to RTC");
 
 	// Алигним
 	lv_obj_align_to(setTimeHourTa, curTimeSettingsScr, LV_ALIGN_TOP_LEFT, 20, 20);
@@ -1460,7 +1460,7 @@ void createAdditionalPanels()
 	lv_obj_align(returnButton, LV_ALIGN_TOP_RIGHT, -12, 12);
 	lv_obj_add_event_cb(returnButton, returnToSettingsEventHandler, LV_EVENT_CLICKED, NULL);
 	returnButtonLabel = lv_label_create(returnButton);
-	lv_label_set_text(returnButtonLabel, "Return");
+	lv_label_set_text_static(returnButtonLabel, "Return");
 	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
 }
 
@@ -1493,20 +1493,20 @@ void menuCreate(lv_obj_t *parent)
 	// Текст - Время включенного состояния насоса
 	lv_obj_t *pumpOnBaseText = createText(section, NULL, "Pump on time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	pumpOnCornerText = lv_label_create(pumpOnBaseText);
+	lv_label_set_text_static(pumpOnCornerText, settingsPumpOnTimeText);
 	lv_obj_align_to(pumpOnCornerText, pumpOnBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
-	lv_label_set_text(pumpOnCornerText, "0"); // Вот тут нужно взять проинициализированные данные
 
 	// Текст - Время выключенного состояния насоса
 	lv_obj_t *pumpOffBaseText = createText(section, NULL, "Pump off time", LV_MENU_ITEM_BUILDER_VARIANT_2);
 	pumpOffCornerText = lv_label_create(pumpOffBaseText);
+	lv_label_set_text_static(pumpOffCornerText, settingsPumpOffTimeText);
 	lv_obj_align_to(pumpOffCornerText, pumpOffBaseText, LV_TEXT_ALIGN_RIGHT, 100, 0);
-	lv_label_set_text(pumpOffCornerText, "0"); // Вот тут нужно взять проинициализированные данные
 
 	// Кнопка для настройки времени
 	lv_obj_t *pumpConfigButton = lv_btn_create(section);
 	lv_obj_set_size(pumpConfigButton, 314, 35);
 	lv_obj_t *pumpOnButtonLabel = lv_label_create(pumpConfigButton);
-	lv_label_set_text(pumpOnButtonLabel, "Configure pump timings");
+	lv_label_set_text_static(pumpOnButtonLabel, "Configure pump timings");
 	lv_obj_align_to(pumpOnButtonLabel, pumpConfigButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(pumpConfigButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorPumpSetttins);
 	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
@@ -1529,8 +1529,8 @@ void menuCreate(lv_obj_t *parent)
 	// Поле - swing время (если режим не swing - неактивно)
 	pumpSwingTimeBase = createText(section, LV_SYMBOL_SETTINGS, "Swing Time", LV_MENU_ITEM_BUILDER_VARIANT_2);
 	pumpSwingTimeText = lv_label_create(pumpSwingTimeBase);
+	lv_label_set_text_static(pumpSwingTimeText, settingsPumpSwingTimeText);
 	lv_obj_align(pumpSwingTimeText, LV_ALIGN_RIGHT_MID, 0, 0);
-	lv_label_set_text(pumpSwingTimeText, "0s ");
 
 	pumpSwingTimeSlider = lv_slider_create(pumpSwingTimeBase);
 	lv_obj_set_flex_grow(pumpSwingTimeSlider, 2);
@@ -1554,19 +1554,19 @@ void menuCreate(lv_obj_t *parent)
 	// Текст - время включения лампы
 	lv_obj_t *lampOnBaseText = createText(section, NULL, "Lamp On Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lampOnCornerText = lv_label_create(lampOnBaseText);
-	lv_label_set_text(lampOnCornerText, "00:00:00");
+	lv_label_set_text_static(lampOnCornerText, settingsLampOnTime);
 	lv_obj_align_to(lampOnCornerText, lampOnBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
 
 	lv_obj_t *lampOffBaseText = createText(section, NULL, "Lamp Off Time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	lampOffCornerText = lv_label_create(lampOffBaseText);
-	lv_label_set_text(lampOffCornerText, "00:00:00");
+	lv_label_set_text_static(lampOffCornerText, settingsLampOffTime);
 	lv_obj_align_to(lampOffCornerText, lampOffBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
 
 	// Поле ввода цифр для включенного состояния
 	lv_obj_t *lampSettingsButton = lv_btn_create(section);
 	lv_obj_set_size(lampSettingsButton, 314, 35);
 	lv_obj_t *lampButtonLabel = lv_label_create(lampSettingsButton);
-	lv_label_set_text(lampButtonLabel, "Configure lamp timings");
+	lv_label_set_text_static(lampButtonLabel, "Configure lamp timings");
 	lv_obj_align_to(lampButtonLabel, lampSettingsButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(lampSettingsButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorLampSettings);
 	lv_obj_add_event_cb(lampSettingsButton, processTap, LV_EVENT_CLICKED, NULL);
@@ -1591,7 +1591,7 @@ void menuCreate(lv_obj_t *parent)
 	// Настройка  текущего времени
 	lv_obj_t *setTimeBaseText = createText(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	settingsPageTime = lv_label_create(setTimeBaseText);
-	lv_label_set_text(settingsPageTime, "00:00:00");
+	lv_label_set_text_static(settingsPageTime, currentTimeLabelText);
 	lv_obj_align_to(settingsPageTime, setTimeBaseText, LV_TEXT_ALIGN_RIGHT, 0, 0);
 
 	// Кнопка для отправки времени в RTC
@@ -1602,7 +1602,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_align(setTimeButton, LV_ALIGN_CENTER, 0, -40);
 	// Надпись на кнопке
 	lv_obj_t *setTimeLabel = lv_label_create(setTimeButton);
-	lv_label_set_text(setTimeLabel, "Configure current time");
+	lv_label_set_text_static(setTimeLabel, "Configure current time");
 	lv_obj_center(setTimeLabel);
 
 	lv_menu_separator_create(section);
@@ -1612,7 +1612,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_add_state(mqttConfigureButton, LV_STATE_DISABLED);
 
 	lv_obj_t *mqttConfigureLabel = lv_label_create(mqttConfigureButton);
-	lv_label_set_text(mqttConfigureLabel, "Configure connections");
+	lv_label_set_text_static(mqttConfigureLabel, "Configure connections");
 	lv_obj_center(mqttConfigureLabel);
 
 	// ******************************** МЕНЮ ОТЛАДКИ **********************************
@@ -1636,17 +1636,17 @@ void menuCreate(lv_obj_t *parent)
 
 	lv_obj_t *versionContaiter = createText(section, NULL, "Version:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutVersionFiller = lv_label_create(versionContaiter);
-	lv_label_set_text(aboutVersionFiller, AUTO_VERSION);
+	lv_label_set_text_static(aboutVersionFiller, AUTO_VERSION);
 	lv_obj_align(aboutVersionFiller, LV_ALIGN_LEFT_MID, 0,0);
 
 	lv_obj_t *wifiPresentContainer = createText(section, NULL, "Wifi status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutWifiPresentFiller = lv_label_create(wifiPresentContainer);
-	lv_label_set_text(aboutWifiPresentFiller, "UNSUPPORTED");
+	lv_label_set_text_static(aboutWifiPresentFiller, "UNSUPPORTED");
 	lv_obj_align(aboutWifiPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
 
 	lv_obj_t *mqttPresentContainer = createText(section, NULL, "MQTT status:", LV_MENU_ITEM_BUILDER_VARIANT_1);
 	aboutMqttPresentFiller = lv_label_create(mqttPresentContainer);
-	lv_label_set_text(aboutMqttPresentFiller, "UNSUPPORTED");
+	lv_label_set_text_static(aboutMqttPresentFiller, "UNSUPPORTED");
 	lv_obj_align(aboutMqttPresentFiller, LV_ALIGN_LEFT_MID, 0,0);
 
 	// ******************************** МЕНЮ ВЫХОДА **********************************
@@ -1663,7 +1663,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_add_event_cb(exitWithSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWithSaveLabel = lv_label_create(exitWithSaveButton);
-	lv_label_set_text(exitWithSaveLabel, "Save and exit");
+	lv_label_set_text_static(exitWithSaveLabel, "Save and exit");
 	lv_obj_align_to(exitWithSaveLabel, exitWithSaveButton, LV_ALIGN_CENTER, 0, 0);
 	// ***** КНОПКА ВЫХОДА БЕЗ СОХРАНЕНИЯ
 	lv_obj_t *exitWnoSaveButtonContainer = lv_menu_cont_create(section);
@@ -1675,7 +1675,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_add_event_cb(exitWnoSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWnoSaveLabel = lv_label_create(exitWnoSaveButton);
-	lv_label_set_text(exitWnoSaveLabel, "Exit without saving");
+	lv_label_set_text_static(exitWnoSaveLabel, "Exit without saving");
 	lv_obj_center(exitWnoSaveLabel);
 
 	/* ************************************ОБЩЕЕ ДЛЯ СОЗДАНИЯ МЕНЮ *******************************/
@@ -1718,7 +1718,7 @@ lv_obj_t *createText(lv_obj_t *parent, const char *icon, const char *txt, lv_men
 
 	if (txt) {
 		label = lv_label_create(obj);
-		lv_label_set_text(label, txt);
+		lv_label_set_text_static(label, txt);
 		lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 		lv_obj_set_flex_grow(label, 1);
 	}
