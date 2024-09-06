@@ -71,6 +71,19 @@ lv_obj_t *timeKeyboard;
 lv_obj_t *panel1;
 lv_obj_t *panel2;
 lv_obj_t *panel3;
+
+// "Окна - всплывающие objectы при нажатии на устройства"
+lv_obj_t *lowerDescribedPanel;
+lv_obj_t *lowerLed1;
+lv_obj_t *lowerLed2;
+lv_obj_t *lowerLed3;
+lv_obj_t *lowerLed4;
+lv_obj_t *lowerLed5;
+
+lv_obj_t *upperDescribedPanel;
+lv_obj_t *upperLed1;
+lv_obj_t *upperLed2;
+
 // Панель 1
 lv_obj_t *currentModeLabel;
 lv_obj_t *hydroTypeImage;
@@ -348,6 +361,7 @@ void uiInit()
 	menuCreate(settingsPage);
 	keyboardCreate();
 	createAdditionalPanels();
+	createDescribedWindows(mainPage);
 
 	lv_scr_load(loadingScreen);
 }
@@ -566,6 +580,28 @@ void actuatorPressedEventHandler(lv_event_t *e)
 void returnToSettingsEventHandler(lv_event_t *)
 {
 	lv_scr_load(settingsPage);
+}
+
+void deviceDetailedInfoOpenCallback(lv_event_t *e)
+{
+	const lv_obj_t *target = lv_event_get_current_target(e);
+
+	if (target == lowerStatusPanel) {
+		lv_obj_clear_flag(lowerDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+	} else if (target == upperStatusPanel) {
+		lv_obj_clear_flag(upperDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+	}
+}
+
+void deviceDetailedInfoCloseCallback(lv_event_t *e)
+{
+	const lv_obj_t *caller = reinterpret_cast<lv_obj_t *>(lv_event_get_user_data(e));
+
+	if (caller == lowerDescribedPanel) {
+		lv_obj_add_flag(lowerDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+	} else if (caller == upperDescribedPanel) {
+		lv_obj_add_flag(upperDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+	}
 }
 
 /********************************
@@ -1241,6 +1277,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_align_to(lowerStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, -10);
 		lv_obj_clear_flag(lowerStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(lowerStatusPanel, &style_menu_base, 0);
+		lv_obj_add_event_cb(lowerStatusPanel, deviceDetailedInfoOpenCallback, LV_EVENT_CLICKED, NULL);
 		// Текст LOWER
 		lv_obj_t *lowerStatusLabel = lv_label_create(lowerStatusPanel);
 		lv_label_set_text_static(lowerStatusLabel, "LOWER");
@@ -1263,6 +1300,7 @@ void mainPageCreate(lv_obj_t *parent)
 		lv_obj_align_to(upperStatusPanel, panel3, LV_ALIGN_TOP_MID, 0, 60);
 		lv_obj_clear_flag(upperStatusPanel, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 		lv_obj_add_style(upperStatusPanel, &style_menu_base, 0);
+		lv_obj_add_event_cb(upperStatusPanel, deviceDetailedInfoOpenCallback, LV_EVENT_CLICKED, NULL);
 		// Текст UPPER
 		lv_obj_t *upperStatusLabel = lv_label_create(upperStatusPanel);
 		lv_label_set_text_static(upperStatusLabel, "UPPER");
@@ -1467,6 +1505,40 @@ void createAdditionalPanels()
 	returnButtonLabel = lv_label_create(returnButton);
 	lv_label_set_text_static(returnButtonLabel, "Return");
 	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
+}
+
+void createDescribedWindows(lv_obj_t *aParent)
+{
+	lowerDescribedPanel = lv_obj_create(aParent);
+	lv_obj_set_size(lowerDescribedPanel, 200, 200);
+	lv_obj_align(lowerDescribedPanel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_flag(lowerDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+
+	lv_obj_t *lowerExitButton = lv_btn_create(lowerDescribedPanel);
+	lv_obj_t *lowerExitButtonLabel = lv_label_create(lowerExitButton);
+	lv_label_set_text_static(lowerExitButtonLabel, "Close");
+	lv_obj_align(lowerExitButton, LV_ALIGN_BOTTOM_MID, 0, 0);
+	lv_obj_add_event_cb(lowerExitButton, deviceDetailedInfoCloseCallback, LV_EVENT_CLICKED, lowerDescribedPanel);
+
+	lowerLed1 = createLed(lowerDescribedPanel, "Pump current", 110, 0, 0);
+	lowerLed2 = createLed(lowerDescribedPanel, "Temp sensor", 110, 0, 20);
+	lowerLed3 = createLed(lowerDescribedPanel, "PH sensor", 110, 0, 40);
+	lowerLed4 = createLed(lowerDescribedPanel, "PPM sensor", 110, 0, 60);
+	lowerLed5 = createLed(lowerDescribedPanel, "Water", 110, 0, 80);
+
+	upperDescribedPanel = lv_obj_create(aParent);
+	lv_obj_set_size(upperDescribedPanel, 200, 200);
+	lv_obj_align(upperDescribedPanel, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_flag(upperDescribedPanel, LV_OBJ_FLAG_HIDDEN);
+
+	lv_obj_t *upperExitButton = lv_btn_create(upperDescribedPanel);
+	lv_obj_t *upperExitButtonLabel = lv_label_create(upperExitButton);
+	lv_label_set_text_static(upperExitButtonLabel, "Close");
+	lv_obj_align(upperExitButton, LV_ALIGN_BOTTOM_MID, 0, 0);
+	lv_obj_add_event_cb(upperExitButton, deviceDetailedInfoCloseCallback, LV_EVENT_CLICKED, upperDescribedPanel);
+
+	upperLed1 = createLed(upperDescribedPanel, "220V", 110, 0, 0);
+	upperLed2 = createLed(upperDescribedPanel, "TopLevel", 110, 0, 20);
 }
 
 void menuCreate(lv_obj_t *parent)
@@ -1760,6 +1832,19 @@ lv_obj_t *createSwitch(lv_obj_t *parent, const char *icon, const char *txt, bool
 	lv_obj_add_state(sw, chk ? LV_STATE_CHECKED : 0);
 
 	return sw;
+}
+
+lv_obj_t *createLed(lv_obj_t *parent, const char *text, uint8_t ledShiftX, uint8_t labelAlignX, uint8_t labelAlignY)
+{
+	lv_obj_t *label = lv_label_create(parent);
+	lv_label_set_text_static(label, text);
+	lv_obj_set_size(label, 130, 20);
+	lv_obj_align(label, LV_ALIGN_TOP_MID, labelAlignX, labelAlignY);
+	lv_obj_t *led = lv_led_create(label);
+	lv_obj_set_size(led, 10, 10);
+	lv_led_set_brightness(led, 200);
+	lv_obj_align(led, LV_ALIGN_OUT_RIGHT_MID, 0 + ledShiftX, 3);
+	return led;
 }
 
 #ifdef __cplusplus
