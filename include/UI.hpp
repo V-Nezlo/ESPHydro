@@ -29,10 +29,11 @@ void keyboardCreate();
 lv_obj_t *createSwitch(lv_obj_t * parent, const char * icon, const char * txt, bool chk);
 lv_obj_t *createSlider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
 lv_obj_t *createText(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant);
-lv_obj_t *createLed(lv_obj_t *parent, const char *text, uint8_t ledShiftX, uint8_t labelAlignX, uint8_t labelAlignY);
+// Создает презентованные LABEL и LED
+void createLed(lv_obj_t *parent, lv_obj_t *&label, lv_obj_t *&led, const char *text, uint8_t ledShiftX, uint8_t labelAlignX, uint8_t labelAlignY);
 
 void createAdditionalPanels();
-void createDescribedWindows(lv_obj_t *aParent);
+void createDescribedWindow(lv_obj_t *aParent);
 void settingsButtonEvent(lv_event_t * e);
 void uiInit();
 void displayMainPage();
