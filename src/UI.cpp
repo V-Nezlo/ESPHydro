@@ -21,8 +21,6 @@ typedef enum {
 	DISP_LARGE,
 } disp_size_t;
 
-enum EditScrs { PumpSettingsScrNumber = 1, LampSettingsScrNumber = 2, CurrentTimeSettingsScrNumber = 3 };
-enum DetailedModuleInfoEnum {DetailedLowerInfo = 1, DetailedUpperInfo = 2, DetailedAuxInfo = 3, DetailedSystemInfo = 4};
 enum ActuatorStatus {Disabled = 0, Present = 1, Activated = 2};
 
 /**********************
@@ -185,15 +183,6 @@ lv_obj_t *brightnessSlider;
 // Штуки для сервиса
 lv_obj_t *loggingTextarea;
 lv_obj_t *loggingSwitch;
-// Энумератор для колбеков
-uint8_t editScrSelectorPumpSetttins = PumpSettingsScrNumber;
-uint8_t editScrSelectorLampSettings = LampSettingsScrNumber;
-uint8_t editScrSelectorSetTime = CurrentTimeSettingsScrNumber;
-// Энумератор для подробного описания модулей
-uint8_t detailedLowerInfoEnum = DetailedLowerInfo;
-uint8_t detailedUpperInfoEnum = DetailedUpperInfo;
-uint8_t detailedAuxInfoEnum = DetailedAuxInfo;
-uint8_t detailedSystemInfoEnum = DetailedSystemInfo;
 // Були для активации расширенного отображения
 bool isLowerPresent{false};
 bool isUpperPresent{false};
@@ -204,6 +193,14 @@ uint8_t lowerFlags{0};
 uint8_t upperFlags{0};
 uint8_t systemFlags{0};
 uint8_t auxFlags{0};
+
+// Флаг того что система перешла в рабочий режим
+bool initialized = false;
+// Обьекты для передачи в event handlers
+uint8_t kFormattingHourEnumerator = 1;
+uint8_t kFormattingMinSecEnumerator = 2;
+uint8_t kExitWithoutSaveButtonEnumerator = 1;
+uint8_t kExitWithSaveButtonEnumerator = 2;
 
 // Обьекты для текстового вывода версий и статусов
 lv_obj_t *aboutVersionFiller;
@@ -244,11 +241,6 @@ char deviceDescPanelString3[16] = " ";
 char deviceDescPanelString4[16] = " ";
 char deviceDescPanelString5[16] = " ";
 
-//
-uint8_t editScrFormattedHourEnum = 1;
-uint8_t editScrFormattedMinSecEnum = 2;
-uint8_t exitWithSaveButtonCallbackData = 1;
-uint8_t exitWithoutSaveButtonCallbackData = 2;
 lv_obj_t *activeMessageBox;
 // Временный буффер для перевода всяких штук в другие штуки
 Settings currentSettings;
@@ -380,6 +372,7 @@ void displayMainPage()
 {
 	createDescribedWindow(mainPage);
 	lv_scr_load(mainPage);
+	initialized = true;
 }
 
 /**********************
@@ -388,18 +381,15 @@ void displayMainPage()
 
 void customTextAreaEvent(lv_event_t *aEvent)
 {
-	uint8_t *data = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
-
-	switch (*data) {
-		case PumpSettingsScrNumber:
-			lv_scr_load(pumpSettingsScr);
-			break;
-		case LampSettingsScrNumber:
-			lv_scr_load(lampSettingsScr);
-			break;
-		case CurrentTimeSettingsScrNumber:
-			lv_scr_load(curTimeSettingsScr);
-			break;
+	lv_obj_t *screen = static_cast<lv_obj_t *>(lv_event_get_user_data(aEvent));
+	if (screen == pumpSettingsScr) {
+		lv_scr_load(pumpSettingsScr);
+	} else if (screen == lampSettingsScr) {
+		lv_scr_load(lampSettingsScr);
+	} else if (screen == curTimeSettingsScr) {
+		lv_scr_load(curTimeSettingsScr);
+	} else {
+		return;
 	}
 }
 
@@ -447,14 +437,16 @@ void formattedAreaCommonCallback(lv_event_t *aEvent)
 	uint8_t representedValue = atoi(currentText);
 
 	// Hour formatter
-	if (*editType == 1) {
+	if (*editType == kFormattingHourEnumerator) {
 		if (representedValue > 23) {
 			lv_textarea_set_text(ta, "23");
 		}
-	} else if (*editType == 2) {
+	} else if (*editType == kFormattingMinSecEnumerator) {
 		if (representedValue > 59) {
 			lv_textarea_set_text(ta, "59");
 		}
+	} else {
+		return;
 	}
 }
 
@@ -462,14 +454,14 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 {
 	lv_event_code_t code = lv_event_get_code(aEvent);
 	lv_obj_t *ta = lv_event_get_target(aEvent);
-	uint8_t *editedSpec = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
+	lv_obj_t *screen = static_cast<lv_obj_t *>(lv_event_get_user_data(aEvent));
 
 	lv_obj_t *keyboard = pumpKeyboard;
-	if (*editedSpec == EditScrs::PumpSettingsScrNumber) {
+	if (screen == pumpSettingsScr) {
 		keyboard = pumpKeyboard;
-	} else if (*editedSpec == EditScrs::LampSettingsScrNumber) {
+	} else if (screen == lampSettingsScr) {
 		keyboard = lampKeyboard;
-	} else if (*editedSpec == EditScrs::CurrentTimeSettingsScrNumber) {
+	} else if (screen == curTimeSettingsScr) {
 		keyboard = timeKeyboard;
 	} else {
 		return;
@@ -491,13 +483,13 @@ void textAreaCommonCallback(lv_event_t *aEvent)
 
 		// Тут мы сбрасываем данные и возвращаемся
 		if (code == LV_EVENT_CANCEL) {
-			textAreasReset(*editedSpec);
+			textAreasReset(screen);
 			lv_scr_load(settingsPage);
 		}
 
 		// Тут мы пытаемся применить введенные данные если они валидны
 		if (code == LV_EVENT_READY) {
-			if (textAreasApply(*editedSpec)) {
+			if (textAreasApply(screen)) {
 				lv_scr_load(settingsPage);
 			}
 		}
@@ -508,11 +500,11 @@ void exitButtonEventHandler(lv_event_t *aEvent)
 {
 	uint8_t *operation = static_cast<uint8_t *>(lv_event_get_user_data(aEvent));
 
-	if (*operation == 1) {
+	if (*operation == kExitWithSaveButtonEnumerator) {
 		updateMainPagePumpTypeLabel();
 		auto newSettings = saveParameters();
 		sendParametersToEventBus(newSettings);
-	} else {
+	} else if (*operation == kExitWithoutSaveButtonEnumerator) {
 		enterParameters(&currentSettings);
 	}
 
@@ -722,72 +714,59 @@ void deviceDetailedInfoCloseCallback(lv_event_t *e)
  * Интерфейсы для взаимодействия
  ********************************/
 
-void textAreasReset(uint8_t aArea)
+void textAreasReset(lv_obj_t *aScreen)
 {
-	switch (aArea) {
-		case PumpSettingsScrNumber:
-			lv_textarea_set_text(pumpOnTa, "");
-			lv_textarea_set_text(pumpOffTa, "");
-			break;
-		case LampSettingsScrNumber:
-			lv_textarea_set_text(lampOnHourTa, "");
-			lv_textarea_set_text(lampOnMinTa, "");
-			lv_textarea_set_text(lampOffHourTa, "");
-			lv_textarea_set_text(lampOffMinTa, "");
-			break;
-		case CurrentTimeSettingsScrNumber:
-			lv_textarea_set_text(setTimeHourTa, "");
-			lv_textarea_set_text(setTimeMinTa, "");
-			lv_textarea_set_text(setTimeSecTa, "");
-			break;
+	if (aScreen == pumpSettingsScr) {
+		lv_textarea_set_text(pumpOnTa, "");
+		lv_textarea_set_text(pumpOffTa, "");
+	} else if (aScreen == lampSettingsScr) {
+		lv_textarea_set_text(lampOnHourTa, "");
+		lv_textarea_set_text(lampOnMinTa, "");
+		lv_textarea_set_text(lampOffHourTa, "");
+		lv_textarea_set_text(lampOffMinTa, "");
+	} else if (aScreen == curTimeSettingsScr) {
+		lv_textarea_set_text(setTimeHourTa, "");
+		lv_textarea_set_text(setTimeMinTa, "");
+		lv_textarea_set_text(setTimeSecTa, "");
 	}
 }
 
-bool textAreasApply(uint8_t aArea)
+bool textAreasApply(lv_obj_t *aScreen)
 {
-	switch (aArea) {
-		case PumpSettingsScrNumber: {
-			const char *taTextOn = lv_textarea_get_text(pumpOnTa);
-			const char *taTextOff = lv_textarea_get_text(pumpOffTa);
+	if (aScreen == pumpSettingsScr) {
+		const char *taTextOn = lv_textarea_get_text(pumpOnTa);
+		const char *taTextOff = lv_textarea_get_text(pumpOffTa);
 
-			sprintf(settingsPumpOnTimeText, "%s", taTextOn);
-			sprintf(settingsPumpOffTimeText, "%s", taTextOff);
+		sprintf(settingsPumpOnTimeText, "%s", taTextOn);
+		sprintf(settingsPumpOffTimeText, "%s", taTextOff);
 
-			const uint32_t onTime = atoi(taTextOn);
-			const uint32_t offTime = atoi(taTextOff);
+		const uint32_t onTime = atoi(taTextOn);
+		const uint32_t offTime = atoi(taTextOff);
 
-			if (onTime != 0 && offTime != 0) {
-				lv_label_set_text_static(pumpOnCornerText, NULL);
-				lv_label_set_text_static(pumpOffCornerText, NULL);
-				return true;
-			} else {
-				return false;
-			}
-			break;
-		}
-
-		case LampSettingsScrNumber: {
-			const char *taTextOnHour = lv_textarea_get_text(lampOnHourTa);
-			const char *taTextOnMin = lv_textarea_get_text(lampOnMinTa);
-			const char *taTextOffHour = lv_textarea_get_text(lampOffHourTa);
-			const char *taTextOffMin = lv_textarea_get_text(lampOffMinTa);
-
-			sprintf(settingsLampOnTime, "%02u:%02u:00", (uint8_t)atoi(taTextOnHour), (uint8_t)atoi(taTextOnMin));
-			lv_label_set_text_static(lampOnCornerText, NULL);
-			sprintf(settingsLampOffTime, "%02u:%02u:00", (uint8_t)atoi(taTextOffHour), (uint8_t)atoi(taTextOffMin));
-			lv_label_set_text_static(lampOffCornerText, NULL);
-
+		if (onTime != 0 && offTime != 0) {
+			lv_label_set_text_static(pumpOnCornerText, NULL);
+			lv_label_set_text_static(pumpOffCornerText, NULL);
 			return true;
-			break;
+		} else {
+			return false;
 		}
-		case CurrentTimeSettingsScrNumber: {
-			break;
-		}
-		default:
-			break;
-	}
+	} else if (aScreen == lampSettingsScr) {
+		const char *taTextOnHour = lv_textarea_get_text(lampOnHourTa);
+		const char *taTextOnMin = lv_textarea_get_text(lampOnMinTa);
+		const char *taTextOffHour = lv_textarea_get_text(lampOffHourTa);
+		const char *taTextOffMin = lv_textarea_get_text(lampOffMinTa);
 
-	return true;
+		sprintf(settingsLampOnTime, "%02u:%02u:00", (uint8_t)atoi(taTextOnHour), (uint8_t)atoi(taTextOnMin));
+		lv_label_set_text_static(lampOnCornerText, NULL);
+		sprintf(settingsLampOffTime, "%02u:%02u:00", (uint8_t)atoi(taTextOffHour), (uint8_t)atoi(taTextOffMin));
+		lv_label_set_text_static(lampOffCornerText, NULL);
+
+		return true;
+	} else if (aScreen == curTimeSettingsScr) {
+		return true;
+	} 
+
+	return false;
 }
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth)
@@ -988,7 +967,7 @@ void updateMainPagePumpTypeLabel()
 	const PumpModes newMode = static_cast<PumpModes>(newModeNumber);
 	const PumpModes oldMode = currentSettings.pump.mode;
 
-	if (newMode == oldMode) {
+	if (initialized && (newMode == oldMode)) {
 		return;
 	}
 
@@ -1457,7 +1436,7 @@ void createAdditionalPanels()
 	lv_textarea_set_text(pumpOnTa, "");
 	lv_textarea_set_placeholder_text(pumpOnTa, "123");
 	lv_obj_set_size(pumpOnTa, 200, 40);
-	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_ALL, pumpSettingsScr);
 	lv_obj_add_event_cb(pumpOnTa, processTap, LV_EVENT_ALL, NULL);
 
 	// Панель для установки времени PumpOff
@@ -1468,7 +1447,7 @@ void createAdditionalPanels()
 	lv_textarea_set_text(pumpOffTa, "");
 	lv_textarea_set_placeholder_text(pumpOffTa, "456");
 	lv_obj_set_size(pumpOffTa, 200, 40);
-	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_ALL, pumpSettingsScr);
 	lv_obj_add_event_cb(pumpOffTa, processTap, LV_EVENT_ALL, NULL);
 
 	lv_obj_t *pumpOnSetText = lv_label_create(pumpSettingsScr);
@@ -1507,8 +1486,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(lampOnHourTa, "00");
 
 	lv_obj_set_size(lampOnHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
+	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
 	lv_obj_add_event_cb(lampOnHourTa, processTap, LV_EVENT_ALL, NULL);
 	// Панель минут
 	lampOnMinTa = lv_textarea_create(lampSettingsScr);
@@ -1519,8 +1498,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(lampOnMinTa, "00");
 
 	lv_obj_set_size(lampOnMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
+	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
 	lv_obj_add_event_cb(lampOnMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	lampOffHourTa = lv_textarea_create(lampSettingsScr);
@@ -1531,8 +1510,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(lampOffHourTa, "00");
 
 	lv_obj_set_size(lampOffHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
+	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
 	lv_obj_add_event_cb(lampOffHourTa, processTap, LV_EVENT_ALL, NULL);
 
 	lampOffMinTa = lv_textarea_create(lampSettingsScr);
@@ -1543,8 +1522,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(lampOffMinTa, "00");
 
 	lv_obj_set_size(lampOffMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorLampSettings);
-	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
+	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
 	lv_obj_add_event_cb(lampOffMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	// Align для всех элементов
@@ -1572,8 +1551,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(setTimeHourTa, "00");
 
 	lv_obj_set_size(setTimeHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedHourEnum);
+	lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
+	lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
 	lv_obj_add_event_cb(setTimeHourTa, processTap, LV_EVENT_ALL, NULL);
 
 	setTimeMinTa = lv_textarea_create(curTimeSettingsScr);
@@ -1584,8 +1563,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(setTimeMinTa, "00");
 
 	lv_obj_set_size(setTimeMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
+	lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
 	lv_obj_add_event_cb(setTimeMinTa, processTap, LV_EVENT_ALL, NULL);
 
 	setTimeSecTa = lv_textarea_create(curTimeSettingsScr);
@@ -1596,8 +1575,8 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(setTimeSecTa, "00");
 
 	lv_obj_set_size(setTimeSecTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
-	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, &editScrSelectorSetTime);
-	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &editScrFormattedMinSecEnum);
+	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
+	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
 	lv_obj_add_event_cb(setTimeSecTa, processTap, LV_EVENT_ALL, NULL);
 
 	sendNewTimeButton = lv_btn_create(curTimeSettingsScr);
@@ -1687,7 +1666,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_t *pumpOnButtonLabel = lv_label_create(pumpConfigButton);
 	lv_label_set_text_static(pumpOnButtonLabel, "Configure pump timings");
 	lv_obj_align_to(pumpOnButtonLabel, pumpConfigButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_event_cb(pumpConfigButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorPumpSetttins);
+	lv_obj_add_event_cb(pumpConfigButton, customTextAreaEvent, LV_EVENT_CLICKED, pumpSettingsScr);
 	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// Выпадающий список с типами гидропоник
@@ -1747,7 +1726,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_t *lampButtonLabel = lv_label_create(lampSettingsButton);
 	lv_label_set_text_static(lampButtonLabel, "Configure lamp timings");
 	lv_obj_align_to(lampButtonLabel, lampSettingsButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_event_cb(lampSettingsButton, customTextAreaEvent, LV_EVENT_CLICKED, &editScrSelectorLampSettings);
+	lv_obj_add_event_cb(lampSettingsButton, customTextAreaEvent, LV_EVENT_CLICKED, lampSettingsScr);
 	lv_obj_add_event_cb(lampSettingsButton, processTap, LV_EVENT_CLICKED, NULL);
 
 	// ******************************** МЕНЮ ОБЩИХ НАСТРОЕК **********************************
@@ -1776,7 +1755,7 @@ void menuCreate(lv_obj_t *parent)
 	// Кнопка для отправки времени в RTC
 	lv_obj_t *setTimeButton = lv_btn_create(section);
 	lv_obj_set_size(setTimeButton, 314, 35);
-	lv_obj_add_event_cb(setTimeButton, customTextAreaEvent, LV_EVENT_PRESSED, &editScrSelectorSetTime);
+	lv_obj_add_event_cb(setTimeButton, customTextAreaEvent, LV_EVENT_PRESSED, curTimeSettingsScr);
 	lv_obj_add_event_cb(setTimeButton, processTap, LV_EVENT_PRESSED, NULL);
 	lv_obj_align(setTimeButton, LV_ALIGN_CENTER, 0, -40);
 	// Надпись на кнопке
@@ -1838,7 +1817,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_t *exitWithSaveButton = lv_btn_create(exitWithSaveButtonContainer);
 	lv_obj_set_size(exitWithSaveButton, 290, 50);
 	lv_obj_align(exitWithSaveButton, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_event_cb(exitWithSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &exitWithSaveButtonCallbackData);
+	lv_obj_add_event_cb(exitWithSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &kExitWithSaveButtonEnumerator);
 	lv_obj_add_event_cb(exitWithSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWithSaveLabel = lv_label_create(exitWithSaveButton);
@@ -1850,7 +1829,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_set_size(exitWnoSaveButton, 290, 50);
 	lv_obj_align(exitWnoSaveButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(
-		exitWnoSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &exitWithoutSaveButtonCallbackData);
+		exitWnoSaveButton, exitButtonEventHandler, LV_EVENT_PRESSED, &kExitWithoutSaveButtonEnumerator);
 	lv_obj_add_event_cb(exitWnoSaveButton, processTap, LV_EVENT_PRESSED, NULL);
 	// Надпись на кнопке
 	lv_obj_t *exitWnoSaveLabel = lv_label_create(exitWnoSaveButton);

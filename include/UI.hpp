@@ -42,8 +42,8 @@ void settingsButtonEvent(lv_event_t * e);
 void uiInit();
 void displayMainPage();
 
-void textAreasReset(uint8_t aArea);
-bool textAreasApply(uint8_t aArea);
+void textAreasReset(lv_obj_t *aScreen);
+bool textAreasApply(lv_obj_t *aScreen);
 
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated);
