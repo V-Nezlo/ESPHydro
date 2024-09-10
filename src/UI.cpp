@@ -372,13 +372,13 @@ void uiInit()
 	menuCreate(settingsPage);
 	keyboardCreate();
 	createAdditionalPanels();
-	createDescribedWindow(mainPage);
 
 	lv_scr_load(loadingScreen);
 }
 
 void displayMainPage()
 {
+	createDescribedWindow(mainPage);
 	lv_scr_load(mainPage);
 }
 

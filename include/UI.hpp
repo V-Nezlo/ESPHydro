@@ -11,6 +11,10 @@
 
 #include "Types.hpp"
 #include "EventBus.hpp"
+
+#include <freertos/FreeRTOS.h>
+#include "freertos/semphr.h"
+
 #include <lvgl.h>
 
 #ifdef __cplusplus
@@ -73,34 +77,50 @@ class UiEventObserver : public AbstractEventObserver {
 public:
 	EventResult handleEvent(Event *e) override
 	{
+		assert(mutex != nullptr);
+
 		switch (e->type) 
 		{
 		case EventType::UpdateUpperData:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			updateUpperData(&e->data.upperData);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::UpdateLowerData:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			updateLowerData(&e->data.lowerData);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::UpdateSystemData:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			updateSystemData(&e->data.systemData);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::GetCurrentTime:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			applyNewCurrentTime(&e->data.time);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::SettingsUpdated:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			enterParameters(&e->data.settings);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::HealthUpdated:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			updateDeviceHealth(&e->data.healthUpdate);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		case EventType::RsDeviceDetached:
+			xSemaphoreTake(*mutex, portMAX_DELAY);
 			fillDevicePlaceholders(e->data.device);
+			xSemaphoreGive(*mutex);
 			return EventResult::PASS_ON;
 
 		default:
@@ -108,6 +128,14 @@ public:
 			break;
 		}
 	}
+
+	void registerLVGLMutex(SemaphoreHandle_t *aMutex)
+	{
+		mutex = aMutex;
+	}
+
+private:
+	SemaphoreHandle_t *mutex{nullptr};
 };
 
 void sendParametersToEventBus(Settings *aSettings);

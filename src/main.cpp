@@ -27,6 +27,8 @@
 
 void displayTaskFunc(void *pvParameters)
 {
+	SemaphoreHandle_t *mutex = reinterpret_cast<SemaphoreHandle_t *>(pvParameters);
+
 	while(true) {
 		static bool inited{false};
 
@@ -38,8 +40,11 @@ void displayTaskFunc(void *pvParameters)
 			}
 		}
 
+		xSemaphoreTake(*mutex, portMAX_DELAY);
 		lv_timer_handler();
 		lv_tick_inc(5);
+		xSemaphoreGive(*mutex);
+
 		esp_task_wdt_reset();
 		vTaskDelay(5 / portTICK_PERIOD_MS);
 	}
@@ -50,7 +55,10 @@ void app_main()
 {
 	ConfigStorage paramStorage;
 	DisplayDriver displayDriver;
+
 	UiEventObserver uiObserver;
+	SemaphoreHandle_t lvglMutex = xSemaphoreCreateMutex();
+	uiObserver.registerLVGLMutex(&lvglMutex);
 
 	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
 	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin, rsLatch);
@@ -94,7 +102,7 @@ void app_main()
 
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	TaskHandle_t displayTask;
-	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &displayDriver, 5, &displayTask, 1);
+	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &lvglMutex, 5, &displayTask, 1);
 	esp_task_wdt_add(displayTask);
 
 	while(true) {
