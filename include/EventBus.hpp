@@ -38,6 +38,7 @@ enum class EventType : uint8_t {
 	SettingsUpdated,
 	NewBrightness,
 	BuzzerSignal,
+	ToneBuzzerSignal,
 	RsDeviceDetached,
 	RsDeviceAttached,
 	HealthUpdated
@@ -64,6 +65,13 @@ enum class BuzzerSignal {
 	Long
 };
 
+enum class ToneBuzzerSignal {
+	Disabled,
+	Enabling,
+	Warning,
+	Error
+};
+
 struct HealthUpdate {
 	DeviceType type;
 	DeviceHealth health;
@@ -81,6 +89,7 @@ struct Event{
 		Settings settings;
 		uint8_t brightness;
 		BuzzerSignal buzSignal;
+		ToneBuzzerSignal buzToneSignal;
 		DeviceType device;
 		HealthUpdate healthUpdate;
 	} data;
