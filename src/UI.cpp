@@ -181,6 +181,7 @@ lv_obj_t *alarmSoundEnableButton;
 lv_obj_t *tapSountEnableButton;
 lv_obj_t *brightnessSlider;
 // Штуки для сервиса
+lv_obj_t *lowerCalibButton;
 lv_obj_t *loggingTextarea;
 lv_obj_t *loggingSwitch;
 // Були для активации расширенного отображения
@@ -228,18 +229,21 @@ lv_obj_t *deviceDescPanelLabel2;
 lv_obj_t *deviceDescPanelLabel3;
 lv_obj_t *deviceDescPanelLabel4;
 lv_obj_t *deviceDescPanelLabel5;
+lv_obj_t *deviceDescPanelLabel6;
 
 lv_obj_t *deviceDescPanelLed1;
 lv_obj_t *deviceDescPanelLed2;
 lv_obj_t *deviceDescPanelLed3;
 lv_obj_t *deviceDescPanelLed4;
 lv_obj_t *deviceDescPanelLed5;
+lv_obj_t *deviceDescPanelLed6;
 
 char deviceDescPanelString1[16] = " ";
 char deviceDescPanelString2[16] = " ";
 char deviceDescPanelString3[16] = " ";
 char deviceDescPanelString4[16] = " ";
 char deviceDescPanelString5[16] = " ";
+char deviceDescPanelString6[16] = " ";
 
 lv_obj_t *activeMessageBox;
 // Временный буффер для перевода всяких штук в другие штуки
@@ -426,6 +430,14 @@ void pumpTypeEventHandler(lv_event_t *aEvent)
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 		}
 	}
+
+	if (lowerCalibButton != NULL) {
+		if (mode == PumpModes::Maintance) {
+			lv_obj_clear_state(lowerCalibButton, LV_STATE_DISABLED);
+		} else {
+			lv_obj_add_state(lowerCalibButton, LV_STATE_DISABLED);
+		}
+	}
 }
 
 void formattedAreaCommonCallback(lv_event_t *aEvent)
@@ -599,30 +611,35 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		sprintf(deviceDescPanelString3, "%s", kDevDescInfoPHSens);
 		sprintf(deviceDescPanelString4, "%s", kDevDescInfoPPMSens);
 		sprintf(deviceDescPanelString5, "%s", kDevDescInfoWater);
+		sprintf(deviceDescPanelString6, "%s", kDevDescInfoCalibration);
 		// Update labels
 		lv_label_set_text_static(deviceDescPanelLabel1, NULL);
 		lv_label_set_text_static(deviceDescPanelLabel2, NULL);
 		lv_label_set_text_static(deviceDescPanelLabel3, NULL);
 		lv_label_set_text_static(deviceDescPanelLabel4, NULL);
 		lv_label_set_text_static(deviceDescPanelLabel5, NULL);
+		lv_label_set_text_static(deviceDescPanelLabel6, NULL);
 		// Decompose flags for leds
 		const lv_color_t led1Color = lowerFlags & LowerFlags::LowerPumpLowCurrentFlag || lowerFlags & LowerFlags::LowerPumpOverCurrentFlag ? kRedColor : kGreenColor;
 		const lv_color_t led2Color = lowerFlags & LowerFlags::LowerTempSensorErrorFlag ? kRedColor : kGreenColor;
 		const lv_color_t led3Color = lowerFlags & LowerFlags::LowerPHSensorErrorFlag ? kRedColor : kGreenColor;
 		const lv_color_t led4Color = lowerFlags & LowerFlags::LowerPPMSensorErrorFlag ? kRedColor : kGreenColor;
 		const lv_color_t led5Color = lowerFlags & LowerFlags::LowerNoWaterFlag ? kRedColor : kGreenColor;
-		// Set colors and clear hidden flag
+		const lv_color_t led6Color = lowerFlags & LowerFlags::Calibration ? kYellowColor : kGreenColor;
+		// Set colors and clear hidden flags
 		lv_led_set_color(deviceDescPanelLed1, led1Color);
 		lv_led_set_color(deviceDescPanelLed2, led2Color);
 		lv_led_set_color(deviceDescPanelLed3, led3Color);
 		lv_led_set_color(deviceDescPanelLed4, led4Color);
 		lv_led_set_color(deviceDescPanelLed5, led5Color);
+		lv_led_set_color(deviceDescPanelLed6, led6Color);
 
 		lv_obj_clear_flag(deviceDescPanelLed1, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_clear_flag(deviceDescPanelLed2, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_clear_flag(deviceDescPanelLed3, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_clear_flag(deviceDescPanelLed4, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_clear_flag(deviceDescPanelLed5, LV_OBJ_FLAG_HIDDEN);
+		lv_obj_clear_flag(deviceDescPanelLed6, LV_OBJ_FLAG_HIDDEN);
 
 	} else if (target == upperStatusPanel) {
 		if (!isUpperPresent) {
@@ -708,6 +725,14 @@ void deviceDetailedInfoCloseCallback(lv_event_t *e)
 	lv_obj_add_flag(deviceDescPanelLed5, LV_OBJ_FLAG_HIDDEN);
 
 	lv_obj_add_flag(deviceDescInfoPanel, LV_OBJ_FLAG_HIDDEN);
+}
+
+void serviceEventHandler(lv_event_t *aEv)
+{
+	lv_obj_t *caller = lv_event_get_current_target(aEv);
+	if (caller == lowerCalibButton) {
+		sendActionCommandToEventBus(Action::ECCalibSens);
+	}
 }
 
 /********************************
@@ -1620,6 +1645,7 @@ void createDescribedWindow(lv_obj_t *aParent)
 	createLed(deviceDescInfoPanel, deviceDescPanelLabel3, deviceDescPanelLed3, deviceDescPanelString3, 110, 0, 40);
 	createLed(deviceDescInfoPanel, deviceDescPanelLabel4, deviceDescPanelLed4, deviceDescPanelString4, 110, 0, 60);
 	createLed(deviceDescInfoPanel, deviceDescPanelLabel5, deviceDescPanelLed5, deviceDescPanelString5, 110, 0, 80);
+	createLed(deviceDescInfoPanel, deviceDescPanelLabel6, deviceDescPanelLed6, deviceDescPanelString6, 110, 0, 100);
 }
 
 void menuCreate(lv_obj_t *parent)
@@ -1773,17 +1799,27 @@ void menuCreate(lv_obj_t *parent)
 	lv_label_set_text_static(mqttConfigureLabel, "Configure connections");
 	lv_obj_center(mqttConfigureLabel);
 
-	// ******************************** МЕНЮ ОТЛАДКИ **********************************
+	// ******************************** МЕНЮ СЕРВИСА **********************************
 	subManualPage = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(subManualPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
 	lv_menu_separator_create(subManualPage);
 	section = lv_menu_section_create(subManualPage);
 	lv_obj_clear_flag(section, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
 
+	// Команда калибровки ловера
+	lowerCalibButton = lv_btn_create(section);
+	lv_obj_set_size(lowerCalibButton, 314, 35);
+	lv_obj_t *lowerCalibButtonLabel = lv_label_create(lowerCalibButton);
+	lv_label_set_text_static(lowerCalibButtonLabel, "Calibrate LOWER");
+	lv_obj_align_to(lowerCalibButtonLabel, lowerCalibButton, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_add_event_cb(lowerCalibButton, serviceEventHandler, LV_EVENT_CLICKED, NULL);
+	lv_obj_add_event_cb(lowerCalibButton, processTap, LV_EVENT_CLICKED, NULL);
+
+	// Включение - выключение логгирования
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
-	lv_obj_set_size(loggingTextarea, 315, 250);
+	lv_obj_set_size(loggingTextarea, 315, 150);
 	lv_textarea_set_text(loggingTextarea, "");
 
 	// ******************************** МЕНЮ ABOUT **********************************

@@ -14,7 +14,9 @@ static char kDevDescInfoTempSen[] = "Temp sensor";
 static char kDevDescInfoPHSens[] = "PH sensor";
 static char kDevDescInfoPPMSens[] = "PPM sensor";
 static char kDevDescInfoWater[] = "Water";
+static char kDevDescInfoCalibration[] = "Calibration";
 
+static char kDevDescInfoBusy[] = "Busy";
 static char kDevDescInfoEmpty[] = "";
 
 static char kDevDescInfoACStat[] = "220V";

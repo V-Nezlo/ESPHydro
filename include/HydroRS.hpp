@@ -179,9 +179,15 @@ public:
 		return false; // Мастер не принимает запросов, вернется Ack с кодом 0
 	}
 
-	void sendCommand(uint8_t aReceiverUID, uint8_t aCommand, uint8_t aArgument)
+	// TODO MADE ASYNC
+	bool sendCommand(DeviceType aType, Commands aCommand, uint8_t aArgument)
 	{
-		return BaseType::sendCommand(aReceiverUID, aCommand, aArgument);
+		if (isDevicePresent(aType)) {
+			BaseType::sendCommand(static_cast<uint8_t>(aType), static_cast<uint8_t>(aCommand), aArgument);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	void processLowerTelemetry(LowerTelemetry &aTelem)
@@ -232,10 +238,10 @@ public:
 	{
 		switch (aDevice) {
 			case DeviceType::Lower:
-				sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
+				sendCommand(DeviceType::Lower, Commands::SetPumpState, 0);
 				break;
 			case DeviceType::Upper:
-				sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
+				sendCommand(DeviceType::Upper, Commands::SetDamState, 1);
 				break;
 			default:
 				break;
@@ -249,39 +255,31 @@ public:
 			case EventType::ActionRequest:
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
-						if (devices[0].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 1);
-						}
+						sendCommand(DeviceType::Lower, Commands::SetPumpState, 1);
 						return EventResult::HANDLED;
 
 					case Action::TurnPumpOff:
-						if (devices[0].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Lower, static_cast<uint8_t>(Commands::SetPumpState), 0);
-						}
+						sendCommand(DeviceType::Lower, Commands::SetPumpState, 0);
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOn:
-						if (devices[1].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 1);
-						}
+						sendCommand(DeviceType::Upper, Commands::SetLampState, 1);
 						return EventResult::HANDLED;
 
 					case Action::TurnLampOff:
-						if (devices[1].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetLampState), 0);
-						}
+						sendCommand(DeviceType::Upper, Commands::SetLampState, 0);
 						return EventResult::HANDLED;
 
 					case Action::OpenDam:
-						if (devices[1].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 1);
-						}
+						sendCommand(DeviceType::Upper, Commands::SetDamState, 1);
 						return EventResult::HANDLED;
 
 					case Action::CloseDam:
-						if (devices[1].state != DeviceState::Disabled) {
-							sendCommand(DeviceType::Upper, static_cast<uint8_t>(Commands::SetDamState), 0);
-						}
+						sendCommand(DeviceType::Upper, Commands::SetDamState, 0);
+						return EventResult::HANDLED;
+
+					case Action::ECCalibSens:
+						sendCommand(DeviceType::Lower, Commands::CalibECSensor, 0);
 						return EventResult::HANDLED;
 
 					default:
@@ -290,7 +288,23 @@ public:
 
 			default:
 				return EventResult::IGNORED;
-				break;
+		}
+	}
+
+	bool isDevicePresent(DeviceType aType)
+	{
+		switch (aType) {
+			case DeviceType::Lower:
+				return devices[0].state != DeviceState::Disabled;
+			case DeviceType::Upper:
+				return devices[1].state != DeviceState::Disabled;
+			case DeviceType::AUX:
+				return false;
+			case DeviceType::Master:
+				return true;
+
+			default:
+				return false;
 		}
 	}
 };

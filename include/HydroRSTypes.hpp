@@ -38,7 +38,8 @@ struct UpperTelemetry {
 enum class Commands {
 	SetPumpState = 1,
 	SetLampState = 2,
-	SetDamState = 3
+	SetDamState = 3,
+	CalibECSensor = 4
 };
 
 enum class Requests {
