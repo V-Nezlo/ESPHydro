@@ -40,7 +40,7 @@ EventResult DeviceMonitor::handleEvent(Event *e)
 			e->data.lowerData.flags & LowerFlags::LowerPumpLowCurrentFlag) {
 				update.health = DeviceHealth::DeviceError;
 			} else if (e->data.lowerData.flags & LowerFlags::LowerPHSensorErrorFlag || e->data.lowerData.flags &
-				LowerFlags::LowerPPMSensorErrorFlag || e->data.lowerData.flags & LowerFlags::LowerTempSensorErrorFlag) {
+				LowerFlags::LowerPPMSensorErrorFlag || e->data.lowerData.flags & LowerFlags::LowerTempSensorErrorFlag || e->data.lowerData.flags & LowerFlags::Calibration) {
 				update.health = DeviceHealth::DeviceWarning;
 			} else {
 				update.health = DeviceHealth::DeviceWorking;

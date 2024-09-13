@@ -33,7 +33,7 @@ EventResult LightController::handleEvent(Event *e)
 			lampOffTime.hour = e->data.settings.lamp.lampOffHour;
 			lampOffTime.minutes = e->data.settings.lamp.lampOffMin;
 			xSemaphoreGive(mutex);
-				return EventResult::PASS_ON;
+			return EventResult::PASS_ON;
 			break;
 		default:
 			return EventResult::IGNORED;
