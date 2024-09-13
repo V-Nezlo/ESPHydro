@@ -22,7 +22,7 @@
 #include <chrono>
 
 class PumpController : public AbstractEventObserver, public AbstractLinearTask {
-	enum class ControlState : uint8_t {
+	enum class PumpState : uint8_t {
 		PumpOn,
 		PumpOff
 	};
@@ -38,9 +38,14 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	};
 
 	PumpModes mode;
-	ControlState controlState;
-	SwingState swingState;
+
+	// Телеметрируемые переменные
+	PumpState pumpState;
 	DamTankState damTankState;
+	uint8_t currentWaterLevel;
+	bool upperState;
+
+	SwingState swingState;
 
 	std::chrono::milliseconds lastActionTime;
 	std::chrono::milliseconds lastSwingTime;
@@ -50,10 +55,6 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	std::chrono::seconds pumpOnTime;
 	std::chrono::seconds pumpOffTime;
 	std::chrono::seconds swingTime;
-
-	uint8_t currentWaterLevel;
-	bool upperState;
-	bool damState;
 
 	// Пояснение: некоторые поля этого класса являются разделяемым ресурсом
 	// Поэтому, пока ресуры класса модифицируются UI необходимо отключать работу контроллера насоса
@@ -66,7 +67,7 @@ public:
 
 private:
 	void updateMode(PumpModes aNewMode);
-	void setPumpState(ControlState aState);
+	void setPumpState(PumpState aState);
 	void setDamState(DamTankState aState);
 
 	void throwErrorToEventBus(SystemErrors aError);
