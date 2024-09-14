@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 typedef uint8_t lv_menu_builder_variant_t;
+class UiEventObserver;
 
 void styleInitialize();
 void menuCreate(lv_obj_t *parent);
@@ -39,7 +40,7 @@ void createLed(lv_obj_t *parent, lv_obj_t *&label, lv_obj_t *&led, const char *t
 void createAdditionalPanels();
 void createDescribedWindow(lv_obj_t *aParent);
 void settingsButtonEvent(lv_event_t * e);
-void uiInit();
+void uiInit(UiEventObserver *aObserver);
 void displayMainPage();
 
 void textAreasReset(lv_obj_t *aScreen);

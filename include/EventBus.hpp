@@ -9,6 +9,7 @@
 #ifndef INCLUDE_EVENTBUS_HPP_
 #define INCLUDE_EVENTBUS_HPP_
 
+#include "esp_log.h"
 #include "HydroRSTypes.hpp"
 #include "Types.hpp"
 
@@ -125,6 +126,20 @@ public:
 
 		if (iter == observers.end()) {
 			observers.push_back(aObserver);
+		}
+	}
+
+	static void printLogDependedByType(Event *aEvent)
+	{
+		switch(aEvent->type) {
+			case EventType::SetError:
+				ESP_LOGI("EventBus", "Error %u raised", static_cast<unsigned>(aEvent->data.error));
+				break;
+			case EventType::ClearError:
+				ESP_LOGI("EventBus", "Error %u cleared", static_cast<unsigned>(aEvent->data.error));
+				break;
+			default:
+				break;
 		}
 	}
 

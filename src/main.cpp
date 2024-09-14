@@ -95,7 +95,7 @@ void app_main()
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
 	displayDriver.setupLvgl();
-	uiInit();
+	uiInit(&uiObserver);
 
 	// Загружаем параметры во все модули
 	paramStorage.firstLoad();

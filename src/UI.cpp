@@ -267,12 +267,15 @@ LV_IMG_DECLARE(LampActuator);
 LV_IMG_DECLARE(DamActuator);
 LV_IMG_DECLARE(FloatActuator);
 
+// Обсервер UI для EventBus
+AbstractEventObserver *observer;
+
 void sendParametersToEventBus(Settings * aSettings)
 {
 	Event ev;
 	ev.type = EventType::SettingsUpdated;
 	ev.data.settings = *aSettings;
-	EventBus::throwEvent(&ev, nullptr);
+	EventBus::throwEvent(&ev, observer);
 }
 
 void sendActionCommandToEventBus(Action aAction)
@@ -280,7 +283,7 @@ void sendActionCommandToEventBus(Action aAction)
 	Event ev;
 	ev.type = EventType::ActionRequest;
 	ev.data.action = aAction;
-	EventBus::throwEvent(&ev, nullptr);
+	EventBus::throwEvent(&ev, observer);
 }
 
 void sendNewTimeToEventBus(Time aTime)
@@ -288,7 +291,7 @@ void sendNewTimeToEventBus(Time aTime)
 	Event ev;
 	ev.type = EventType::SetCurrentTime;
 	ev.data.time = aTime;
-	EventBus::throwEvent(&ev, nullptr);
+	EventBus::throwEvent(&ev, observer);
 }
 
 void sendNewBrightnessToEventBus(uint8_t aDuty)
@@ -296,7 +299,7 @@ void sendNewBrightnessToEventBus(uint8_t aDuty)
 	Event ev;
 	ev.type = EventType::NewBrightness;
 	ev.data.brightness = aDuty;
-	EventBus::throwEvent(&ev, nullptr);
+	EventBus::throwEvent(&ev, observer);
 }
 
 void writeToLoggingPanel(const char *aData, int aSize)
@@ -311,15 +314,16 @@ void sendTapSoundToEventBus()
 	Event ev;
 	ev.type = EventType::BuzzerSignal;
 	ev.data.buzSignal = BuzzerSignal::Short;
-	EventBus::throwEvent(&ev, nullptr);
+	EventBus::throwEvent(&ev, observer);
 }
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void uiInit()
+void uiInit(UiEventObserver *aObserver)
 {
+	observer = aObserver;
 	// Выбираем размер экрана, у нас будет 320х480
 	if (LV_HOR_RES <= 320)
 		disp_size = DISP_SMALL;
@@ -374,7 +378,7 @@ void uiInit()
 
 void displayMainPage()
 {
-	createDescribedWindow(mainPage);
+	// createDescribedWindow(mainPage);
 	lv_scr_load(mainPage);
 	initialized = true;
 }
