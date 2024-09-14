@@ -128,7 +128,7 @@ public:
 		return 0; // Мастер не принимает команд, вернется Ack с кодом 0
 	}
 
-	void handleAck(uint8_t aTranceiverUID, RS::MessageType aType, uint8_t aReturnCode) override
+	void handleAck(uint8_t aTranceiverUID, uint8_t aReturnCode) override
 	{
 		ESP_LOGV("RS", "Ack,Device: %u, Code: %u", aTranceiverUID, aReturnCode);
 
