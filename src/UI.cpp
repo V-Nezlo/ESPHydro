@@ -221,30 +221,6 @@ char settingsPumpSwingTimeText[7] = "0s ";
 char settingsLampOnTime[13] = "00:00:00";
 char settingsLampOffTime[13] = "00:00:00";
 
-// Соединил четыре окна в одно через замену label'ов
-lv_obj_t *deviceDescInfoPanel;
-
-lv_obj_t *deviceDescPanelLabel1;
-lv_obj_t *deviceDescPanelLabel2;
-lv_obj_t *deviceDescPanelLabel3;
-lv_obj_t *deviceDescPanelLabel4;
-lv_obj_t *deviceDescPanelLabel5;
-lv_obj_t *deviceDescPanelLabel6;
-
-lv_obj_t *deviceDescPanelLed1;
-lv_obj_t *deviceDescPanelLed2;
-lv_obj_t *deviceDescPanelLed3;
-lv_obj_t *deviceDescPanelLed4;
-lv_obj_t *deviceDescPanelLed5;
-lv_obj_t *deviceDescPanelLed6;
-
-char deviceDescPanelString1[16] = " ";
-char deviceDescPanelString2[16] = " ";
-char deviceDescPanelString3[16] = " ";
-char deviceDescPanelString4[16] = " ";
-char deviceDescPanelString5[16] = " ";
-char deviceDescPanelString6[16] = " ";
-
 lv_obj_t *activeMessageBox;
 // Временный буффер для перевода всяких штук в другие штуки
 Settings currentSettings;
@@ -609,60 +585,10 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		if (!isLowerPresent) {
 			return;
 		}
-		// Set text values
-		sprintf(deviceDescPanelString1, "%s", kDevDescInfoPumpCur);
-		sprintf(deviceDescPanelString2, "%s", kDevDescInfoTempSen);
-		sprintf(deviceDescPanelString3, "%s", kDevDescInfoPHSens);
-		sprintf(deviceDescPanelString4, "%s", kDevDescInfoPPMSens);
-		sprintf(deviceDescPanelString5, "%s", kDevDescInfoWater);
-		sprintf(deviceDescPanelString6, "%s", kDevDescInfoCalibration);
-		// Update labels
-		lv_label_set_text_static(deviceDescPanelLabel1, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel2, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel3, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel4, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel5, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel6, NULL);
-		// Decompose flags for leds
-		const lv_color_t led1Color = lowerFlags & LowerFlags::LowerPumpLowCurrentFlag || lowerFlags & LowerFlags::LowerPumpOverCurrentFlag ? kRedColor : kGreenColor;
-		const lv_color_t led2Color = lowerFlags & LowerFlags::LowerTempSensorErrorFlag ? kRedColor : kGreenColor;
-		const lv_color_t led3Color = lowerFlags & LowerFlags::LowerPHSensorErrorFlag ? kRedColor : kGreenColor;
-		const lv_color_t led4Color = lowerFlags & LowerFlags::LowerPPMSensorErrorFlag ? kRedColor : kGreenColor;
-		const lv_color_t led5Color = lowerFlags & LowerFlags::LowerNoWaterFlag ? kRedColor : kGreenColor;
-		const lv_color_t led6Color = lowerFlags & LowerFlags::Calibration ? kYellowColor : kGreenColor;
-		// Set colors and clear hidden flags
-		lv_led_set_color(deviceDescPanelLed1, led1Color);
-		lv_led_set_color(deviceDescPanelLed2, led2Color);
-		lv_led_set_color(deviceDescPanelLed3, led3Color);
-		lv_led_set_color(deviceDescPanelLed4, led4Color);
-		lv_led_set_color(deviceDescPanelLed5, led5Color);
-		lv_led_set_color(deviceDescPanelLed6, led6Color);
-
-		lv_obj_clear_flag(deviceDescPanelLed1, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed2, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed3, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed4, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed5, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed6, LV_OBJ_FLAG_HIDDEN);
-
 	} else if (target == upperStatusPanel) {
 		if (!isUpperPresent) {
 			return;
 		}
-		// Set text values
-		sprintf(deviceDescPanelString1, "%s", kDevDescInfoACStat);
-		sprintf(deviceDescPanelString2, "%s", kDevDescInfoFloatLevStat);
-		// Update labels
-		lv_label_set_text_static(deviceDescPanelLabel1, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel2, NULL);
-		// Decompose flags for leds
-		const lv_color_t led1Color = upperFlags & UpperFlags::UpperPowerError ? kRedColor : kGreenColor;
-		const lv_color_t led2Color = upperFlags & UpperFlags::UpperTopWaterLevelStuck ? kRedColor : kGreenColor;
-		// Set colors and clear hidden flag
-		lv_led_set_color(deviceDescPanelLed1, led1Color);
-		lv_led_set_color(deviceDescPanelLed2, led2Color);
-		lv_obj_clear_flag(deviceDescPanelLed1, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed2, LV_OBJ_FLAG_HIDDEN);
 	} else if (target == auxStatusPanel) {
 		if (!isAuxPresent) {
 			return;
@@ -671,64 +597,12 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		if (!isSystemPresent) {
 			return;
 		}
-		// Set text values
-		sprintf(deviceDescPanelString1, "%s", kDevDescInfoRTCErrorText);
-		sprintf(deviceDescPanelString2, "%s", kDevDescInfoInternalMemErrorText);
-		sprintf(deviceDescPanelString3, "%s", kDevDescInfoRSBusErrorText);
-		sprintf(deviceDescPanelString4, "%s", kDevDescInfoPumpNotOperateError);
-		sprintf(deviceDescPanelString5, "%s", kDevDescInfoPumpTimingsError);
-		// Update labels
-		lv_label_set_text_static(deviceDescPanelLabel1, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel2, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel3, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel4, NULL);
-		lv_label_set_text_static(deviceDescPanelLabel5, NULL);
-		// Decompose flags for leds
-		const lv_color_t led1Color = systemFlags & SystemErrors::SystemRTCError ? kRedColor : kGreenColor;
-		const lv_color_t led2Color = systemFlags & SystemErrors::SystemInternalMemError ? kRedColor : kGreenColor;
-		const lv_color_t led3Color = systemFlags & SystemErrors::SystemRSBusError ? kRedColor : kGreenColor;
-		const lv_color_t led4Color = systemFlags & SystemErrors::SystemPumpNotOperate ? kRedColor : kGreenColor;
-		const lv_color_t led5Color = systemFlags & SystemErrors::SystemTankNotFloodedInTime ? kRedColor : kGreenColor;
-		// Set colors and clear hidden flag
-		lv_led_set_color(deviceDescPanelLed1, led1Color);
-		lv_led_set_color(deviceDescPanelLed2, led2Color);
-		lv_led_set_color(deviceDescPanelLed3, led3Color);
-		lv_led_set_color(deviceDescPanelLed4, led4Color);
-		lv_led_set_color(deviceDescPanelLed5, led5Color);
-
-		lv_obj_clear_flag(deviceDescPanelLed1, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed2, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed3, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed4, LV_OBJ_FLAG_HIDDEN);
-		lv_obj_clear_flag(deviceDescPanelLed5, LV_OBJ_FLAG_HIDDEN);
 	}
-
-	lv_obj_clear_flag(deviceDescInfoPanel, LV_OBJ_FLAG_HIDDEN);
 }
 
 void deviceDetailedInfoCloseCallback(lv_event_t *e)
 {
-	// Set text values
-	sprintf(deviceDescPanelString1, "%s", kDevDescInfoEmpty);
-	sprintf(deviceDescPanelString2, "%s", kDevDescInfoEmpty);
-	sprintf(deviceDescPanelString3, "%s", kDevDescInfoEmpty);
-	sprintf(deviceDescPanelString4, "%s", kDevDescInfoEmpty);
-	sprintf(deviceDescPanelString5, "%s", kDevDescInfoEmpty);
 
-	// Update labels
-	lv_label_set_text_static(deviceDescPanelLabel1, NULL);
-	lv_label_set_text_static(deviceDescPanelLabel2, NULL);
-	lv_label_set_text_static(deviceDescPanelLabel3, NULL);
-	lv_label_set_text_static(deviceDescPanelLabel4, NULL);
-	lv_label_set_text_static(deviceDescPanelLabel5, NULL);
-
-	lv_obj_add_flag(deviceDescPanelLed1, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_add_flag(deviceDescPanelLed2, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_add_flag(deviceDescPanelLed3, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_add_flag(deviceDescPanelLed4, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_add_flag(deviceDescPanelLed5, LV_OBJ_FLAG_HIDDEN);
-
-	lv_obj_add_flag(deviceDescInfoPanel, LV_OBJ_FLAG_HIDDEN);
 }
 
 void serviceEventHandler(lv_event_t *aEv)
@@ -1629,27 +1503,6 @@ void createAdditionalPanels()
 	returnButtonLabel = lv_label_create(returnButton);
 	lv_label_set_text_static(returnButtonLabel, "Return");
 	lv_obj_align(returnButtonLabel, LV_ALIGN_CENTER, 0, 0);
-}
-
-void createDescribedWindow(lv_obj_t *aParent)
-{
-	deviceDescInfoPanel = lv_obj_create(aParent);
-	lv_obj_set_size(deviceDescInfoPanel, 200, 200);
-	lv_obj_align(deviceDescInfoPanel, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_flag(deviceDescInfoPanel, LV_OBJ_FLAG_HIDDEN);
-
-	lv_obj_t *exitButton = lv_btn_create(deviceDescInfoPanel);
-	lv_obj_t *exitButtonLabel = lv_label_create(exitButton);
-	lv_label_set_text_static(exitButtonLabel, "Close");
-	lv_obj_align(exitButton, LV_ALIGN_BOTTOM_MID, 0, 0);
-	lv_obj_add_event_cb(exitButton, deviceDetailedInfoCloseCallback, LV_EVENT_CLICKED, NULL);
-
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel1, deviceDescPanelLed1, deviceDescPanelString1, 110, 0, 0);
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel2, deviceDescPanelLed2, deviceDescPanelString2, 110, 0, 20);
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel3, deviceDescPanelLed3, deviceDescPanelString3, 110, 0, 40);
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel4, deviceDescPanelLed4, deviceDescPanelString4, 110, 0, 60);
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel5, deviceDescPanelLed5, deviceDescPanelString5, 110, 0, 80);
-	createLed(deviceDescInfoPanel, deviceDescPanelLabel6, deviceDescPanelLed6, deviceDescPanelString6, 110, 0, 100);
 }
 
 void menuCreate(lv_obj_t *parent)
