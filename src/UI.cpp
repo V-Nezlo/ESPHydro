@@ -45,11 +45,6 @@ static lv_style_t style_bullet;
 lv_obj_t *mainPage;
 lv_obj_t *settingsPage;
 lv_obj_t *loadingScreen;
-
-lv_obj_t *lowerExtendedScreen;
-lv_obj_t *upperExtendedScreen;
-lv_obj_t *auxExtendedScreen;
-lv_obj_t *systemExtendedScreen;
 // Доп экраны
 lv_obj_t *pumpSettingsScr;
 lv_obj_t *lampSettingsScr;
@@ -128,31 +123,6 @@ struct {
 	}
 
 } actuators;
-
-struct {
-	struct {
-		lv_obj_t *maxCurrentPanel;
-		lv_obj_t *minCurrentPanel;
-		lv_obj_t *ppmSensorPanel;
-		lv_obj_t *phSensorPanel;
-		lv_obj_t *tempSensorPanel;
-		lv_obj_t *waterStatusPanel;
-	} lower;
-
-	struct {
-		lv_obj_t *powerStatusPanel;
-		lv_obj_t *floatLevStatusPanel;
-	} upper;
-
-	struct {
-		lv_obj_t *rtcStatusPanel;
-		lv_obj_t *intMemStatusPanel;
-		lv_obj_t *operatingStatusPanel;
-		lv_obj_t *connectionsStatusPanel;
-		lv_obj_t *smartBusStatusPanel;
-	} system;
-
-} described;
 
 // Панель 2
 lv_obj_t *currentTimePanel;
@@ -373,24 +343,18 @@ void uiInit(UiEventObserver *aObserver)
 	curTimeSettingsScr = lv_obj_create(NULL);
 	loadingScreen = lv_obj_create(NULL);
 
-	lowerExtendedScreen = lv_obj_create(NULL);
-	upperExtendedScreen = lv_obj_create(NULL);
-	auxExtendedScreen = lv_obj_create(NULL);
-	systemExtendedScreen = lv_obj_create(NULL);
-
 	loadingScreenCreate(loadingScreen);
 	mainPageCreate(mainPage);
 	menuCreate(settingsPage);
 	keyboardCreate();
 	createAdditionalPanels();
 
-	extendedLowerInfoPageCreate(lowerExtendedScreen);
-
 	lv_scr_load(loadingScreen);
 }
 
 void displayMainPage()
 {
+	// createDescribedWindow(mainPage);
 	lv_scr_load(mainPage);
 	initialized = true;
 }
@@ -621,8 +585,6 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		if (!isLowerPresent) {
 			return;
 		}
-
-		lv_scr_load(lowerExtendedScreen);
 	} else if (target == upperStatusPanel) {
 		if (!isUpperPresent) {
 			return;
@@ -640,7 +602,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 
 void deviceDetailedInfoCloseCallback(lv_event_t *e)
 {
-	lv_scr_load(mainPage);
+
 }
 
 void serviceEventHandler(lv_event_t *aEv)
@@ -751,38 +713,12 @@ void updateSystemData(struct SystemData *aData)
 void updateLowerData(const struct LowerInternalData *aData)
 {
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
-	const bool isPHPresented = aData->ph10 != 0xFF;
-
-	if (aData->flags != lowerFlags) {
-		lowerFlags = aData->flags;
-
-		lv_color_t maxCurColor = lowerFlags & LowerFlags::LowerPumpOverCurrentFlag ? kRedColor : kGreenColor;
-		lv_color_t minCurColor = lowerFlags & LowerFlags::LowerPumpLowCurrentFlag ? kRedColor : kGreenColor;
-		lv_color_t tempColor = lowerFlags & LowerFlags::LowerTempSensorErrorFlag ? kRedColor : kGreenColor;
-		lv_color_t ppmColor = lowerFlags & LowerFlags::LowerPPMSensorErrorFlag ? kRedColor : kGreenColor;
-		lv_color_t phColor = lowerFlags & LowerFlags::LowerPHSensorErrorFlag ? kRedColor : kGreenColor;
-		lv_color_t waterColor = lowerFlags & LowerFlags::LowerNoWaterFlag ? kRedColor : kGreenColor;
-
-		if (!isPHPresented) {
-			phColor = kGreyColor;
-		}
-
-		lv_obj_set_style_bg_color(described.lower.maxCurrentPanel, maxCurColor, 0);
-		lv_obj_set_style_bg_color(described.lower.minCurrentPanel, minCurColor, 0);
-		lv_obj_set_style_bg_color(described.lower.ppmSensorPanel, ppmColor, 0);
-		lv_obj_set_style_bg_color(described.lower.phSensorPanel, phColor, 0);
-		lv_obj_set_style_bg_color(described.lower.tempSensorPanel, tempColor, 0);
-		lv_obj_set_style_bg_color(described.lower.waterStatusPanel, waterColor, 0);
-	}
+	lowerFlags = aData->flags;
 
 	sprintf(ppmLabelText, "%4u", aData->ppm);
 	sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	sprintf(waterLevelLabelText, "%3u %%", aData->waterLevel);
-	if (isPHPresented) {
-		sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
-	} else {
-		sprintf(phLabelText, "NA ");
-	}
+	sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 
 	// Сигнал для обновления текстов
 	lv_label_set_text_static(mainPageWaterTemp, NULL);
@@ -1088,81 +1024,6 @@ void keyboardCreate()
 	timeKeyboard = lv_keyboard_create(curTimeSettingsScr);
 	lv_keyboard_set_mode(timeKeyboard, LV_KEYBOARD_MODE_NUMBER);
 	lv_obj_set_size(timeKeyboard, lv_disp_get_hor_res(NULL), 230);
-}
-
-void extendedLowerInfoPageCreate(lv_obj_t *parent)
-{
-	lv_obj_add_style(parent, &style_menu_panel, 0);
-	lv_obj_t *panelDescriptionLabel = lv_label_create(parent);
-	lv_label_set_text_static(panelDescriptionLabel, "LOWER EXTENDED INFORMATION PANEL");
-	lv_obj_align(panelDescriptionLabel, LV_ALIGN_TOP_MID, 0, 20);
-
-	static constexpr uint16_t kPanelWidth = 130;
-	static constexpr uint16_t kPanelHeight = 50;
-	static constexpr uint16_t kPanelOffset = 20;
-
-	// Center-Center
-	described.lower.waterStatusPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.waterStatusPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.waterStatusPanel, LV_ALIGN_CENTER, 0, 0);
-	lv_obj_add_style(described.lower.waterStatusPanel, &style_menu_subpanel, 0);
-	lv_obj_t *waterLabel = lv_label_create(described.lower.waterStatusPanel);
-	lv_obj_align(waterLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(waterLabel, kDevDescInfoWater);
-
-	// Center left
-	described.lower.ppmSensorPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.ppmSensorPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.ppmSensorPanel, LV_ALIGN_CENTER, -(kPanelWidth + kPanelOffset), 0);
-	lv_obj_add_style(described.lower.ppmSensorPanel, &style_menu_subpanel, 0);
-	lv_obj_t *ppmSensorLabel = lv_label_create(described.lower.ppmSensorPanel);
-	lv_obj_align(ppmSensorLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(ppmSensorLabel, kDevDescInfoPPMSens);
-
-	// Center right
-	described.lower.phSensorPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.phSensorPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.phSensorPanel, LV_ALIGN_CENTER, (kPanelWidth + kPanelOffset), 0);
-	lv_obj_add_style(described.lower.phSensorPanel, &style_menu_subpanel, 0);
-	lv_obj_t *phSensorLabel = lv_label_create(described.lower.phSensorPanel);
-	lv_obj_align(phSensorLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(phSensorLabel, kDevDescInfoPHSens);
-
-	// Top left
-	described.lower.maxCurrentPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.maxCurrentPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.maxCurrentPanel, LV_ALIGN_CENTER, -(kPanelWidth + kPanelOffset), -(kPanelHeight + kPanelOffset));
-	lv_obj_add_style(described.lower.maxCurrentPanel, &style_menu_subpanel, 0);
-	lv_obj_t *maxCurrentLabel = lv_label_create(described.lower.maxCurrentPanel);
-	lv_obj_align(maxCurrentLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(maxCurrentLabel, kDevDescInfoMaxPumpCur);
-
-	// Top Center
-	described.lower.minCurrentPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.minCurrentPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.minCurrentPanel, LV_ALIGN_CENTER, 0, -(kPanelHeight + kPanelOffset));
-	lv_obj_add_style(described.lower.minCurrentPanel, &style_menu_subpanel, 0);
-	lv_obj_t *minCurrentLabel = lv_label_create(described.lower.minCurrentPanel);
-	lv_obj_align(minCurrentLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(minCurrentLabel, kDevDescInfoMinPumpCur);
-
-	// Top right
-	described.lower.tempSensorPanel = lv_obj_create(parent);
-	lv_obj_set_size(described.lower.tempSensorPanel, kPanelWidth, kPanelHeight);
-	lv_obj_align(described.lower.tempSensorPanel, LV_ALIGN_CENTER, (kPanelWidth + kPanelOffset), -(kPanelHeight + kPanelOffset));
-	lv_obj_add_style(described.lower.tempSensorPanel, &style_menu_subpanel, 0);
-	lv_obj_t *tempSensorLabel = lv_label_create(described.lower.tempSensorPanel);
-	lv_obj_align(tempSensorLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(tempSensorLabel, kDevDescInfoTempSen);
-
-	lv_obj_t *exitButton = lv_btn_create(parent);
-	lv_obj_set_size(exitButton, 200, 50);
-	lv_obj_align(exitButton, LV_ALIGN_BOTTOM_MID, 0, -10);
-	lv_obj_t *exitButtonLabel = lv_label_create(exitButton);
-	lv_obj_align(exitButtonLabel, LV_ALIGN_CENTER, 0, 0);
-	lv_label_set_text_static(exitButtonLabel, "Exit");
-	lv_obj_add_style(exitButton, &style_menu_subpanel, 0);
-	lv_obj_add_event_cb(exitButton, deviceDetailedInfoCloseCallback, LV_EVENT_CLICKED, NULL);
 }
 
 void styleInitialize()

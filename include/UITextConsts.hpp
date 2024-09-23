@@ -9,8 +9,7 @@
 #ifndef INCLUDE_UITEXTCONSTS_HPP_
 #define INCLUDE_UITEXTCONSTS_HPP_
 
-static char kDevDescInfoMinPumpCur[] = "Min current";
-static char kDevDescInfoMaxPumpCur[] = "Max current";
+static char kDevDescInfoPumpCur[] = "Pump current";
 static char kDevDescInfoTempSen[] = "Temp sensor";
 static char kDevDescInfoPHSens[] = "PH sensor";
 static char kDevDescInfoPPMSens[] = "PPM sensor";

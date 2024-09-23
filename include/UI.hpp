@@ -31,8 +31,6 @@ void mainPageCreate(lv_obj_t * parent);
 void loadingScreenCreate(lv_obj_t * parent);
 void keyboardCreate();
 
-void extendedLowerInfoPageCreate(lv_obj_t * parent);
-
 lv_obj_t *createSwitch(lv_obj_t * parent, const char * icon, const char * txt, bool chk);
 lv_obj_t *createSlider(lv_obj_t * parent, const char * icon, const char * txt, int32_t min, int32_t max, int32_t val);
 lv_obj_t *createText(lv_obj_t * parent, const char * icon, const char * txt, lv_menu_builder_variant_t builder_variant);
