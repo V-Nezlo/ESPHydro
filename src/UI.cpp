@@ -45,6 +45,7 @@ static lv_style_t style_bullet;
 lv_obj_t *mainPage;
 lv_obj_t *settingsPage;
 lv_obj_t *loadingScreen;
+
 // Доп экраны
 lv_obj_t *pumpSettingsScr;
 lv_obj_t *lampSettingsScr;
@@ -189,6 +190,9 @@ bool isLowerPresent{false};
 bool isUpperPresent{false};
 bool isAuxPresent{false};
 bool isSystemPresent{false};
+
+char detailedInfoPanelText[120];
+bool isDetailedShowing{false};
 
 uint8_t lowerFlags{0};
 uint8_t upperFlags{0};
@@ -354,7 +358,6 @@ void uiInit(UiEventObserver *aObserver)
 
 void displayMainPage()
 {
-	// createDescribedWindow(mainPage);
 	lv_scr_load(mainPage);
 	initialized = true;
 }
@@ -379,6 +382,10 @@ void customTextAreaEvent(lv_event_t *aEvent)
 
 void settingsButtonEvent(lv_event_t *e)
 {
+	if (isDetailedShowing) {
+		return;
+	}
+
 	lv_scr_load(settingsPage);
 	// Откроет первую вкладку при повторных открытиях меню настройки
 	lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(menu), 0), 0), LV_EVENT_CLICKED, NULL);
@@ -541,6 +548,10 @@ void brightnessSliderEventHandler(lv_event_t *)
 
 void actuatorPressedEventHandler(lv_event_t *e)
 {
+	if (isDetailedShowing) {
+		return;
+	}
+
 	const lv_obj_t * target = lv_event_get_current_target(e);
 	const PumpModes mode = static_cast<PumpModes>(currentSettings.pump.mode);
 
@@ -577,18 +588,51 @@ void returnToSettingsEventHandler(lv_event_t *)
 	lv_scr_load(settingsPage);
 }
 
+void deviceDetailedInfoCloseCallback(lv_event_t *e)
+{
+	isDetailedShowing = false;
+}
+
 void deviceDetailedInfoOpenCallback(lv_event_t *e)
 {
 	const lv_obj_t *target = lv_event_get_current_target(e);
+
+	if (isDetailedShowing) {
+		return;
+	}
 
 	if (target == lowerStatusPanel) {
 		if (!isLowerPresent) {
 			return;
 		}
+
+		const char *pumpPresent = lowerFlags & LowerFlags::LowerPumpLowCurrentFlag ? kPumpNotPresentText : kPumpPresentText;
+		const char *pumpMaxCurrent = lowerFlags & LowerFlags::LowerPumpOverCurrentFlag ? kPumpOvercurrentText : kPumpCurrentOKText;
+		const char *tempSensor = lowerFlags & LowerFlags::LowerTempSensorErrorFlag ? kTempSensorErrText : kTempSensorOKText;
+		const char *phSensor = lowerFlags & LowerFlags::LowerPHSensorErrorFlag ? kPHSensorNotPresentText : kPHSensorPresentText;
+		const char *ppmSensor = lowerFlags & LowerFlags::LowerPPMSensorErrorFlag ? kPPMSensorErrText : kPPMSensorOKText;
+		const char *nowater = lowerFlags & LowerFlags::LowerNoWaterFlag ? kWaterErrText : kWaterOKText;
+
+		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s", pumpPresent, pumpMaxCurrent, tempSensor, phSensor, ppmSensor, nowater);
+
+		activeMessageBox = lv_msgbox_create(mainPage, "LOWER STATUS", detailedInfoPanelText, NULL, true);
+		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
+		isDetailedShowing = true;
+		lv_obj_center(activeMessageBox);
 	} else if (target == upperStatusPanel) {
 		if (!isUpperPresent) {
 			return;
 		}
+
+		const char *powerPresent = upperFlags & UpperFlags::UpperPowerError ? kUpperPowerOKText : kUpperPowerErrText;
+		const char *floatlev = upperFlags & UpperFlags::UpperTopWaterLevelStuck ? kUpperFloatLevErrText : kUpperFloatLevOKText;
+
+		sprintf(detailedInfoPanelText, "%s%s", powerPresent, floatlev);
+
+		activeMessageBox = lv_msgbox_create(mainPage, "UPPER STATUS", detailedInfoPanelText, NULL, true);
+		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
+		isDetailedShowing = true;
+		lv_obj_center(activeMessageBox);
 	} else if (target == auxStatusPanel) {
 		if (!isAuxPresent) {
 			return;
@@ -597,12 +641,19 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		if (!isSystemPresent) {
 			return;
 		}
+
+		const char *rtc = systemFlags & SystemErrors::SystemRTCError ? kRtcErrText : kRtcOKText;
+		const char *internalMem = systemFlags & SystemErrors::SystemInternalMemError ? kInternalMemErrText : kInternalMemOKText;
+		const char *rsbus = systemFlags & SystemErrors::SystemRSBusError ? kRSBusErrText : kRSBusOKText;
+		const char *operational = systemFlags & SystemErrors::SystemPumpNotOperate ? kOperationalErrText : kOperationalOKText;
+		const char *timings = systemFlags & SystemErrors::SystemTankNotFloodedInTime ? kPumpTimingsErrText : kPumpTimingsOKText;
+
+		sprintf(detailedInfoPanelText, "%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings);
+		activeMessageBox = lv_msgbox_create(mainPage, "SYSTEM STATUS", detailedInfoPanelText, NULL, true);
+		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
+		isDetailedShowing = true;
+		lv_obj_center(activeMessageBox);
 	}
-}
-
-void deviceDetailedInfoCloseCallback(lv_event_t *e)
-{
-
 }
 
 void serviceEventHandler(lv_event_t *aEv)
