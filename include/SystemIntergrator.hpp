@@ -16,15 +16,12 @@
 class SystemIntegrator : public AbstractEventObserver, public AbstractLinearTask {
 public:
 	SystemIntegrator();
-
 	void process(std::chrono::milliseconds aCurrentTime) override;
 	EventResult handleEvent(Event *e) override;
 private:
 	uint8_t systemFlagStorage;
 	std::chrono::milliseconds lastCheckTime;
 	bool updated;
-	BuzzerSignal signalNeeds;
-	bool isAlarmSoundsEnabled;
 };
 
 #endif // INCLUDE_SYSTEMINTERGRATOR_HPP_

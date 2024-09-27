@@ -23,11 +23,31 @@ public:
 
 private:
 	std::queue<HealthUpdate> queue;
-	uint8_t previousUpperFlags;
-	uint8_t previousLowerFlags;
-	bool isAlarmSoundsEnabled;
 
-	void sendSoundSignalIfAllowed();
+	struct {
+		DeviceHealth lower;
+		DeviceHealth upper;
+		DeviceHealth aux;
+		DeviceHealth system;
+
+		void update(HealthUpdate update)
+		{
+			switch(update.type) {
+				case DeviceType::Lower:
+					lower = update.health;
+					break;
+				case DeviceType::Upper:
+					upper = update.health;
+					break;
+				case DeviceType::AUX:
+					aux = update.health;
+					break;
+				case DeviceType::Master:
+					system = update.health;
+					break;
+			}
+		}
+	} healths;
 };
 
 #endif
