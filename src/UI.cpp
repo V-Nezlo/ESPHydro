@@ -89,34 +89,34 @@ struct {
 	ActuatorStatus damStatus{ActuatorStatus::Disabled};
 	ActuatorStatus auxStatus{ActuatorStatus::Disabled};
 
-	ActuatorStatus getStatusByActuatorPtr(lv_obj_t *aPtr)
+	ActuatorStatus getStatusByActuatorPtr(lv_obj_t *aActuator)
 	{
-		if (aPtr == pump) {
+		if (aActuator == pump) {
 			return pumpStatus;
-		} else if (aPtr == lamp) {
+		} else if (aActuator == lamp) {
 			return lampStatus;
-		} else if (aPtr == topLev) {
+		} else if (aActuator == topLev) {
 			return topLevStatus;
-		} else if (aPtr == dam) {
+		} else if (aActuator == dam) {
 			return damStatus;
-		} else if (aPtr == aux) {
+		} else if (aActuator == aux) {
 			return auxStatus;
 		} else {
 			return ActuatorStatus::Disabled;
 		}
 	}
 
-	void setActuatorStatus(lv_obj_t *aPtr, ActuatorStatus aNewStatus)
+	void setActuatorStatus(lv_obj_t *aActuator, ActuatorStatus aNewStatus)
 	{
-		if (aPtr == pump) {
+		if (aActuator == pump) {
 			pumpStatus = aNewStatus;
-		} else if (aPtr == lamp) {
+		} else if (aActuator == lamp) {
 			lampStatus = aNewStatus;
-		} else if (aPtr == topLev) {
+		} else if (aActuator == topLev) {
 			topLevStatus = aNewStatus;
-		} else if (aPtr == dam) {
+		} else if (aActuator == dam) {
 			damStatus = aNewStatus;
-		} else if (aPtr == aux) {
+		} else if (aActuator == aux) {
 			auxStatus = aNewStatus;
 		} else {
 			return;
@@ -743,17 +743,18 @@ void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActiv
 	ActuatorStatus oldStatus = actuators.getStatusByActuatorPtr(aActuator);
 	ActuatorStatus newStatus = aActivated ? ActuatorStatus::Activated : ActuatorStatus::Present;
 
-	if (oldStatus != newStatus) {
-		if (!aDevicePresent) {
-			lv_obj_set_style_bg_color(aActuator, kRedColor, 0);
-		} else if (aActivated) {
+	if (!aDevicePresent) {
+		lv_obj_set_style_bg_color(aActuator, kGreyColor, 0);
+		actuators.setActuatorStatus(aActuator, ActuatorStatus::Disabled);
+	} else if (oldStatus != newStatus) {
+		if (aActivated) {
 			lv_obj_set_style_bg_color(aActuator, kBlueColor, 0);
 		} else {
 			lv_obj_set_style_bg_color(aActuator, kGreenColor, 0);
 		}
-	}
 
-	actuators.setActuatorStatus(aActuator, newStatus);
+		actuators.setActuatorStatus(aActuator, newStatus);
+	}
 }
 
 void updateSystemData(struct SystemData *aData)
@@ -979,7 +980,7 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 
 			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
 				isLowerPresent = false;
-				actuators.pumpStatus = ActuatorStatus::Present;
+				updateActuatorByFlags(actuators.pump, false ,false);
 			} else {
 				isLowerPresent = true;
 			}
@@ -988,6 +989,9 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 			updatePanelStyleByFlags(upperStatusPanel, aUpdate->health);
 
 			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+				updateActuatorByFlags(actuators.lamp, false ,false);
+				updateActuatorByFlags(actuators.dam, false ,false);
+				updateActuatorByFlags(actuators.topLev, false ,false);
 				isUpperPresent = false;
 			} else {
 				isUpperPresent = true;

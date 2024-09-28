@@ -5,7 +5,7 @@ DeviceMonitor::DeviceMonitor():
 	healths{ DeviceHealth::DeviceDisabled,
 			 DeviceHealth::DeviceDisabled,
 			 DeviceHealth::DeviceDisabled,
-			 DeviceHealth::DeviceWorking}
+			 DeviceHealth::DeviceDisabled}
 {
 }
 
@@ -79,7 +79,9 @@ EventResult DeviceMonitor::handleEvent(Event *e)
 
 			if ((e->data.systemData.flags & SystemErrors::SystemLeak) || (e->data.systemData.flags & SystemErrors::SystemRSBusError)) {
 				update.health = DeviceHealth::DeviceCritical;
-			} else if ((e->data.systemData.flags & SystemErrors::SystemRTCError) || (e->data.systemData.flags & SystemErrors::SystemInternalMemError)) {
+			} else if ((e->data.systemData.flags & SystemErrors::SystemRTCError) 
+				|| (e->data.systemData.flags & SystemErrors::SystemInternalMemError) 
+				|| (e->data.systemData.flags & SystemErrors::SystemPumpNotOperate)) {
 				update.health = DeviceHealth::DeviceError;
 			} else if (e->data.systemData.flags & SystemErrors::SystemTankNotFloodedInTime) {
 				update.health = DeviceHealth::DeviceWarning;
