@@ -37,4 +37,8 @@ static const char kOperationalOKText[] = "System operational\n";
 static const char kOperationalErrText[] = "System failure\n";
 static const char kPumpTimingsOKText[] = "Pump Timings OK\n";
 static const char kPumpTimingsErrText[] = "Pump Timings error\n";
+
+static const char kPHSensorPlaceholderText[] = "NA ";
+static const char kPPMSensorPlaceholderText[] = " NA ";
+static const char kTempSensorPlaceholderText[] = " NA ";
 #endif

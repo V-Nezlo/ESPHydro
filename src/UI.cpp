@@ -212,10 +212,10 @@ lv_obj_t *aboutVersionFiller;
 lv_obj_t *aboutWifiPresentFiller;
 lv_obj_t *aboutMqttPresentFiller;
 // Статические буфферы для текста
-char phLabelText[5] = "?.?";
-char ppmLabelText[6] = "????";
-char tempLabelText[5] = "??.?";
-char waterLevelLabelText[6] = "??";
+char phLabelText[5] = "NA ";
+char ppmLabelText[6] = " NA ";
+char tempLabelText[5] = " NA ";
+char waterLevelLabelText[6] = "NA";
 char currentTimeLabelText[19] = "?? : ?? : ??";
 
 char settingsPumpOnTimeText[6] = "0";
@@ -718,7 +718,7 @@ bool textAreasApply(lv_obj_t *aScreen)
 		return true;
 	} else if (aScreen == curTimeSettingsScr) {
 		return true;
-	} 
+	}
 
 	return false;
 }
@@ -767,10 +767,25 @@ void updateLowerData(const struct LowerInternalData *aData)
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
 
-	sprintf(ppmLabelText, "%4u", aData->ppm);
-	sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
+	if (lowerFlags & LowerFlags::LowerTempSensorErrorFlag) {
+		sprintf(tempLabelText, "%s", kTempSensorPlaceholderText);
+	} else {
+		sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
+	}
+
+	if (lowerFlags & LowerFlags::LowerPHSensorErrorFlag) {
+		sprintf(phLabelText, "%s", kPHSensorPlaceholderText);
+	} else {
+		sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
+	}
+
+	if (lowerFlags & LowerFlags::LowerPPMSensorErrorFlag) {
+		sprintf(ppmLabelText, "%s", kPPMSensorPlaceholderText);
+	} else {
+		sprintf(ppmLabelText, "%4u", aData->ppm);
+	}
+
 	sprintf(waterLevelLabelText, "%3u %%", aData->waterLevel);
-	sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 
 	// Сигнал для обновления текстов
 	lv_label_set_text_static(mainPageWaterTemp, NULL);
@@ -1031,10 +1046,10 @@ void fillDevicePlaceholders(DeviceType aDevice)
 {
 	switch (aDevice) {
 		case DeviceType::Lower:
-			sprintf(phLabelText, "?.?");
-			sprintf(ppmLabelText, "????");
-			sprintf(tempLabelText, "??.?");
-			sprintf(waterLevelLabelText, "??");
+			sprintf(phLabelText, "NA ");
+			sprintf(ppmLabelText, " NA ");
+			sprintf(tempLabelText, " NA ");
+			sprintf(waterLevelLabelText, "NA");
 
 			// Сигнал для обновления текстов
 			lv_label_set_text_static(mainPageWaterTemp, NULL);

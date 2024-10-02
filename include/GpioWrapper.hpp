@@ -22,6 +22,7 @@ public:
 	void set();
 	void reset();
 	void setState(bool aState);
+	bool read();
 
 private:
 	gpio_config_t config;

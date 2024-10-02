@@ -40,3 +40,8 @@ void Gpio::setState(bool aState)
 {
 	gpio_set_level(number, aState);
 }
+
+bool Gpio::read()
+{
+	return static_cast<bool>(gpio_get_level(number));
+}
