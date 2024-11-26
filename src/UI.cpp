@@ -567,13 +567,13 @@ void actuatorPressedEventHandler(lv_event_t *e)
 	} else if (target == actuators.lamp && isUpperPresent) {
 		if (actuators.lampStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnLampOn);
-		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
+		} else if (actuators.lampStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnLampOff);
 		}
 	} else if (target == actuators.dam && isUpperPresent) {
 		if (actuators.damStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::OpenDam);
-		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
+		} else if (actuators.damStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::CloseDam);
 		}
 	} else if (target == actuators.aux && isAuxPresent) {
