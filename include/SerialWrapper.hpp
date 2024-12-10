@@ -11,6 +11,7 @@
 
 #include "GpioWrapper.hpp"
 #include <driver/uart.h>
+#include "freertos/semphr.h"
 
 #include <iostream>
 #include <cstddef>
@@ -35,6 +36,7 @@ private:
 	const uart_config_t config;
 	QueueHandle_t queue;
 	Gpio &latch;
+	SemaphoreHandle_t mutex;
 };
 
 #endif // INCLUDE_SERIALWRAPPER_HPP_

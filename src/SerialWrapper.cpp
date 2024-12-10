@@ -20,7 +20,8 @@ SerialWrapper::SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBuf
 		.rx_flow_ctrl_thresh = 122,
 		.source_clk = static_cast<uart_sclk_t>(4)
 	},
-	latch(aLatch)
+	latch{aLatch},
+	mutex{xSemaphoreCreateMutex()}
 {
 	ESP_ERROR_CHECK(uart_param_config(aPort, &config));
 	ESP_ERROR_CHECK(uart_set_pin(aPort, aTxPin, aRxPin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
@@ -52,11 +53,15 @@ size_t SerialWrapper::read(uint8_t *aBuffer, size_t aLength)
 
 ssize_t SerialWrapper::write(const uint8_t *aData, size_t aLength)
 {
-	ESP_LOGV("WRITING", "%.*s", aLength, aData);
+	xSemaphoreTake(mutex, portMAX_DELAY);
 
+	ESP_LOGV("WRITING", "%.*s", aLength, aData);
 	latch.set();
 	const auto result = uart_write_bytes(port, aData, aLength);
 	ESP_ERROR_CHECK(uart_wait_tx_done(port, 1000'000));
 	latch.reset();
+
+	xSemaphoreGive(mutex);
+
 	return result;
 }
