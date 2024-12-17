@@ -49,7 +49,7 @@ esp_err_t DS3231::probe()
 
 void DS3231::process(std::chrono::milliseconds aCurrentTime)
 {
-	if (present && (aCurrentTime > lastReadTime + std::chrono::milliseconds{500})) {
+	if (present && (aCurrentTime > lastReadTime + std::chrono::milliseconds{250})) {
 		lastReadTime = aCurrentTime;
 
 		auto result = getCurrentTime();
