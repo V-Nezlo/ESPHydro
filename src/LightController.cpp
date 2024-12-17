@@ -10,6 +10,8 @@
 
 LightController::LightController() :
 	enabled{false},
+	pumpMode{PumpModes::Maintance},
+	lampState{false},
 	lampOnTime{0,0,0},
 	lampOffTime{0,0,0},
 	currentTime{0,0,0},
@@ -24,17 +26,19 @@ EventResult LightController::handleEvent(Event *e)
 		case EventType::GetCurrentTime:
 			currentTime = e->data.time;
 			return EventResult::PASS_ON;
-			break;
 		case EventType::SettingsUpdated:
 			xSemaphoreTake(mutex, portMAX_DELAY);
 			enabled = e->data.settings.lamp.enabled;
+			pumpMode = e->data.settings.pump.mode;
 			lampOnTime.hour = e->data.settings.lamp.lampOnHour;
 			lampOnTime.minutes = e->data.settings.lamp.lampOnMin;
 			lampOffTime.hour = e->data.settings.lamp.lampOffHour;
 			lampOffTime.minutes = e->data.settings.lamp.lampOffMin;
 			xSemaphoreGive(mutex);
 			return EventResult::PASS_ON;
-			break;
+		case EventType::UpdateUpperData:
+			lampState = e->data.upperData.lampState;
+			return EventResult::PASS_ON;
 		default:
 			return EventResult::IGNORED;
 	}
@@ -42,19 +46,22 @@ EventResult LightController::handleEvent(Event *e)
 
 void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 {
-	if (aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
-		lastCheckTime = aCurrentInternalTime;
-		xSemaphoreTake(mutex, portMAX_DELAY);
+	if (enabled) {
+		if (pumpMode != PumpModes::Maintance && aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
+			lastCheckTime = aCurrentInternalTime;
 
-		const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
+			xSemaphoreTake(mutex, portMAX_DELAY);
+			const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
 
-		if (!enabled && isNowIsActiveTime) {
-			sendCommandToEventBus(true);
-		} else if (enabled && !isNowIsActiveTime) {
-			sendCommandToEventBus(false);
+			if (!lampState && isNowIsActiveTime) {
+				sendCommandToEventBus(true);
+			} else if (lampState && !isNowIsActiveTime) {
+				sendCommandToEventBus(false);
+			}
+			xSemaphoreGive(mutex);
 		}
-
-		xSemaphoreGive(mutex);
+	} else if (lampState) {
+		sendCommandToEventBus(false);
 	}
 }
 

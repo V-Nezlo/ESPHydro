@@ -27,6 +27,8 @@ public:
 
 private:
 	bool enabled;
+	PumpModes pumpMode;
+	bool lampState;
 	Time lampOnTime;
 	Time lampOffTime;
 	Time currentTime;
@@ -41,7 +43,7 @@ private:
 	/// @param startTime
 	/// @param endTime
 	/// @return True если время находится в промежутке для включения, false - если для выключения
-	bool isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime);
+	static inline bool isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime);
 };
 
 #endif // INCLUDE_LIGHTCONTROLLER_HPP_
