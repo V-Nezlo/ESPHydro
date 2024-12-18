@@ -46,22 +46,24 @@ EventResult LightController::handleEvent(Event *e)
 
 void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 {
-	if (enabled) {
-		if (pumpMode != PumpModes::Maintance && aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
-			lastCheckTime = aCurrentInternalTime;
+	if (aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
+		lastCheckTime = aCurrentInternalTime;
 
-			xSemaphoreTake(mutex, portMAX_DELAY);
-			const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
+		if (pumpMode != PumpModes::Maintance) {
+			if (enabled) {
+				xSemaphoreTake(mutex, portMAX_DELAY);
+				const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
 
-			if (!lampState && isNowIsActiveTime) {
-				sendCommandToEventBus(true);
-			} else if (lampState && !isNowIsActiveTime) {
+				if (!lampState && isNowIsActiveTime) {
+					sendCommandToEventBus(true);
+				} else if (lampState && !isNowIsActiveTime) {
+					sendCommandToEventBus(false);
+				}
+				xSemaphoreGive(mutex);
+			} else if (lampState) {
 				sendCommandToEventBus(false);
 			}
-			xSemaphoreGive(mutex);
 		}
-	} else if (lampState) {
-		sendCommandToEventBus(false);
 	}
 }
 
