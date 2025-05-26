@@ -9,7 +9,7 @@
 #ifndef INCLUDE_LEDCONTROLLER_HPP_
 #define INCLUDE_LEDCONTROLLER_HPP_
 
-#include "Gpio.hpp"
+#include "AbstractClasses.hpp"
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
 #include <chrono>
@@ -29,12 +29,12 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 	private:
 		milliseconds lastActionTime;
 		LedState state;
-		Gpio *gpio;
+		AbstractGpio *gpio;
 		bool active;
 		const bool present;
 
 	public:
-		SmartLed(Gpio *aGpio):
+		SmartLed(AbstractGpio *aGpio):
 			lastActionTime{0},
 			state{LedState::Disabled},
 			gpio{aGpio},
@@ -94,7 +94,7 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 	};
 
 public:
-	LedController(Gpio *aGreen, Gpio *aBlue, Gpio *aRed):
+	LedController(AbstractGpio *aGreen, AbstractGpio *aBlue, AbstractGpio *aRed):
 		green{aGreen},
 		blue{aBlue},
 		red{aRed}

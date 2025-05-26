@@ -5,6 +5,7 @@
 #include "Display.hpp"
 #include "Gpio.hpp"
 #include "HydroRS.hpp"
+#include "I2CGpio.hpp"
 #include "LightController.hpp"
 #include "LedController.hpp"
 #include "PCF8574.hpp"
@@ -66,12 +67,17 @@ void app_main()
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
-	PCF8574 pcf8574(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin, 0x20);
+	PCF8574 pcf(0x20, Hardware ::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
+
+	I2CGpio greenLed{pcf, 0};
+	I2CGpio blueLed{pcf, 0};
+	I2CGpio redLed{pcf, 0};
 
 	PumpController pumpController;
 	LightController lightController;
 	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
+	LedController ledController{&greenLed, &blueLed, &redLed};
 	DeviceMonitor deviceMonitor;
 
 	EventBus::registerObserver(&paramStorage);
@@ -93,6 +99,7 @@ void app_main()
 	sched.registerTask(&buzzController);
 	sched.registerTask(&deviceMonitor);
 	sched.registerTask(&smartBus);
+	sched.registerTask(&ledController);
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
