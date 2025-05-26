@@ -3,10 +3,11 @@
 #include "DeviceMonitor.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
-#include "GpioWrapper.hpp"
+#include "Gpio.hpp"
 #include "HydroRS.hpp"
 #include "LightController.hpp"
 #include "LedController.hpp"
+#include "PCF8574.hpp"
 #include "PumpController.hpp"
 #include "SerialWrapper.hpp"
 #include "SystemIntergrator.hpp"
@@ -65,6 +66,7 @@ void app_main()
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
+	PCF8574 pcf8574(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin, 0x20);
 
 	PumpController pumpController;
 	LightController lightController;

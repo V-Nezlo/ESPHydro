@@ -9,7 +9,7 @@
 #ifndef INCLUDE_LEDCONTROLLER_HPP_
 #define INCLUDE_LEDCONTROLLER_HPP_
 
-#include "GpioWrapper.hpp"
+#include "Gpio.hpp"
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
 #include <chrono>

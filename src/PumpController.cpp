@@ -59,7 +59,7 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 {
 	// Используем мутекс как гарантию что переходы будут корректными
 	xSemaphoreTake(mutex, portMAX_DELAY);
-	auto currentTime = TimeWrapper::milliseconds();
+	const auto currentTime = TimeWrapper::milliseconds();
 
 	if (enabled) {
 		switch(mode) {

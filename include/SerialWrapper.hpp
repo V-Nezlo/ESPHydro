@@ -9,7 +9,7 @@
 #ifndef INCLUDE_SERIALWRAPPER_HPP_
 #define INCLUDE_SERIALWRAPPER_HPP_
 
-#include "GpioWrapper.hpp"
+#include "Gpio.hpp"
 #include <driver/uart.h>
 #include "freertos/semphr.h"
 

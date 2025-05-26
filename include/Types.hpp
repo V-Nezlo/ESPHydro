@@ -48,7 +48,8 @@ enum SystemErrors : uint8_t {
 	SystemRSBusError = 0x04,
 	SystemPumpNotOperate = 0x08,
 	SystemTankNotFloodedInTime = 0x10,
-	SystemLeak = 0x20
+	SystemLeak = 0x20,
+	SystemPCFError = 0x40
 };
 
 struct UpperInternalData {

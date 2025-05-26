@@ -5,7 +5,7 @@
 //  Author      : V-Nezlo (vlladimirka@gmail.com)
 //  Description : ООП обертка для gpio
 
-#include "GpioWrapper.hpp"
+#include "Gpio.hpp"
 
 Gpio::Gpio(uint64_t aNum, gpio_mode_t aMode, bool aState, gpio_pullup_t aPullUp, gpio_pulldown_t aPullDown, gpio_int_type_t aIntType) :
 	config{

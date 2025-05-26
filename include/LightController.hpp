@@ -12,7 +12,7 @@
 #include "ConfigStorage.hpp"
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
-#include "GpioWrapper.hpp"
+#include "Gpio.hpp"
 #include "TimeWrapper.hpp"
 
 #include <freertos/FreeRTOS.h>
