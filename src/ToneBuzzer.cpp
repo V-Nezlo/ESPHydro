@@ -34,7 +34,6 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 	}
 }
 
-
 void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)
 {
 	if (currentSignal != ToneBuzzerSignal::Disabled && aCurrentTime > nextActionTime) {

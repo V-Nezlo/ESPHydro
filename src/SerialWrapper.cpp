@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "MutexLock.hpp"
 #include "SerialWrapper.hpp"
 #include <esp_log.h>
 
@@ -53,15 +54,13 @@ size_t SerialWrapper::read(uint8_t *aBuffer, size_t aLength)
 
 ssize_t SerialWrapper::write(const uint8_t *aData, size_t aLength)
 {
-	xSemaphoreTake(mutex, portMAX_DELAY);
+	MutexLock lock(mutex);
 
 	ESP_LOGV("WRITING", "%.*s", aLength, aData);
 	latch.set();
 	const auto result = uart_write_bytes(port, aData, aLength);
 	ESP_ERROR_CHECK(uart_wait_tx_done(port, 1000'000));
 	latch.reset();
-
-	xSemaphoreGive(mutex);
 
 	return result;
 }

@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "MutexLock.hpp"
 #include "PumpController.hpp"
 #include "freertos/semphr.h"
 
@@ -30,16 +31,15 @@ PumpController::PumpController() :
 EventResult PumpController::handleEvent(Event *e)
 {
 	switch(e->type) {
-		case EventType::SettingsUpdated:
+		case EventType::SettingsUpdated: {
 			// Чтобы обеспечить нормальный переход между режимами - замутексуем
-			xSemaphoreTake(mutex, portMAX_DELAY);
+			MutexLock lock(mutex);
 			enabled = e->data.settings.pump.enabled;
 			pumpOnTime = std::chrono::seconds(e->data.settings.pump.onTime);
 			pumpOffTime = std::chrono::seconds(e->data.settings.pump.offTime);
 			swingTime = std::chrono::seconds(e->data.settings.pump.swingTime);
 			updateMode(e->data.settings.pump.mode);
-			xSemaphoreGive(mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 		case EventType::UpdateLowerData:
 			currentWaterLevel = e->data.lowerData.waterLevel;
 			pumpState = e->data.lowerData.pumpState ? PumpState::PumpOn : PumpState::PumpOff;
@@ -58,25 +58,24 @@ EventResult PumpController::handleEvent(Event *e)
 void PumpController::process(std::chrono::milliseconds aCurrentTime)
 {
 	// Используем мутекс как гарантию что переходы будут корректными
-	xSemaphoreTake(mutex, portMAX_DELAY);
-	const auto currentTime = TimeWrapper::milliseconds();
+	MutexLock lock(mutex);
 
 	if (enabled) {
 		switch(mode) {
 			case PumpModes::EBBNormal:
-				processEBBNormalMode(currentTime);
+				processEBBNormalMode(aCurrentTime);
 				break;
 			case PumpModes::EBBSwing:
-				processEBBSwingMode(currentTime);
+				processEBBSwingMode(aCurrentTime);
 				break;
 			case PumpModes::Dripping:
-				processDripMode(currentTime);
+				processDripMode(aCurrentTime);
 				break;
 			case PumpModes::Maintance:
 				processMaintanceMode();
 				break;
 			case PumpModes::EBBDam:
-				processEBBDumMode(currentTime);
+				processEBBDumMode(aCurrentTime);
 				break;
 		}
 	} else {
@@ -85,8 +84,6 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 			setDamState(DamTankState::DamUnlocked);
 		}
 	}
-
-	xSemaphoreGive(mutex);
 }
 
 void PumpController::updateMode(PumpModes aNewMode)
@@ -270,6 +267,7 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
 				setDamState(DamTankState::DamUnlocked); // Открываем дамбу при выключении
+				setPumpState(PumpState::PumpOff);
 			} else {
 				if (upperState) { // При срабатывании поплавкового датчика закрываем дамбу и выключаем насос
 					setPumpState(PumpState::PumpOff);

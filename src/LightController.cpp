@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "MutexLock.hpp"
 #include "LightController.hpp"
 
 LightController::LightController() :
@@ -26,16 +27,15 @@ EventResult LightController::handleEvent(Event *e)
 		case EventType::GetCurrentTime:
 			currentTime = e->data.time;
 			return EventResult::PASS_ON;
-		case EventType::SettingsUpdated:
-			xSemaphoreTake(mutex, portMAX_DELAY);
+		case EventType::SettingsUpdated: {
+			MutexLock lock(mutex);
 			enabled = e->data.settings.lamp.enabled;
 			pumpMode = e->data.settings.pump.mode;
 			lampOnTime.hour = e->data.settings.lamp.lampOnHour;
 			lampOnTime.minutes = e->data.settings.lamp.lampOnMin;
 			lampOffTime.hour = e->data.settings.lamp.lampOffHour;
 			lampOffTime.minutes = e->data.settings.lamp.lampOffMin;
-			xSemaphoreGive(mutex);
-			return EventResult::PASS_ON;
+		} return EventResult::PASS_ON;
 		case EventType::UpdateUpperData:
 			lampState = e->data.upperData.lampState;
 			return EventResult::PASS_ON;
@@ -51,7 +51,7 @@ void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 
 		if (pumpMode != PumpModes::Maintance) {
 			if (enabled) {
-				xSemaphoreTake(mutex, portMAX_DELAY);
+				MutexLock lock(mutex);
 				const bool isNowIsActiveTime = isTimeForOn(currentTime, lampOnTime, lampOffTime);
 
 				if (!lampState && isNowIsActiveTime) {
@@ -59,7 +59,6 @@ void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
 				} else if (lampState && !isNowIsActiveTime) {
 					sendCommandToEventBus(false);
 				}
-				xSemaphoreGive(mutex);
 			} else if (lampState) {
 				sendCommandToEventBus(false);
 			}

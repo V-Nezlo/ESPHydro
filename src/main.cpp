@@ -8,6 +8,7 @@
 #include "I2CGpio.hpp"
 #include "LightController.hpp"
 #include "LedController.hpp"
+#include "MutexLock.hpp"
 #include "PCF8574.hpp"
 #include "PumpController.hpp"
 #include "SerialWrapper.hpp"
@@ -42,10 +43,11 @@ void displayTaskFunc(void *pvParameters)
 			}
 		}
 
-		xSemaphoreTake(*mutex, portMAX_DELAY);
-		lv_timer_handler();
-		lv_tick_inc(5);
-		xSemaphoreGive(*mutex);
+		{
+			MutexLock lock(*mutex);
+			lv_timer_handler();
+			lv_tick_inc(5);
+		}
 
 		esp_task_wdt_reset();
 		vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -119,8 +121,9 @@ void app_main()
 		const size_t len = serial.bytesAvaillable();
 		if (len) {
 			uint8_t buffer[64];
-			serial.read(buffer, len);
-			smartBus.update(buffer, len);
+			const size_t finLen = std::min(len, sizeof(buffer));
+			serial.read(buffer, finLen);
+			smartBus.update(buffer, finLen);
 		}
 
 		sched.doTasks();

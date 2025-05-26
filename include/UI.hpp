@@ -11,6 +11,7 @@
 
 #include "Types.hpp"
 #include "EventBus.hpp"
+#include "MutexLock.hpp"
 
 #include <freertos/FreeRTOS.h>
 #include "freertos/semphr.h"
@@ -81,47 +82,40 @@ public:
 
 		switch (e->type) 
 		{
-		case EventType::UpdateUpperData:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::UpdateUpperData: {
+			MutexLock lock(*mutex);
 			updateUpperData(&e->data.upperData);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::UpdateLowerData:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::UpdateLowerData: {
+			MutexLock lock(*mutex);
 			updateLowerData(&e->data.lowerData);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::UpdateSystemData:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::UpdateSystemData: {
+			MutexLock lock(*mutex);
 			updateSystemData(&e->data.systemData);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::GetCurrentTime:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::GetCurrentTime: {
+			MutexLock lock(*mutex);
 			applyNewCurrentTime(&e->data.time);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::SettingsUpdated:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::SettingsUpdated: {
+			MutexLock lock(*mutex);
 			enterParameters(&e->data.settings);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::HealthUpdated:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::HealthUpdated: {
+			MutexLock lock(*mutex);
 			updateDeviceHealth(&e->data.healthUpdate);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
-		case EventType::RsDeviceDetached:
-			xSemaphoreTake(*mutex, portMAX_DELAY);
+		case EventType::RsDeviceDetached: {
+			MutexLock lock(*mutex);
 			fillDevicePlaceholders(e->data.device);
-			xSemaphoreGive(*mutex);
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 
 		default:
 			return EventResult::IGNORED;
