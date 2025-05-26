@@ -24,9 +24,10 @@ LightController::LightController() :
 EventResult LightController::handleEvent(Event *e)
 {
 	switch (e->type) {
-		case EventType::GetCurrentTime:
+		case EventType::GetCurrentTime: {
+			MutexLock lock(mutex);
 			currentTime = e->data.time;
-			return EventResult::PASS_ON;
+			} return EventResult::PASS_ON;
 		case EventType::SettingsUpdated: {
 			MutexLock lock(mutex);
 			enabled = e->data.settings.lamp.enabled;
@@ -44,10 +45,12 @@ EventResult LightController::handleEvent(Event *e)
 	}
 }
 
-void LightController::process(std::chrono::milliseconds aCurrentInternalTime)
+void LightController::process(std::chrono::milliseconds aCurrentTime)
 {
-	if (aCurrentInternalTime > lastCheckTime + std::chrono::milliseconds{5000}) {
-		lastCheckTime = aCurrentInternalTime;
+	static constexpr std::chrono::milliseconds kCheckInterval{5000};
+
+	if (aCurrentTime > lastCheckTime + kCheckInterval) {
+		lastCheckTime = aCurrentTime;
 
 		if (pumpMode != PumpModes::Maintance) {
 			if (enabled) {
@@ -74,33 +77,28 @@ void LightController::sendCommandToEventBus(bool aNewLampState)
 	EventBus::throwEvent(&ev, this);
 }
 
-bool LightController::isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime) {
-	if (startTime.hour < endTime.hour) {
-		return (currentTime.hour > startTime.hour ||
-			   (currentTime.hour == startTime.hour &&
-				(currentTime.minutes > startTime.minutes ||
-				(currentTime.minutes == startTime.minutes && currentTime.seconds >= startTime.seconds))))
-			   &&
-			   (currentTime.hour < endTime.hour ||
-			   (currentTime.hour == endTime.hour &&
-				(currentTime.minutes < endTime.minutes ||
-				(currentTime.minutes == endTime.minutes && currentTime.seconds < endTime.seconds))));
-	} else if (startTime.hour > endTime.hour) {
-		return !(currentTime.hour > endTime.hour ||
-				(currentTime.hour == endTime.hour &&
-				(currentTime.minutes > endTime.minutes ||
-				(currentTime.minutes == endTime.minutes && currentTime.seconds >= endTime.seconds))) ||
-			   !(currentTime.hour < startTime.hour ||
-				(currentTime.hour == startTime.hour &&
-				(currentTime.minutes < startTime.minutes ||
-				(currentTime.minutes == startTime.minutes && currentTime.seconds < startTime.seconds)))));
-	} else {
-		return (currentTime.minutes > startTime.minutes ||
-				(currentTime.minutes == startTime.minutes &&
-				currentTime.seconds >= startTime.seconds)) &&
-			   (currentTime.minutes < endTime.minutes ||
-				(currentTime.minutes == endTime.minutes &&
-				currentTime.seconds < endTime.seconds));
+bool LightController::isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime)
+{
+	// Helper function to convert time to total seconds for easier comparison
+	auto timeToSeconds = [](const Time& t) -> int {
+		return t.hour * 3600 + t.minutes * 60 + t.seconds;
+	};
+
+	int current = timeToSeconds(currentTime);
+	int start = timeToSeconds(startTime);
+	int end = timeToSeconds(endTime);
+
+	// Case 1: Same day operation (e.g., 08:00 to 18:00)
+	if (start < end) {
+		return current >= start && current < end;
+	}
+	// Case 2: Overnight operation (e.g., 18:00 to 08:00 next day)
+	else if (start > end) {
+		return current >= start || current < end;
+	}
+	// Case 3: Same time for start and end (edge case - should probably be disabled)
+	else {
+		return false;
 	}
 }
 
