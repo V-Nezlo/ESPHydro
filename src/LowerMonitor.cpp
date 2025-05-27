@@ -43,13 +43,40 @@ void LowerMonitor::updateFromTelemetry(uint8_t telemetryFlags)
 	updateHealth();
 }
 
+EventResult LowerMonitor::handleEvent(Event *e)
+{
+	switch (e->type) {
+		case EventType::RsDeviceDetached:
+			if (e->data.device == DeviceType::Lower) {
+				flags = 0;
+				health = DeviceHealth::DeviceDisabled;
+
+				// Отправим новый health
+				Event ev;
+				ev.type = EventType::UpdateDeviceHealth;
+				ev.data.updateHealth.type = DeviceType::Lower;
+				ev.data.updateHealth.health = health;
+				EventBus::throwEvent(&ev, this);
+			}
+			return EventResult::PASS_ON;
+		default:
+			return EventResult::IGNORED;
+	}
+}
+
 void LowerMonitor::updateHealth()
 {
 	for (const auto& rule : rules) {
 		if (flags & rule.mask) {
 			health = rule.health;
-			return;
+		} else {
+			health = DeviceHealth::DeviceWorking;
 		}
 	}
-	health = DeviceHealth::DeviceWorking;
+
+	Event ev;
+	ev.type = EventType::UpdateDeviceHealth;
+	ev.data.updateHealth.type = DeviceType::Lower;
+	ev.data.updateHealth.health = health;
+	EventBus::throwEvent(&ev, this);
 }

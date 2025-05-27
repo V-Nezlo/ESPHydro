@@ -9,6 +9,7 @@
 #ifndef SOURCES_MASTERMONITOR_HPP_
 #define SOURCES_MASTERMONITOR_HPP_
 
+#include "EventBus.hpp"
 #include "Types.hpp"
 #include <cstdint>
 
@@ -36,6 +37,7 @@ public:
 private:
 	MasterMonitor();
 	void updateHealth();
+	void sendDataToEventBus();
 
 	uint8_t flags;
 	DeviceHealth health;

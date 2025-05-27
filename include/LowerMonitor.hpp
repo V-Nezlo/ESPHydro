@@ -9,6 +9,7 @@
 #ifndef SOURCES_LOWERMONITOR_HPP_
 #define SOURCES_LOWERMONITOR_HPP_
 
+#include "EventBus.hpp"
 #include "Types.hpp"
 #include <cstdint>
 
@@ -23,7 +24,7 @@ enum class LowerFlags : uint8_t {
 	PumpStuck           = 0x80
 };
 
-class LowerMonitor {
+class LowerMonitor : public AbstractEventObserver{
 public:
 	static LowerMonitor& instance();
 
@@ -35,6 +36,7 @@ public:
 	DeviceHealth getHealth() const;
 
 	void updateFromTelemetry(uint8_t telemetryFlags);
+	EventResult handleEvent(Event *e) override;
 
 private:
 	LowerMonitor();

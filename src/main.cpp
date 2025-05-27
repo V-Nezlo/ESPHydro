@@ -86,6 +86,8 @@ void app_main()
 	EventBus::registerObserver(&pumpController);
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&buzzController);
+	EventBus::registerObserver(&LowerMonitor::instance());
+	EventBus::registerObserver(&UpperMonitor::instance());
 
 	LinearSched sched;
 	sched.registerTask(&rtc);

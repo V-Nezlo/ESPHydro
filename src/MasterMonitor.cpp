@@ -43,8 +43,26 @@ void MasterMonitor::updateHealth()
 	for (const auto& rule : rules) {
 		if (flags & rule.mask) {
 			health = rule.health;
-			return;
+		} else {
+			health = DeviceHealth::DeviceWorking;
 		}
 	}
-	health = DeviceHealth::DeviceWorking;
+
+	sendDataToEventBus();
+}
+
+void MasterMonitor::sendDataToEventBus()
+{
+	// Отправим новые флаги в обсерверы
+	Event ev;
+	ev.type = EventType::UpdateSystemData;
+	ev.data.systemData.flags = flags;
+	EventBus::throwEvent(&ev, nullptr);
+
+	// Отправим новый health
+	Event ev2;
+	ev2.type = EventType::UpdateDeviceHealth;
+	ev2.data.updateHealth.type = DeviceType::Master;
+	ev2.data.updateHealth.health = health;
+	EventBus::throwEvent(&ev2, nullptr);
 }

@@ -91,4 +91,9 @@ struct Time {
 	uint8_t seconds;
 };
 
+struct UpdateHealth {
+	DeviceType type;
+	DeviceHealth health;
+};
+
 #endif // INCLUDE_TYPES_HPP_

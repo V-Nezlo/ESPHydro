@@ -107,9 +107,9 @@ public:
 			enterParameters(&e->data.settings);
 			} return EventResult::PASS_ON;
 
-		case EventType::RsDeviceDetached: {
+		case EventType::UpdateDeviceHealth: {
 			MutexLock lock(*mutex);
-			fillDevicePlaceholders(e->data.device);
+			updateDeviceHealth(e->data.updateHealth.type, e->data.updateHealth.health);
 			} return EventResult::PASS_ON;
 
 		default:

@@ -9,6 +9,7 @@
 #ifndef SOURCES_UPPERMONITOR_HPP_
 #define SOURCES_UPPERMONITOR_HPP_
 
+#include "EventBus.hpp"
 #include "Types.hpp"
 #include <cstdint>
 
@@ -17,7 +18,7 @@ enum class UpperFlags : uint8_t {
 	PowerError         = 0x02
 };
 
-class UpperMonitor {
+class UpperMonitor : public AbstractEventObserver {
 public:
 	static UpperMonitor& instance();
 
@@ -29,6 +30,7 @@ public:
 	DeviceHealth getHealth() const;
 
 	void updateFromTelemetry(uint8_t telemetryFlags);
+	EventResult handleEvent(Event *e) override;
 
 private:
 	UpperMonitor();

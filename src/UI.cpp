@@ -764,17 +764,12 @@ void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActiv
 void updateSystemData(struct SystemData *aData)
 {
 	systemFlags = aData->flags;
-	// Обновим Health из монитора
-	updateDeviceHealth(DeviceType::Master, MasterMonitor::instance().getHealth());
 }
 
 void updateLowerData(const struct LowerInternalData *aData)
 {
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
-
-	// Обновим Health из монитора
-	updateDeviceHealth(DeviceType::Lower, LowerMonitor::instance().getHealth());
 
 	if (lowerFlags & static_cast<uint8_t>(LowerFlags::TempSensorError)) {
 		sprintf(tempLabelText, "%s", kTempSensorPlaceholderText);
@@ -814,9 +809,6 @@ void updateUpperData(struct UpperInternalData *aData)
 	updateActuatorByFlags(actuators.dam, isUpperPresent, aData->damState);
 	updateActuatorByFlags(actuators.topLev, isUpperPresent, aData->swingLevelState);
 	upperFlags = aData->flags;
-
-	// Обновим Health из монитора
-	updateDeviceHealth(DeviceType::Upper, UpperMonitor::instance().getHealth());
 }
 
 void applyNewCurrentTime(struct Time *aTime)
@@ -1001,6 +993,10 @@ void updateMainPagePumpTypeLabel()
 
 void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 {
+	if (aHealth == DeviceHealth::DeviceDisabled) {
+		fillDevicePlaceholders(aType);
+	}
+
 	switch(aType) {
 		case DeviceType::Lower:
 			updatePanelStyleByFlags(lowerStatusPanel, aHealth);
