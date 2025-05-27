@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "MasterMonitor.hpp"
 #include "DS3231.hpp"
 
 DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) : 
@@ -30,11 +31,7 @@ DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) :
 		}
 	} else {
 		ESP_LOGE("RTC", "DS3231 init failed, %i", static_cast<int>(result));
-
-		Event ev;
-		ev.type = EventType::SetError;
-		ev.data.error = SystemErrors::SystemRTCError;
-		EventBus::throwEvent(&ev, this);
+		MasterMonitor::instance().setFlag(MasterFlags::RTCError);
 
 		// Уничтожим дескриптор за ненужностью
 		ESP_ERROR_CHECK(ds3231_free_desc(&dev));

@@ -1,6 +1,5 @@
 #include "BuzzerController.hpp"
 #include "ConfigStorage.hpp"
-#include "DeviceMonitor.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
 #include "Gpio.hpp"
@@ -12,7 +11,6 @@
 #include "PCF8574.hpp"
 #include "PumpController.hpp"
 #include "SerialWrapper.hpp"
-#include "SystemIntergrator.hpp"
 #include "UI.hpp"
 
 #include <UtilitaryRS/Crc8.hpp>
@@ -77,10 +75,8 @@ void app_main()
 
 	PumpController pumpController;
 	LightController lightController;
-	SystemIntegrator systemIntegrator;
 	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 	LedController ledController{&greenLed, &blueLed, &redLed};
-	DeviceMonitor deviceMonitor;
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
@@ -89,17 +85,13 @@ void app_main()
 	EventBus::registerObserver(&rtc);
 	EventBus::registerObserver(&pumpController);
 	EventBus::registerObserver(&lightController);
-	EventBus::registerObserver(&systemIntegrator);
 	EventBus::registerObserver(&buzzController);
-	EventBus::registerObserver(&deviceMonitor);
 
 	LinearSched sched;
 	sched.registerTask(&rtc);
 	sched.registerTask(&pumpController);
 	sched.registerTask(&lightController);
-	sched.registerTask(&systemIntegrator);
 	sched.registerTask(&buzzController);
-	sched.registerTask(&deviceMonitor);
 	sched.registerTask(&smartBus);
 	sched.registerTask(&ledController);
 

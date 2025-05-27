@@ -9,6 +9,7 @@
 #ifndef INCLUDE_NVSTORAGE_HPP_
 #define INCLUDE_NVSTORAGE_HPP_
 
+#include "MasterMonitor.hpp"
 #include "Types.hpp"
 #include <esp_log.h>
 #include <nvs_flash.h>
@@ -49,11 +50,7 @@ private:
 			return true;
 		} else {
 			ESP_LOGE("NVS", "NVS partition initialization error: %d (%s)", err, esp_err_to_name(err));
-
-			Event ev;
-			ev.type = EventType::SetError;
-			ev.data.error = SystemErrors::SystemInternalMemError;
-			EventBus::throwEvent(&ev, nullptr);
+			MasterMonitor::instance().setFlag(MasterFlags::InternalMemError);
 
 			return false;
 		};

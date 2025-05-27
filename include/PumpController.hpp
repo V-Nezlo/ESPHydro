@@ -70,8 +70,6 @@ private:
 	void setPumpState(PumpState aState);
 	void setDamState(DamTankState aState);
 
-	void throwErrorToEventBus(SystemErrors aError);
-	void clearErrorToEventBus(SystemErrors aError);
 	void sendCommandToPump(bool aNewPumpState);
 	void sendCommandToDam(bool aNewDamState);
 

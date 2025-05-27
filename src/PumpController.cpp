@@ -8,6 +8,7 @@
 
 #include "MutexLock.hpp"
 #include "PumpController.hpp"
+#include "MasterMonitor.hpp"
 #include "freertos/semphr.h"
 
 PumpController::PumpController() :
@@ -116,22 +117,6 @@ void PumpController::setDamState(DamTankState aState)
 	}
 }
 
-void PumpController::throwErrorToEventBus(SystemErrors aError)
-{
-	Event ev;
-	ev.type = EventType::SetError;
-	ev.data.error = aError;
-	EventBus::throwEvent(&ev, this);
-}
-
-void PumpController::clearErrorToEventBus(SystemErrors aError)
-{
-	Event ev;
-	ev.type = EventType::ClearError;
-	ev.data.error = aError;
-	EventBus::throwEvent(&ev, this);
-}
-
 void PumpController::sendCommandToPump(bool aNewPumpState)
 {
 	Event ev;
@@ -171,7 +156,7 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
 				} else {
-					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;
@@ -179,10 +164,10 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 
 	if (pumpState == PumpState::PumpOn && aCurrentTime > waterFillingTimer) {
 		setPumpState(PumpState::PumpOff);
-		throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
+		MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
 	} else if (pumpState == PumpState::PumpOn && !permitForAction()) {
 		setPumpState(PumpState::PumpOff);
-		throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+		MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 	}
 }
 
@@ -203,7 +188,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
 				} else {
-					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;
@@ -219,13 +204,13 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			swingState = SwingState::SwingOff;
 			lastSwingTime = aCurrentTime;
 		} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
-			throwErrorToEventBus(SystemErrors::SystemTankNotFloodedInTime);
+			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
 			setPumpState(PumpState::PumpOff);
 			swingState = SwingState::SwingOff;
 		} else if (swingState == SwingState::SwingOn && !permitForAction()) {
 			setPumpState(PumpState::PumpOff);
 			swingState = SwingState::SwingOff;
-			throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+			MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 		}
 	}
 }
@@ -247,7 +232,7 @@ void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
 				} else {
-					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;
@@ -286,7 +271,7 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
 				} else {
-					throwErrorToEventBus(SystemErrors::SystemPumpNotOperate);
+					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;

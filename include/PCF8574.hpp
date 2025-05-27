@@ -14,6 +14,7 @@
 #include <i2cdev/i2cdev.h>
 #include <esp_log.h>
 #include <string.h>
+#include "MasterMonitor.hpp"
 #include "EventBus.hpp"
 
 class PCF8574 : public AbstractLinearTask {
@@ -35,11 +36,7 @@ public:
 			ESP_LOGI("PCF", "PCF Initialized");
 		} else {
 			ESP_LOGE("PCF", "PCF init failed, %i", static_cast<int>(result));
-
-			Event ev;
-			ev.type = EventType::SetError;
-			ev.data.error = SystemErrors::SystemPCFError;
-			EventBus::throwEvent(&ev, nullptr);
+			MasterMonitor::instance().setFlag(MasterFlags::PCFError);
 
 			// Уничтожим дескриптор за ненужностью
 			ESP_ERROR_CHECK(pcf8574_free_desc(&dev));

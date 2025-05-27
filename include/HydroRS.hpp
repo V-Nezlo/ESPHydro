@@ -14,6 +14,8 @@
 #include "TimeWrapper.hpp"
 #include "Types.hpp"
 #include "HydroRSTypes.hpp"
+#include "LowerMonitor.hpp"
+#include "UpperMonitor.hpp"
 
 #include <UtilitaryRS/RsHandler.hpp>
 #include <esp_log.h>
@@ -201,6 +203,9 @@ public:
 		ev.data.lowerData.waterLevel = aTelem.waterLevelPerc;
 		ev.data.lowerData.flags = aTelem.deviceFlags;
 
+		// Обновим синглтон без учатия EventBus
+		LowerMonitor::instance().updateFromTelemetry(aTelem.deviceFlags);
+		// Внутри автоматически считается Health
 		EventBus::throwEvent(&ev, this);
 	}
 
@@ -213,6 +218,8 @@ public:
 		ev.data.upperData.damState = aTelem.damState == 1 ? true : false;
 		ev.data.upperData.flags = aTelem.deviceFlags;
 
+		// Обновим синглтон без учатия EventBus
+		UpperMonitor::instance().updateFromTelemetry(aTelem.deviceFlags);
 		EventBus::throwEvent(&ev, this);
 	}
 
