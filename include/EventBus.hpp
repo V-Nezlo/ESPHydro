@@ -70,8 +70,10 @@ enum class BuzzerSignal {
 enum class ToneBuzzerSignal {
 	Disabled,
 	Enabling,
+	Error,
 	Warning,
-	Error
+	Connected,
+	Disconnected
 };
 
 struct HealthUpdate {
