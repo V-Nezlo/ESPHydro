@@ -49,7 +49,6 @@ bool textAreasApply(lv_obj_t *aScreen);
 void updatePanelStyleByFlags(lv_obj_t *aModulePanel, DeviceHealth aHealth);
 void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActivated);
 
-void updateSystemData(struct SystemData *aData);
 void updateLowerData(const struct LowerInternalData *aData);
 void updateUpperData(struct UpperInternalData *aData);
 void updateAUXData(struct AuxData *aData);
@@ -90,11 +89,6 @@ public:
 		case EventType::UpdateLowerData: {
 			MutexLock lock(*mutex);
 			updateLowerData(&e->data.lowerData);
-			} return EventResult::PASS_ON;
-
-		case EventType::UpdateSystemData: {
-			MutexLock lock(*mutex);
-			updateSystemData(&e->data.systemData);
 			} return EventResult::PASS_ON;
 
 		case EventType::GetCurrentTime: {

@@ -37,6 +37,11 @@ DeviceHealth LowerMonitor::getHealth() const
 	return health;
 }
 
+bool LowerMonitor::isPresent() const
+{
+	return health != DeviceHealth::DeviceDisabled;
+}
+
 void LowerMonitor::updateFromTelemetry(uint8_t telemetryFlags)
 {
 	flags = telemetryFlags;

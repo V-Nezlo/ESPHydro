@@ -28,6 +28,7 @@ public:
 
 	uint8_t getFlags() const;
 	DeviceHealth getHealth() const;
+	bool isPresent() const;
 
 	void updateFromTelemetry(uint8_t telemetryFlags);
 	EventResult handleEvent(Event *e) override;

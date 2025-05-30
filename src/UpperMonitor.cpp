@@ -38,6 +38,11 @@ DeviceHealth UpperMonitor::getHealth() const
 	return health;
 }
 
+bool UpperMonitor::isPresent() const
+{
+	return health != DeviceHealth::DeviceDisabled;
+}
+
 void UpperMonitor::updateFromTelemetry(uint8_t telemetryFlags)
 {
 	flags = telemetryFlags;

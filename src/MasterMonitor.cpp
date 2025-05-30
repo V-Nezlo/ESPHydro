@@ -13,22 +13,22 @@ MasterMonitor::MasterMonitor():
 
 void MasterMonitor::setFlag(MasterFlags flag)
 {
-	flags |= static_cast<uint8_t>(flag);
+	flags |= static_cast<uint32_t>(flag);
 	updateHealth();
 }
 
 void MasterMonitor::clearFlag(MasterFlags flag)
 {
-	flags &= ~static_cast<uint8_t>(flag);
+	flags &= ~static_cast<uint32_t>(flag);
 	updateHealth();
 }
 
 bool MasterMonitor::hasFlag(MasterFlags flag) const
 {
-	return flags & static_cast<uint8_t>(flag);
+	return flags & static_cast<uint32_t>(flag);
 }
 
-uint8_t MasterMonitor::getFlags() const
+uint32_t MasterMonitor::getFlags() const
 {
 	return flags;
 }
@@ -36,6 +36,11 @@ uint8_t MasterMonitor::getFlags() const
 DeviceHealth MasterMonitor::getHealth() const
 {
 	return health;
+}
+
+bool MasterMonitor::isPresent() const
+{
+	return health != DeviceHealth::DeviceDisabled;
 }
 
 void MasterMonitor::updateHealth()

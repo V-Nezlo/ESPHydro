@@ -189,19 +189,9 @@ lv_obj_t *brightnessSlider;
 lv_obj_t *lowerCalibButton;
 lv_obj_t *loggingTextarea;
 lv_obj_t *loggingSwitch;
-// Були для активации расширенного отображения
-bool isLowerPresent{false};
-bool isUpperPresent{false};
-bool isAuxPresent{false};
-bool isSystemPresent{false};
 
 char detailedInfoPanelText[120];
 bool isDetailedShowing{false};
-
-uint8_t lowerFlags{0};
-uint8_t upperFlags{0};
-uint8_t systemFlags{0};
-uint8_t auxFlags{0};
 
 // Флаг того что система перешла в рабочий режим
 bool initialized = false;
@@ -562,25 +552,25 @@ void actuatorPressedEventHandler(lv_event_t *e)
 	if (mode != PumpModes::Maintance) {
 		return;
 	}
-	if (target == actuators.pump && isLowerPresent) {
+	if (target == actuators.pump && LowerMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
 		if (actuators.pumpStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnPumpOn);
 		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnPumpOff);
 		}
-	} else if (target == actuators.lamp && isUpperPresent) {
+	} else if (target == actuators.lamp && UpperMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
 		if (actuators.lampStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnLampOn);
 		} else if (actuators.lampStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnLampOff);
 		}
-	} else if (target == actuators.dam && isUpperPresent) {
+	} else if (target == actuators.dam && UpperMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
 		if (actuators.damStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::OpenDam);
 		} else if (actuators.damStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::CloseDam);
 		}
-	} else if (target == actuators.aux && isAuxPresent) {
+	} else if (target == actuators.aux && false) {
 		// Nothing
 	} else {
 		return;
@@ -605,11 +595,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		return;
 	}
 
-	if (target == lowerStatusPanel) {
-		if (!isLowerPresent) {
-			return;
-		}
-
+	if (target == lowerStatusPanel && LowerMonitor::instance().isPresent()) {
 		const char *pumpPresent = LowerMonitor::instance().hasFlag(LowerFlags::PumpLowCurrent) ? kPumpNotPresentText : kPumpPresentText;
 		const char *pumpMaxCurrent = LowerMonitor::instance().hasFlag(LowerFlags::PumpOverCurrent) ? kPumpOvercurrentText : kPumpCurrentOKText;
 		const char *tempSensor = LowerMonitor::instance().hasFlag(LowerFlags::TempSensorError) ? kTempSensorErrText : kTempSensorOKText;
@@ -623,11 +609,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;
 		lv_obj_center(activeMessageBox);
-	} else if (target == upperStatusPanel) {
-		if (!isUpperPresent) {
-			return;
-		}
-
+	} else if (target == upperStatusPanel && UpperMonitor::instance().isPresent()) {
 		const char *powerPresent = UpperMonitor::instance().hasFlag(UpperFlags::PowerError) ? kUpperPowerOKText : kUpperPowerErrText;
 		const char *floatlev = UpperMonitor::instance().hasFlag(UpperFlags::TopWaterLevelStuck) ? kUpperFloatLevErrText : kUpperFloatLevOKText;
 
@@ -637,15 +619,9 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;
 		lv_obj_center(activeMessageBox);
-	} else if (target == auxStatusPanel) {
-		if (!isAuxPresent) {
-			return;
-		}
-	} else if (target == systemStatusPanel) {
-		if (!isSystemPresent) {
-			return;
-		}
+	} else if (target == auxStatusPanel && false) {
 
+	} else if (target == systemStatusPanel && MasterMonitor::instance().isPresent()) {
 		const char *rtc = MasterMonitor::instance().hasFlag(MasterFlags::RTCError) ? kRtcErrText : kRtcOKText;
 		const char *internalMem = MasterMonitor::instance().hasFlag(MasterFlags::InternalMemError) ? kInternalMemErrText : kInternalMemOKText;
 		const char *rsbus = MasterMonitor::instance().hasFlag(MasterFlags::RSBusError) ? kRSBusErrText : kRSBusOKText;
@@ -761,29 +737,23 @@ void updateActuatorByFlags(lv_obj_t *aActuator, bool aDevicePresent, bool aActiv
 	}
 }
 
-void updateSystemData(struct SystemData *aData)
-{
-	systemFlags = aData->flags;
-}
-
 void updateLowerData(const struct LowerInternalData *aData)
 {
-	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
-	lowerFlags = aData->flags;
+	updateActuatorByFlags(actuators.pump, LowerMonitor::instance().isPresent(), aData->pumpState);
 
-	if (lowerFlags & static_cast<uint8_t>(LowerFlags::TempSensorError)) {
+	if (LowerMonitor::instance().hasFlag(LowerFlags::TempSensorError)) {
 		sprintf(tempLabelText, "%s", kTempSensorPlaceholderText);
 	} else {
 		sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	}
 
-	if (lowerFlags & static_cast<uint8_t>(LowerFlags::PHSensorError)) {
+	if (LowerMonitor::instance().hasFlag(LowerFlags::PHSensorError)) {
 		sprintf(phLabelText, "%s", kPHSensorPlaceholderText);
 	} else {
 		sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 	}
 
-	if (lowerFlags & static_cast<uint8_t>(LowerFlags::PPMSensorError)) {
+	if (LowerMonitor::instance().hasFlag(LowerFlags::PPMSensorError)) {
 		sprintf(ppmLabelText, "%s", kPPMSensorPlaceholderText);
 	} else {
 		sprintf(ppmLabelText, "%4u", aData->ppm);
@@ -800,15 +770,15 @@ void updateLowerData(const struct LowerInternalData *aData)
 
 void updateAUXData(struct AuxData *aData)
 {
-	auxFlags = aData->flags;
+
 }
 
 void updateUpperData(struct UpperInternalData *aData)
 {
-	updateActuatorByFlags(actuators.lamp, isUpperPresent, aData->lampState);
-	updateActuatorByFlags(actuators.dam, isUpperPresent, aData->damState);
-	updateActuatorByFlags(actuators.topLev, isUpperPresent, aData->swingLevelState);
-	upperFlags = aData->flags;
+	const bool upperPresent = UpperMonitor::instance().isPresent();
+	updateActuatorByFlags(actuators.lamp, upperPresent, aData->lampState);
+	updateActuatorByFlags(actuators.dam, upperPresent, aData->damState);
+	updateActuatorByFlags(actuators.topLev, upperPresent, aData->swingLevelState);
 }
 
 void applyNewCurrentTime(struct Time *aTime)
@@ -1002,10 +972,7 @@ void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 			updatePanelStyleByFlags(lowerStatusPanel, aHealth);
 
 			if (aHealth == DeviceHealth::DeviceDisabled) {
-				isLowerPresent = false;
 				updateActuatorByFlags(actuators.pump, false ,false);
-			} else {
-				isLowerPresent = true;
 			}
 			break;
 		case DeviceType::Upper:
@@ -1015,28 +982,14 @@ void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 				updateActuatorByFlags(actuators.lamp, false ,false);
 				updateActuatorByFlags(actuators.dam, false ,false);
 				updateActuatorByFlags(actuators.topLev, false ,false);
-				isUpperPresent = false;
 			} else {
-				isUpperPresent = true;
 			}
 			break;
 		case DeviceType::AUX:
 			updatePanelStyleByFlags(auxStatusPanel, aHealth);
-
-			if (aHealth == DeviceHealth::DeviceDisabled) {
-				isAuxPresent = false;
-			} else {
-				isAuxPresent = true;
-			}
 			break;
 		case DeviceType::Master:
 			updatePanelStyleByFlags(systemStatusPanel, aHealth);
-
-			if (aHealth == DeviceHealth::DeviceDisabled) {
-				isSystemPresent = false;
-			} else {
-				isSystemPresent = true;
-			}
 			break;
 		default:
 			break;
