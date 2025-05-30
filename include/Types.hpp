@@ -27,29 +27,9 @@ enum class DeviceHealth : uint8_t {
 	DeviceDisabled
 };
 
-enum LowerFlags : uint8_t {
-	LowerPumpOverCurrentFlag = 0x01,
-	LowerNoWaterFlag = 0x02,
-	LowerTempSensorErrorFlag = 0x04,
-	LowerPHSensorErrorFlag = 0x08,
-	LowerPPMSensorErrorFlag = 0x10,
-	LowerPumpLowCurrentFlag = 0x20,
-	Calibration             = 0x40
-};
-
-enum UpperFlags : uint8_t {
-	UpperTopWaterLevelStuck = 0x01,
-	UpperPowerError = 0x02
-};
-
-enum SystemErrors : uint8_t {
-	SystemRTCError = 0x01,
-	SystemInternalMemError = 0x02,
-	SystemRSBusError = 0x04,
-	SystemPumpNotOperate = 0x08,
-	SystemTankNotFloodedInTime = 0x10,
-	SystemLeak = 0x20,
-	SystemPCFError = 0x40
+struct HealthRule {
+    DeviceHealth health;
+    uint32_t mask;
 };
 
 struct UpperInternalData {
@@ -109,6 +89,11 @@ struct Time {
 	uint8_t hour;
 	uint8_t minutes;
 	uint8_t seconds;
+};
+
+struct UpdateHealth {
+	DeviceType type;
+	DeviceHealth health;
 };
 
 #endif // INCLUDE_TYPES_HPP_

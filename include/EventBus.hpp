@@ -30,11 +30,9 @@ using namespace std;
 enum class EventType : uint8_t {
 	SetCurrentTime,
 	GetCurrentTime,
+	UpdateSystemData,
 	UpdateUpperData,
 	UpdateLowerData,
-	UpdateSystemData,
-	SetError,
-	ClearError,
 	ActionRequest,
 	SettingsUpdated,
 	NewBrightness,
@@ -42,7 +40,7 @@ enum class EventType : uint8_t {
 	ToneBuzzerSignal,
 	RsDeviceDetached,
 	RsDeviceAttached,
-	HealthUpdated
+	UpdateDeviceHealth
 };
 
 enum class EventResult : uint8_t {
@@ -76,26 +74,20 @@ enum class ToneBuzzerSignal {
 	Disconnected
 };
 
-struct HealthUpdate {
-	DeviceType type;
-	DeviceHealth health;
-};
-
 struct Event{
 	EventType type;
 	union {
 		Time time;
 		UpperInternalData upperData;
 		LowerInternalData lowerData;
-		SystemData systemData;
-		SystemErrors error;
 		Action action;
 		Settings settings;
 		uint8_t brightness;
 		BuzzerSignal buzSignal;
 		ToneBuzzerSignal buzToneSignal;
+		SystemData systemData;
 		DeviceType device;
-		HealthUpdate healthUpdate;
+		UpdateHealth updateHealth;
 	} data;
 };
 
@@ -128,20 +120,6 @@ public:
 
 		if (iter == observers.end()) {
 			observers.push_back(aObserver);
-		}
-	}
-
-	static void printLogDependedByType(Event *aEvent)
-	{
-		switch(aEvent->type) {
-			case EventType::SetError:
-				ESP_LOGI("EventBus", "Error %u raised", static_cast<unsigned>(aEvent->data.error));
-				break;
-			case EventType::ClearError:
-				ESP_LOGI("EventBus", "Error %u cleared", static_cast<unsigned>(aEvent->data.error));
-				break;
-			default:
-				break;
 		}
 	}
 

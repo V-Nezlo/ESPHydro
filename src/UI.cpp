@@ -2,6 +2,10 @@
  *      INCLUDES
  *********************/
 
+#include "LowerMonitor.hpp"
+#include "UpperMonitor.hpp"
+#include "MasterMonitor.hpp"
+
 #include "UITextConsts.hpp"
 #include "EventBus.hpp"
 #include "Types.hpp"
@@ -606,12 +610,12 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 			return;
 		}
 
-		const char *pumpPresent = lowerFlags & LowerFlags::LowerPumpLowCurrentFlag ? kPumpNotPresentText : kPumpPresentText;
-		const char *pumpMaxCurrent = lowerFlags & LowerFlags::LowerPumpOverCurrentFlag ? kPumpOvercurrentText : kPumpCurrentOKText;
-		const char *tempSensor = lowerFlags & LowerFlags::LowerTempSensorErrorFlag ? kTempSensorErrText : kTempSensorOKText;
-		const char *phSensor = lowerFlags & LowerFlags::LowerPHSensorErrorFlag ? kPHSensorNotPresentText : kPHSensorPresentText;
-		const char *ppmSensor = lowerFlags & LowerFlags::LowerPPMSensorErrorFlag ? kPPMSensorErrText : kPPMSensorOKText;
-		const char *nowater = lowerFlags & LowerFlags::LowerNoWaterFlag ? kWaterErrText : kWaterOKText;
+		const char *pumpPresent = LowerMonitor::instance().hasFlag(LowerFlags::PumpLowCurrent) ? kPumpNotPresentText : kPumpPresentText;
+		const char *pumpMaxCurrent = LowerMonitor::instance().hasFlag(LowerFlags::PumpOverCurrent) ? kPumpOvercurrentText : kPumpCurrentOKText;
+		const char *tempSensor = LowerMonitor::instance().hasFlag(LowerFlags::TempSensorError) ? kTempSensorErrText : kTempSensorOKText;
+		const char *phSensor = LowerMonitor::instance().hasFlag(LowerFlags::PHSensorError) ? kPHSensorNotPresentText : kPHSensorPresentText;
+		const char *ppmSensor = LowerMonitor::instance().hasFlag(LowerFlags::PPMSensorError) ? kPPMSensorErrText : kPPMSensorOKText;
+		const char *nowater = LowerMonitor::instance().hasFlag(LowerFlags::NoWater) ? kWaterErrText : kWaterOKText;
 
 		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s", pumpPresent, pumpMaxCurrent, tempSensor, phSensor, ppmSensor, nowater);
 
@@ -624,8 +628,8 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 			return;
 		}
 
-		const char *powerPresent = upperFlags & UpperFlags::UpperPowerError ? kUpperPowerOKText : kUpperPowerErrText;
-		const char *floatlev = upperFlags & UpperFlags::UpperTopWaterLevelStuck ? kUpperFloatLevErrText : kUpperFloatLevOKText;
+		const char *powerPresent = UpperMonitor::instance().hasFlag(UpperFlags::PowerError) ? kUpperPowerOKText : kUpperPowerErrText;
+		const char *floatlev = UpperMonitor::instance().hasFlag(UpperFlags::TopWaterLevelStuck) ? kUpperFloatLevErrText : kUpperFloatLevOKText;
 
 		sprintf(detailedInfoPanelText, "%s%s", powerPresent, floatlev);
 
@@ -642,11 +646,11 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 			return;
 		}
 
-		const char *rtc = systemFlags & SystemErrors::SystemRTCError ? kRtcErrText : kRtcOKText;
-		const char *internalMem = systemFlags & SystemErrors::SystemInternalMemError ? kInternalMemErrText : kInternalMemOKText;
-		const char *rsbus = systemFlags & SystemErrors::SystemRSBusError ? kRSBusErrText : kRSBusOKText;
-		const char *operational = systemFlags & SystemErrors::SystemPumpNotOperate ? kOperationalErrText : kOperationalOKText;
-		const char *timings = systemFlags & SystemErrors::SystemTankNotFloodedInTime ? kPumpTimingsErrText : kPumpTimingsOKText;
+		const char *rtc = MasterMonitor::instance().hasFlag(MasterFlags::RTCError) ? kRtcErrText : kRtcOKText;
+		const char *internalMem = MasterMonitor::instance().hasFlag(MasterFlags::InternalMemError) ? kInternalMemErrText : kInternalMemOKText;
+		const char *rsbus = MasterMonitor::instance().hasFlag(MasterFlags::RSBusError) ? kRSBusErrText : kRSBusOKText;
+		const char *operational = MasterMonitor::instance().hasFlag(MasterFlags::PumpNotOperate) ? kOperationalErrText : kOperationalOKText;
+		const char *timings = MasterMonitor::instance().hasFlag(MasterFlags::TankNotFloodedInTime) ? kPumpTimingsErrText : kPumpTimingsOKText;
 
 		sprintf(detailedInfoPanelText, "%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings);
 		activeMessageBox = lv_msgbox_create(mainPage, "SYSTEM STATUS", detailedInfoPanelText, NULL, true);
@@ -767,19 +771,19 @@ void updateLowerData(const struct LowerInternalData *aData)
 	updateActuatorByFlags(actuators.pump, isLowerPresent, aData->pumpState);
 	lowerFlags = aData->flags;
 
-	if (lowerFlags & LowerFlags::LowerTempSensorErrorFlag) {
+	if (lowerFlags & static_cast<uint8_t>(LowerFlags::TempSensorError)) {
 		sprintf(tempLabelText, "%s", kTempSensorPlaceholderText);
 	} else {
 		sprintf(tempLabelText, "%02u.%01u", aData->waterTemp10 / 10, aData->waterTemp10 % 10);
 	}
 
-	if (lowerFlags & LowerFlags::LowerPHSensorErrorFlag) {
+	if (lowerFlags & static_cast<uint8_t>(LowerFlags::PHSensorError)) {
 		sprintf(phLabelText, "%s", kPHSensorPlaceholderText);
 	} else {
 		sprintf(phLabelText, "%u.%01u", aData->ph10 / 10, aData->ph10 % 10);
 	}
 
-	if (lowerFlags & LowerFlags::LowerPPMSensorErrorFlag) {
+	if (lowerFlags & static_cast<uint8_t>(LowerFlags::PPMSensorError)) {
 		sprintf(ppmLabelText, "%s", kPPMSensorPlaceholderText);
 	} else {
 		sprintf(ppmLabelText, "%4u", aData->ppm);
@@ -987,13 +991,17 @@ void updateMainPagePumpTypeLabel()
 	}
 }
 
-void updateDeviceHealth(struct HealthUpdate *aUpdate)
+void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 {
-	switch(aUpdate->type) {
-		case DeviceType::Lower:
-			updatePanelStyleByFlags(lowerStatusPanel, aUpdate->health);
+	if (aHealth == DeviceHealth::DeviceDisabled) {
+		fillDevicePlaceholders(aType);
+	}
 
-			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+	switch(aType) {
+		case DeviceType::Lower:
+			updatePanelStyleByFlags(lowerStatusPanel, aHealth);
+
+			if (aHealth == DeviceHealth::DeviceDisabled) {
 				isLowerPresent = false;
 				updateActuatorByFlags(actuators.pump, false ,false);
 			} else {
@@ -1001,9 +1009,9 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 			}
 			break;
 		case DeviceType::Upper:
-			updatePanelStyleByFlags(upperStatusPanel, aUpdate->health);
+			updatePanelStyleByFlags(upperStatusPanel, aHealth);
 
-			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+			if (aHealth == DeviceHealth::DeviceDisabled) {
 				updateActuatorByFlags(actuators.lamp, false ,false);
 				updateActuatorByFlags(actuators.dam, false ,false);
 				updateActuatorByFlags(actuators.topLev, false ,false);
@@ -1013,18 +1021,18 @@ void updateDeviceHealth(struct HealthUpdate *aUpdate)
 			}
 			break;
 		case DeviceType::AUX:
-			updatePanelStyleByFlags(auxStatusPanel, aUpdate->health);
+			updatePanelStyleByFlags(auxStatusPanel, aHealth);
 
-			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+			if (aHealth == DeviceHealth::DeviceDisabled) {
 				isAuxPresent = false;
 			} else {
 				isAuxPresent = true;
 			}
 			break;
 		case DeviceType::Master:
-			updatePanelStyleByFlags(systemStatusPanel, aUpdate->health);
+			updatePanelStyleByFlags(systemStatusPanel, aHealth);
 
-			if (aUpdate->health == DeviceHealth::DeviceDisabled) {
+			if (aHealth == DeviceHealth::DeviceDisabled) {
 				isSystemPresent = false;
 			} else {
 				isSystemPresent = true;

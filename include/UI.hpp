@@ -61,7 +61,7 @@ void enterParameters(struct Settings *aParams);
 struct Settings *saveParameters();
 bool getLoggingState();
 void updateMainPagePumpTypeLabel();
-void updateDeviceHealth(struct HealthUpdate *aUpdate);
+void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth);
 void processTap(lv_event_t *);
 
 enum {
@@ -107,14 +107,9 @@ public:
 			enterParameters(&e->data.settings);
 			} return EventResult::PASS_ON;
 
-		case EventType::HealthUpdated: {
+		case EventType::UpdateDeviceHealth: {
 			MutexLock lock(*mutex);
-			updateDeviceHealth(&e->data.healthUpdate);
-			} return EventResult::PASS_ON;
-
-		case EventType::RsDeviceDetached: {
-			MutexLock lock(*mutex);
-			fillDevicePlaceholders(e->data.device);
+			updateDeviceHealth(e->data.updateHealth.type, e->data.updateHealth.health);
 			} return EventResult::PASS_ON;
 
 		default:
