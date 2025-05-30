@@ -190,7 +190,7 @@ lv_obj_t *lowerCalibButton;
 lv_obj_t *loggingTextarea;
 lv_obj_t *loggingSwitch;
 
-char detailedInfoPanelText[120];
+char detailedInfoPanelText[140];
 bool isDetailedShowing{false};
 
 // Флаг того что система перешла в рабочий режим
@@ -627,8 +627,9 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		const char *rsbus = MasterMonitor::instance().hasFlag(MasterFlags::RSBusError) ? kRSBusErrText : kRSBusOKText;
 		const char *operational = MasterMonitor::instance().hasFlag(MasterFlags::PumpNotOperate) ? kOperationalErrText : kOperationalOKText;
 		const char *timings = MasterMonitor::instance().hasFlag(MasterFlags::TankNotFloodedInTime) ? kPumpTimingsErrText : kPumpTimingsOKText;
+		const char *versions = MasterMonitor::instance().hasFlag(MasterFlags::DeviceMismatch) ? kDeviceVerConnectErrText : kDeviceVerConnectOKText;
 
-		sprintf(detailedInfoPanelText, "%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings);
+		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings, versions);
 		activeMessageBox = lv_msgbox_create(mainPage, "SYSTEM STATUS", detailedInfoPanelText, NULL, true);
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;

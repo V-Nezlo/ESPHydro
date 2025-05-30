@@ -150,7 +150,10 @@ public:
 
 			// Если ожидаемая длина не сходится - ошибка
 			if (aLength != sizeof(LowerTelemetry)) {
+				MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
 				return 0;
+			} else if (MasterMonitor::instance().hasFlag(MasterFlags::DeviceMismatch)) {
+				MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
 			}
 
 			LowerTelemetry telemetry;
@@ -163,7 +166,10 @@ public:
 
 			// Если ожидаемая длина не сходится - ошибка
 			if (aLength != sizeof(UpperTelemetry)) {
+				MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
 				return 0;
+			} else if (MasterMonitor::instance().hasFlag(MasterFlags::DeviceMismatch)) {
+				MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
 			}
 
 			UpperTelemetry telemetry;
