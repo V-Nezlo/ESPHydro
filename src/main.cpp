@@ -89,6 +89,7 @@ void app_main()
 	EventBus::registerObserver(&buzzController);
 	EventBus::registerObserver(&LowerMonitor::instance());
 	EventBus::registerObserver(&UpperMonitor::instance());
+	EventBus::registerObserver(&MasterMonitor::instance());
 
 	LinearSched sched;
 	sched.registerTask(&rtc);
@@ -105,7 +106,6 @@ void app_main()
 
 	// Загружаем параметры во все модули
 	paramStorage.firstLoad();
-	MasterMonitor::instance().invoke();
 
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	TaskHandle_t displayTask;
@@ -117,6 +117,8 @@ void app_main()
 	ev.type = EventType::ToneBuzzerSignal;
 	ev.data.buzToneSignal = ToneBuzzerSignal::Enabling;
 	EventBus::throwEvent(&ev, nullptr);
+
+	MasterMonitor::instance().invoke();
 
 	while(true) {
 		// Обработка SmartBus

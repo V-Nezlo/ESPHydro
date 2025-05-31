@@ -24,7 +24,7 @@ enum class MasterFlags : uint32_t {
 	DeviceMismatch         = 0x80
 };
 
-class MasterMonitor {
+class MasterMonitor : public AbstractEventObserver {
 public:
 	static MasterMonitor& instance();
 
@@ -37,10 +37,12 @@ public:
 	bool isPresent() const;
 	void invoke();
 
+	EventResult handleEvent(Event *e) override;
+
 private:
 	MasterMonitor();
 	void updateHealth();
-	
+
 	void sendDataToEventBus();
 	void sendNewHealthToEventBus();
 

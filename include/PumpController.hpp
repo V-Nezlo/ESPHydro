@@ -50,6 +50,7 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	std::chrono::milliseconds lastActionTime;
 	std::chrono::milliseconds lastSwingTime;
 	std::chrono::milliseconds waterFillingTimer;
+	std::chrono::milliseconds lastChecksTime;
 
 	bool enabled;
 	std::chrono::seconds pumpOnTime;

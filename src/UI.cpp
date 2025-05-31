@@ -600,12 +600,12 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 	}
 
 	if (target == lowerStatusPanel && LowerMonitor::instance().isPresent()) {
-		const char *pumpPresent = LowerMonitor::instance().hasFlag(LowerFlags::PumpLowCurrent) ? kPumpNotPresentText : kPumpPresentText;
-		const char *pumpMaxCurrent = LowerMonitor::instance().hasFlag(LowerFlags::PumpOverCurrent) ? kPumpOvercurrentText : kPumpCurrentOKText;
-		const char *tempSensor = LowerMonitor::instance().hasFlag(LowerFlags::TempSensorError) ? kTempSensorErrText : kTempSensorOKText;
-		const char *phSensor = LowerMonitor::instance().hasFlag(LowerFlags::PHSensorError) ? kPHSensorNotPresentText : kPHSensorPresentText;
-		const char *ppmSensor = LowerMonitor::instance().hasFlag(LowerFlags::PPMSensorError) ? kPPMSensorErrText : kPPMSensorOKText;
-		const char *nowater = LowerMonitor::instance().hasFlag(LowerFlags::NoWater) ? kWaterErrText : kWaterOKText;
+		const char *pumpPresent = LowerMonitor::instance().hasFlag(LowerFlags::PumpLowCurrent) ? kPumpNotPresentText : "";
+		const char *pumpMaxCurrent = LowerMonitor::instance().hasFlag(LowerFlags::PumpOverCurrent) ? kPumpOvercurrentText : "";
+		const char *tempSensor = LowerMonitor::instance().hasFlag(LowerFlags::TempSensorError) ? kTempSensorErrText : "";
+		const char *phSensor = LowerMonitor::instance().hasFlag(LowerFlags::PHSensorError) ? kPHSensorNotPresentText : "";
+		const char *ppmSensor = LowerMonitor::instance().hasFlag(LowerFlags::PPMSensorError) ? kPPMSensorErrText : "";
+		const char *nowater = LowerMonitor::instance().hasFlag(LowerFlags::NoWater) ? kWaterErrText : "";
 
 		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s", pumpPresent, pumpMaxCurrent, tempSensor, phSensor, ppmSensor, nowater);
 
@@ -615,10 +615,10 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_center(activeMessageBox);
 		processTap(nullptr);
 	} else if (target == upperStatusPanel && UpperMonitor::instance().isPresent()) {
-		const char *powerPresent = UpperMonitor::instance().hasFlag(UpperFlags::PowerError) ? kUpperPowerOKText : kUpperPowerErrText;
-		const char *floatlev = UpperMonitor::instance().hasFlag(UpperFlags::TopWaterLevelStuck) ? kUpperFloatLevErrText : kUpperFloatLevOKText;
+		const char *powerError = UpperMonitor::instance().hasFlag(UpperFlags::PowerError) ? kUpperPowerErrText : "";
+		const char *floatlev = UpperMonitor::instance().hasFlag(UpperFlags::TopWaterLevelStuck) ? kUpperFloatLevErrText : "";
 
-		sprintf(detailedInfoPanelText, "%s%s", powerPresent, floatlev);
+		sprintf(detailedInfoPanelText, "%s%s", powerError, floatlev);
 
 		activeMessageBox = lv_msgbox_create(mainPage, "UPPER STATUS", detailedInfoPanelText, NULL, true);
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
@@ -628,14 +628,15 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 	} else if (target == auxStatusPanel && false) {
 
 	} else if (target == systemStatusPanel && MasterMonitor::instance().isPresent()) {
-		const char *rtc = MasterMonitor::instance().hasFlag(MasterFlags::RTCError) ? kRtcErrText : kRtcOKText;
-		const char *internalMem = MasterMonitor::instance().hasFlag(MasterFlags::InternalMemError) ? kInternalMemErrText : kInternalMemOKText;
-		const char *rsbus = MasterMonitor::instance().hasFlag(MasterFlags::RSBusError) ? kRSBusErrText : kRSBusOKText;
-		const char *operational = MasterMonitor::instance().hasFlag(MasterFlags::PumpNotOperate) ? kOperationalErrText : kOperationalOKText;
-		const char *timings = MasterMonitor::instance().hasFlag(MasterFlags::TankNotFloodedInTime) ? kPumpTimingsErrText : kPumpTimingsOKText;
-		const char *versions = MasterMonitor::instance().hasFlag(MasterFlags::DeviceMismatch) ? kDeviceVerConnectErrText : kDeviceVerConnectOKText;
+		const char *rtc = MasterMonitor::instance().hasFlag(MasterFlags::RTCError) ? kRtcErrText : "";
+		const char *internalMem = MasterMonitor::instance().hasFlag(MasterFlags::InternalMemError) ? kInternalMemErrText : "";
+		const char *rsbus = MasterMonitor::instance().hasFlag(MasterFlags::RSBusError) ? kRSBusErrText : "";
+		const char *operational = MasterMonitor::instance().hasFlag(MasterFlags::PumpNotOperate) ? kOperationalErrText : "";
+		const char *timings = MasterMonitor::instance().hasFlag(MasterFlags::TankNotFloodedInTime) ? kPumpTimingsErrText : "";
+		const char *versions = MasterMonitor::instance().hasFlag(MasterFlags::DeviceMismatch) ? kDeviceVerConnectErrText : "";
+		const char *pcf = MasterMonitor::instance().hasFlag(MasterFlags::PCFError) ? kPCFError : "";
 
-		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings, versions);
+		sprintf(detailedInfoPanelText, "%s%s%s%s%s%s%s", rtc, internalMem, rsbus, operational, timings, versions, pcf);
 		activeMessageBox = lv_msgbox_create(mainPage, "SYSTEM STATUS", detailedInfoPanelText, NULL, true);
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;

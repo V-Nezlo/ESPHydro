@@ -8,6 +8,7 @@
 
 #include "MutexLock.hpp"
 #include "PumpController.hpp"
+#include "UpperMonitor.hpp"
 #include "MasterMonitor.hpp"
 #include "freertos/semphr.h"
 
@@ -21,6 +22,7 @@ PumpController::PumpController() :
 	lastActionTime{0},
 	lastSwingTime{0},
 	waterFillingTimer{0},
+	lastChecksTime{0},
 	enabled{false},
 	pumpOnTime{0},
 	pumpOffTime{0},
@@ -162,12 +164,15 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 			break;
 	}
 
-	if (pumpState == PumpState::PumpOn && aCurrentTime > waterFillingTimer) {
-		setPumpState(PumpState::PumpOff);
-		MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-	} else if (pumpState == PumpState::PumpOn && !permitForAction()) {
-		setPumpState(PumpState::PumpOff);
-		MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+	if (aCurrentTime > lastChecksTime + std::chrono::milliseconds{200}) {
+		lastChecksTime = aCurrentTime;
+		if (pumpState == PumpState::PumpOn && aCurrentTime > waterFillingTimer) {
+			setPumpState(PumpState::PumpOff);
+			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+		} else if (pumpState == PumpState::PumpOn && !permitForAction()) {
+			setPumpState(PumpState::PumpOff);
+			MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+		}
 	}
 }
 
@@ -194,23 +199,38 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			break;
 	}
 
-	if (pumpState == PumpState::PumpOn) {
-		if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
-			setPumpState(PumpState::PumpOn);
-			swingState = SwingState::SwingOn;
-			waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
-		} else if (swingState == SwingState::SwingOn && upperState == true) {
-			setPumpState(PumpState::PumpOff);
-			swingState = SwingState::SwingOff;
-			lastSwingTime = aCurrentTime;
-		} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
-			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-			setPumpState(PumpState::PumpOff);
-			swingState = SwingState::SwingOff;
-		} else if (swingState == SwingState::SwingOn && !permitForAction()) {
-			setPumpState(PumpState::PumpOff);
-			swingState = SwingState::SwingOff;
-			MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+	if (aCurrentTime > lastChecksTime + std::chrono::milliseconds{200}) {
+		lastChecksTime = aCurrentTime;
+
+		// Проверка на наличие датчика поплавого уровня, если нет - будет работать как обычный режим
+		if (!UpperMonitor::instance().isPresent()) {
+			MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
+
+			if (pumpState == PumpState::PumpOn) {
+				setPumpState(PumpState::PumpOff);
+			}
+
+			return;
+		}
+
+		if (pumpState == PumpState::PumpOn) {
+			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
+				setPumpState(PumpState::PumpOn);
+				swingState = SwingState::SwingOn;
+				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
+			} else if (swingState == SwingState::SwingOn && upperState == true) {
+				setPumpState(PumpState::PumpOff);
+				swingState = SwingState::SwingOff;
+				lastSwingTime = aCurrentTime;
+			} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
+				MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+				setPumpState(PumpState::PumpOff);
+				swingState = SwingState::SwingOff;
+			} else if (swingState == SwingState::SwingOn && !permitForAction()) {
+				setPumpState(PumpState::PumpOff);
+				swingState = SwingState::SwingOff;
+				MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+			}
 		}
 	}
 }

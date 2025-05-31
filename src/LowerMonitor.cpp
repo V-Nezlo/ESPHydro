@@ -68,6 +68,7 @@ void LowerMonitor::updateHealth()
 	for (const auto& rule : rules) {
 		if (flags & rule.mask) {
 			newHealth = rule.health;
+			break;
 		} else {
 			newHealth = DeviceHealth::DeviceWorking;
 		}

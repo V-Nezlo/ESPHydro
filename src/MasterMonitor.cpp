@@ -1,4 +1,5 @@
 #include "MasterMonitor.hpp"
+#include <esp_log.h>
 
 MasterMonitor& MasterMonitor::instance()
 {
@@ -8,7 +9,7 @@ MasterMonitor& MasterMonitor::instance()
 
 MasterMonitor::MasterMonitor():
 	flags(0),
-	health(DeviceHealth::DeviceDisabled)
+	health(DeviceHealth::DeviceWarning)
 {}
 
 void MasterMonitor::setFlag(MasterFlags flag)
@@ -45,27 +46,43 @@ bool MasterMonitor::isPresent() const
 
 void MasterMonitor::invoke()
 {
+	health = DeviceHealth::DeviceWorking;
 	updateHealth();
+}
+
+EventResult MasterMonitor::handleEvent(Event *e)
+{
+	switch(e->type) {
+		case EventType::RsDeviceDetached:
+			clearFlag(MasterFlags::DeviceMismatch);
+			return EventResult::PASS_ON;
+		default:
+			return EventResult::IGNORED;
+	}
 }
 
 void MasterMonitor::updateHealth()
 {
-	DeviceHealth newHealth = DeviceHealth::DeviceDisabled;
+	DeviceHealth newHealth = DeviceHealth::DeviceWorking;
+
 	for (const auto& rule : rules) {
 		if (flags & rule.mask) {
 			newHealth = rule.health;
+			break;
 		} else {
 			newHealth = DeviceHealth::DeviceWorking;
 		}
 	}
 
-	// if (newHealth != health) {
+	if (newHealth != health) {
 		health = newHealth;
+		ESP_LOGE("MasterMonitor", "New health: %d", static_cast<int>(newHealth));
 		sendNewHealthToEventBus();
-	// };
+	}
 
 	sendDataToEventBus();
 }
+
 
 void MasterMonitor::sendDataToEventBus()
 {
