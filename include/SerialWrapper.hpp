@@ -24,7 +24,7 @@ class SerialWrapper {
 public:
 	SerialWrapper(const SerialWrapper &) = delete;
 	SerialWrapper() = delete;
-	SerialWrapper(uart_port_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin, Gpio &aLatch);
+	SerialWrapper(int8_t aPort, size_t aTxBufSize, size_t aRxBufSize, int aTxPin, int aRxPin, Gpio &aLatch);
 
 	// Interfaces
 	size_t bytesAvaillable();

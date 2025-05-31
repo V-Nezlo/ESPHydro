@@ -35,6 +35,7 @@ public:
 	uint32_t getFlags() const;
 	DeviceHealth getHealth() const;
 	bool isPresent() const;
+	void invoke();
 
 private:
 	MasterMonitor();

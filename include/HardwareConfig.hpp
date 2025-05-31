@@ -33,12 +33,12 @@ namespace OnlyInput {
 } // namespace OnlyInput
 
 namespace Display {
-	static constexpr int8_t kClkPin = 17;
-	static constexpr int8_t kMosiPin = 16;
-	static constexpr int8_t kMisoPin = 18;
-	static constexpr int8_t kDcPin = 4;
-	static constexpr int8_t kCsPin = 15;
-	static constexpr int8_t kRstPin = 2;
+	static constexpr int8_t kClkPin = 18;
+	static constexpr int8_t kMosiPin = 19;
+	static constexpr int8_t kMisoPin = 17;
+	static constexpr int8_t kDcPin = 21;
+	static constexpr int8_t kCsPin = 23;
+	static constexpr int8_t kRstPin = 22;
 	static constexpr int8_t kBusyPin = -1;
 
 	static constexpr int8_t kBacklightPin = 5;
@@ -48,10 +48,10 @@ namespace Display {
 namespace Touch {
 	static constexpr int8_t kI2CPort = 0;
 	static constexpr int8_t kI2CAddr = 0x5D;
-	static constexpr int8_t kSdaPin = 22;
-	static constexpr int8_t kSclPin = 19;
-	static constexpr int8_t kRstPin = 21;
-	static constexpr int8_t kIntPin = 23;
+	static constexpr int8_t kSdaPin = 2;
+	static constexpr int8_t kSclPin = 16;
+	static constexpr int8_t kRstPin = 4;
+	static constexpr int8_t kIntPin = 15;
 } // namespace Touch
 
 namespace RTCI2C {
@@ -66,16 +66,16 @@ namespace Buzzer {
 } // namespace Buzzer
 
 namespace SerialRS {
-	static constexpr int8_t kLatchPin = 25;
+	static constexpr int8_t kLatchPin = 26;
 	static constexpr int8_t kUsartPort = 1;
-	static constexpr int8_t aRxPin = 26;
-	static constexpr int8_t aTxPin = 27;
+	static constexpr int8_t aRxPin = 27;
+	static constexpr int8_t aTxPin = 25;
 } // namespace SerialRS
 
-namespace Leds {
-	static constexpr int8_t kGreenPin = 33;
-	static constexpr int8_t kBluePin = 32;
-	static constexpr int8_t kRedPin = 0;
+namespace I2CLeds {
+	static constexpr int8_t kGreenPin = 3;
+	static constexpr int8_t kBluePin = 1;
+	static constexpr int8_t kRedPin = 2;
 } // namespace Leds
 
 } // namespace Hardware

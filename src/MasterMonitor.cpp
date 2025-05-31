@@ -43,6 +43,11 @@ bool MasterMonitor::isPresent() const
 	return health != DeviceHealth::DeviceDisabled;
 }
 
+void MasterMonitor::invoke()
+{
+	updateHealth();
+}
+
 void MasterMonitor::updateHealth()
 {
 	for (const auto& rule : rules) {

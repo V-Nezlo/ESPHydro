@@ -7,7 +7,7 @@ LowerMonitor& LowerMonitor::instance() {
 
 LowerMonitor::LowerMonitor():
 	flags(0),
-	health(DeviceHealth::DeviceWorking)
+	health(DeviceHealth::DeviceDisabled)
 {}
 
 void LowerMonitor::setFlag(LowerFlags flag)

@@ -8,7 +8,7 @@ UpperMonitor& UpperMonitor::instance()
 
 UpperMonitor::UpperMonitor():
 	flags(0),
-	health(DeviceHealth::DeviceWorking)
+	health(DeviceHealth::DeviceDisabled)
 {}
 
 void UpperMonitor::setFlag(UpperFlags flag)

@@ -69,9 +69,9 @@ void app_main()
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
 	PCF8574 pcf(0x20, Hardware ::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
 
-	I2CGpio greenLed{pcf, 0};
-	I2CGpio blueLed{pcf, 0};
-	I2CGpio redLed{pcf, 0};
+	I2CGpio greenLed{pcf, Hardware::I2CLeds::kGreenPin};
+	I2CGpio blueLed{pcf, Hardware::I2CLeds::kBluePin};
+	I2CGpio redLed{pcf, Hardware::I2CLeds::kRedPin};
 
 	PumpController pumpController;
 	LightController lightController;
@@ -104,6 +104,7 @@ void app_main()
 
 	// Загружаем параметры во все модули
 	paramStorage.firstLoad();
+	MasterMonitor::instance().invoke();
 
 	// Поток для работы с дисплеем, увеличенный стек, припиненно к ядру
 	TaskHandle_t displayTask;
