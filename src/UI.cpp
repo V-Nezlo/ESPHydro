@@ -286,8 +286,8 @@ void writeToLoggingPanel(const char *aData, int aSize)
 void sendTapSoundToEventBus()
 {
 	Event ev;
-	ev.type = EventType::BuzzerSignal;
-	ev.data.buzSignal = BuzzerSignal::Short;
+	ev.type = EventType::ToneBuzzerSignal;
+	ev.data.buzToneSignal = ToneBuzzerSignal::Touch;
 	EventBus::throwEvent(&ev, observer);
 }
 
@@ -553,18 +553,21 @@ void actuatorPressedEventHandler(lv_event_t *e)
 		return;
 	}
 	if (target == actuators.pump && LowerMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
+		processTap(nullptr);
 		if (actuators.pumpStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnPumpOn);
 		} else if (actuators.pumpStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnPumpOff);
 		}
 	} else if (target == actuators.lamp && UpperMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
+		processTap(nullptr);
 		if (actuators.lampStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::TurnLampOn);
 		} else if (actuators.lampStatus == ActuatorStatus::Activated) {
 			sendActionCommandToEventBus(Action::TurnLampOff);
 		}
 	} else if (target == actuators.dam && UpperMonitor::instance().getHealth() != DeviceHealth::DeviceDisabled) {
+		processTap(nullptr);
 		if (actuators.damStatus == ActuatorStatus::Present) {
 			sendActionCommandToEventBus(Action::OpenDam);
 		} else if (actuators.damStatus == ActuatorStatus::Activated) {
@@ -580,10 +583,11 @@ void actuatorPressedEventHandler(lv_event_t *e)
 void returnToSettingsEventHandler(lv_event_t *)
 {
 	lv_scr_load(settingsPage);
-}
+} 
 
 void deviceDetailedInfoCloseCallback(lv_event_t *e)
 {
+	processTap(nullptr);
 	isDetailedShowing = false;
 }
 
@@ -609,6 +613,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;
 		lv_obj_center(activeMessageBox);
+		processTap(nullptr);
 	} else if (target == upperStatusPanel && UpperMonitor::instance().isPresent()) {
 		const char *powerPresent = UpperMonitor::instance().hasFlag(UpperFlags::PowerError) ? kUpperPowerOKText : kUpperPowerErrText;
 		const char *floatlev = UpperMonitor::instance().hasFlag(UpperFlags::TopWaterLevelStuck) ? kUpperFloatLevErrText : kUpperFloatLevOKText;
@@ -619,6 +624,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;
 		lv_obj_center(activeMessageBox);
+		processTap(nullptr);
 	} else if (target == auxStatusPanel && false) {
 
 	} else if (target == systemStatusPanel && MasterMonitor::instance().isPresent()) {
@@ -634,6 +640,7 @@ void deviceDetailedInfoOpenCallback(lv_event_t *e)
 		lv_obj_add_event_cb(activeMessageBox, deviceDetailedInfoCloseCallback, LV_EVENT_DELETE, NULL);
 		isDetailedShowing = true;
 		lv_obj_center(activeMessageBox);
+		processTap(nullptr);
 	}
 }
 
@@ -997,7 +1004,7 @@ void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 	}
 }
 
-void processTap(lv_event_t *e)
+void processTap(lv_event_t *)
 {
 	if (currentSettings.common.tapSoundEnabled) {
 		sendTapSoundToEventBus();
@@ -1611,7 +1618,6 @@ void menuCreate(lv_obj_t *parent)
 	lv_obj_set_size(pumpSwingTimeSlider, 20, 10);
 	lv_slider_set_value(pumpSwingTimeSlider, 5, LV_ANIM_OFF);
 	lv_obj_add_event_cb(pumpSwingTimeSlider, pumpSwingTimeEvent, LV_EVENT_VALUE_CHANGED, NULL);
-	lv_obj_add_event_cb(pumpSwingTimeSlider, processTap, LV_EVENT_CLICKED, NULL);
 
 	// ********************************МЕНЮ ЛАМПЫ********************************
 	// Подменю с настройками лампы
@@ -1658,7 +1664,6 @@ void menuCreate(lv_obj_t *parent)
 
 	brightnessSlider = createSlider(section, NULL, "Display brightness", 30, 255, 50);
 	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
-	lv_obj_add_event_cb(brightnessSlider, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_menu_separator_create(section);
 
 	// Настройка  текущего времени

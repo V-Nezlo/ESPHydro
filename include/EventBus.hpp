@@ -69,9 +69,12 @@ enum class ToneBuzzerSignal {
 	Disabled,
 	Enabling,
 	Error,
+	CriticalError,
 	Warning,
 	Connected,
-	Disconnected
+	Disconnected,
+	Touch,
+	Information
 };
 
 struct Event{

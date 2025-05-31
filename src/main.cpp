@@ -1,4 +1,3 @@
-#include "BuzzerController.hpp"
 #include "ConfigStorage.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
@@ -11,6 +10,7 @@
 #include "PCF8574.hpp"
 #include "PumpController.hpp"
 #include "SerialWrapper.hpp"
+#include "ToneBuzzer.hpp"
 #include "UI.hpp"
 
 #include <UtilitaryRS/Crc8.hpp>
@@ -75,7 +75,8 @@ void app_main()
 
 	PumpController pumpController;
 	LightController lightController;
-	BuzzerController buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
+	ToneBuzzer buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
+
 	LedController ledController{&greenLed, &blueLed, &redLed};
 
 	EventBus::registerObserver(&paramStorage);
@@ -110,6 +111,12 @@ void app_main()
 	TaskHandle_t displayTask;
 	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &lvglMutex, 5, &displayTask, 1);
 	esp_task_wdt_add(displayTask);
+	buzzController.setVolume(10);
+
+	Event ev;
+	ev.type = EventType::ToneBuzzerSignal;
+	ev.data.buzToneSignal = ToneBuzzerSignal::Enabling;
+	EventBus::throwEvent(&ev, nullptr);
 
 	while(true) {
 		// Обработка SmartBus
@@ -122,6 +129,6 @@ void app_main()
 		}
 
 		sched.doTasks();
-		lgfx::delay(50);
+		lgfx::delay(5);
 	}
 }

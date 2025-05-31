@@ -55,15 +55,8 @@ EventResult LowerMonitor::handleEvent(Event *e)
 			if (e->data.device == DeviceType::Lower) {
 				flags = 0;
 				health = DeviceHealth::DeviceDisabled;
-
-				// Отправим новый health
-				Event ev;
-				ev.type = EventType::UpdateDeviceHealth;
-				ev.data.updateHealth.type = DeviceType::Lower;
-				ev.data.updateHealth.health = health;
-				EventBus::throwEvent(&ev, this);
-			}
-			return EventResult::PASS_ON;
+				sendNewHealthToEventBus();
+			} return EventResult::PASS_ON;
 		default:
 			return EventResult::IGNORED;
 	}
@@ -71,17 +64,49 @@ EventResult LowerMonitor::handleEvent(Event *e)
 
 void LowerMonitor::updateHealth()
 {
+	DeviceHealth newHealth = DeviceHealth::DeviceDisabled;
 	for (const auto& rule : rules) {
 		if (flags & rule.mask) {
-			health = rule.health;
+			newHealth = rule.health;
 		} else {
-			health = DeviceHealth::DeviceWorking;
+			newHealth = DeviceHealth::DeviceWorking;
 		}
 	}
 
+	if (newHealth != health) {
+		health = newHealth;
+		sendNewHealthToEventBus();
+	};
+}
+
+void LowerMonitor::sendNewHealthToEventBus()
+{
+	// Отправим новый health
 	Event ev;
 	ev.type = EventType::UpdateDeviceHealth;
 	ev.data.updateHealth.type = DeviceType::Lower;
 	ev.data.updateHealth.health = health;
-	EventBus::throwEvent(&ev, this);
+	EventBus::throwEvent(&ev, nullptr);
+
+	// Отправим звуковой сигнал исходя из нового health
+	Event ev2;
+	ev2.type = EventType::ToneBuzzerSignal;
+	switch(health) {
+		case DeviceHealth::DeviceWorking:
+			ev2.data.buzToneSignal = ToneBuzzerSignal::Information;
+			break;
+		case DeviceHealth::DeviceError:
+			ev2.data.buzToneSignal = ToneBuzzerSignal::Error;
+			break;
+		case DeviceHealth::DeviceCritical:
+			ev2.data.buzToneSignal = ToneBuzzerSignal::CriticalError;
+			break;
+		case DeviceHealth::DeviceWarning:
+			ev2.data.buzToneSignal = ToneBuzzerSignal::Warning;
+			break;
+		case DeviceHealth::DeviceDisabled:
+			ev2.data.buzToneSignal = ToneBuzzerSignal::Disconnected;
+			break;	
+	}
+	EventBus::throwEvent(&ev2, nullptr);
 }

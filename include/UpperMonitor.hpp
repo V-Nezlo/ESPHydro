@@ -37,6 +37,8 @@ private:
 	UpperMonitor();
 	void updateHealth();
 
+	void sendNewHealthToEventBus();
+
 	uint8_t flags;
 	DeviceHealth health;
 

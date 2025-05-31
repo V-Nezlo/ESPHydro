@@ -48,6 +48,7 @@ public:
 	ToneBuzzer(uint8_t aPin, uint8_t aLedcChannel);
 	EventResult handleEvent(Event *e) override;
 	void process(std::chrono::milliseconds aCurrentTime) override;
+	void setVolume(uint8_t aVolume);
 
 private:
 	std::chrono::milliseconds nextActionTime;
@@ -58,7 +59,6 @@ private:
 	uint32_t noteCounter;
 	uint8_t volume;
 
-	void setVolume(uint8_t aVolume);
 	void setTone(Tones aTone, std::chrono::milliseconds aCurrentTime, std::chrono::milliseconds aPeriod);
 	void mute();
 
@@ -68,6 +68,9 @@ private:
 	void playWarningSignal(std::chrono::milliseconds aCurrentTime);
 	void playConnectedSound(std::chrono::milliseconds aCurrentTime);
 	void playDisconnectedSound(std::chrono::milliseconds aCurrentTime);
+	void playTouchSound(std::chrono::milliseconds aCurrentTime);
+	void playCriticalErrorSound(std::chrono::milliseconds aCurrentTime);
+	void playInformationSignal(std::chrono::milliseconds aCurrentTime);
 
 	// Generic sequence player
 	void playSequence(const TonePeriod* sequence, size_t length, std::chrono::milliseconds aCurrentTime);

@@ -19,6 +19,8 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	noteCounter{0},
 	volume{0x3F}
 {
+	ledc_fade_func_install(0);
+
 	ledc_timer_config_t timerConf{};
 	timerConf.speed_mode = LEDC_HIGH_SPEED_MODE;
 	timerConf.duty_resolution = LEDC_TIMER_10_BIT;
@@ -34,6 +36,7 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	channelConf.timer_sel = timerConf.timer_num;
 	channelConf.duty = 0;
 	ledc_channel_config(&channelConf);
+
 }
 
 EventResult ToneBuzzer::handleEvent(Event *e)
@@ -64,6 +67,15 @@ void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)
 				break;
 			case ToneBuzzerSignal::Disconnected:
 				playDisconnectedSound(aCurrentTime);
+				break;
+			case ToneBuzzerSignal::Touch:
+				playTouchSound(aCurrentTime);
+				break;
+			case ToneBuzzerSignal::CriticalError:
+				playCriticalErrorSound(aCurrentTime);
+				break;
+			case ToneBuzzerSignal::Information:
+				playInformationSignal(aCurrentTime);
 				break;
 			default:
 				mute();
@@ -104,9 +116,11 @@ void ToneBuzzer::playSequence(const TonePeriod* sequence, size_t length, std::ch
 void ToneBuzzer::playEnablingSound(std::chrono::milliseconds aCurrentTime)
 {
 	static constexpr TonePeriod sequence[] = {
-		{ Tones::A, 50ms },
-		{ Tones::CH, 50ms },
-		{ Tones::EH, 50ms }
+		{ Tones::C, 80ms },
+		{ Tones::E, 80ms },
+		{ Tones::G, 80ms },
+		{ Tones::CH, 80ms },
+		{ Tones::EH, 80ms }
 	};
 	playSequence(sequence, std::size(sequence), aCurrentTime);
 }
@@ -133,17 +147,50 @@ void ToneBuzzer::playWarningSignal(std::chrono::milliseconds aCurrentTime)
 void ToneBuzzer::playConnectedSound(std::chrono::milliseconds aCurrentTime)
 {
 	static constexpr TonePeriod sequence[] = {
-		{Tones::C, 80ms},
-		{Tones::E, 80ms},
-		{Tones::G, 80ms}};
+		{Tones::C, 100ms},
+		{Tones::E, 100ms},
+		{Tones::G, 200ms}};
 	playSequence(sequence, std::size(sequence), aCurrentTime);
 }
 
 void ToneBuzzer::playDisconnectedSound(std::chrono::milliseconds aCurrentTime)
 {
 	static constexpr TonePeriod sequence[] = {
-		{Tones::G, 80ms},
-		{Tones::E, 80ms},
-		{Tones::C, 80ms}};
+		{Tones::G, 200ms},
+		{Tones::E, 100ms},
+		{Tones::C, 100ms}};
+	playSequence(sequence, std::size(sequence), aCurrentTime);
+}
+
+void ToneBuzzer::playTouchSound(std::chrono::milliseconds aCurrentTime)
+{
+	static constexpr TonePeriod sequence[] = {
+		{Tones::G, 50ms},
+		{Tones::CH, 30ms}};
+	playSequence(sequence, std::size(sequence), aCurrentTime);
+}
+
+void ToneBuzzer::playCriticalErrorSound(std::chrono::milliseconds aCurrentTime)
+{
+	static constexpr TonePeriod sequence[] = {
+		{Tones::A, 150ms},
+		{Tones::AS, 150ms},
+		{Tones::A, 150ms},
+		{Tones::AS, 150ms},
+		{Tones::A, 150ms},
+		{Tones::AS, 150ms},
+		{Tones::A, 150ms},
+		{Tones::AS, 150ms}
+	};
+	playSequence(sequence, std::size(sequence), aCurrentTime);
+}
+
+void ToneBuzzer::playInformationSignal(std::chrono::milliseconds aCurrentTime)
+{
+	static constexpr TonePeriod sequence[] = {
+		{Tones::F, 120ms},
+		{Tones::D, 120ms},
+		{Tones::CH, 180ms}
+	};
 	playSequence(sequence, std::size(sequence), aCurrentTime);
 }

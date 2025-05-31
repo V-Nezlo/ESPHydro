@@ -42,6 +42,7 @@ public:
 private:
 	LowerMonitor();
 	void updateHealth();
+	void sendNewHealthToEventBus();
 
 	uint8_t flags;
 	DeviceHealth health;
