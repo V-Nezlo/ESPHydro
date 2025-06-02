@@ -36,7 +36,6 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	channelConf.timer_sel = timerConf.timer_num;
 	channelConf.duty = 0;
 	ledc_channel_config(&channelConf);
-
 }
 
 EventResult ToneBuzzer::handleEvent(Event *e)
@@ -45,8 +44,12 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 		currentSignal = e->data.buzToneSignal;
 		noteCounter = 0;
 		return EventResult::HANDLED;
+	} else if (e->type == EventType::NewBuzVolume) {
+		setVolume(e->data.volume);
+		return EventResult::PASS_ON;
+	} else {
+		return EventResult::IGNORED;
 	}
-	return EventResult::IGNORED;
 }
 
 void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)

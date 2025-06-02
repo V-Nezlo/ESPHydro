@@ -1,6 +1,8 @@
 #include "MasterMonitor.hpp"
 #include <esp_log.h>
 
+constexpr HealthRule MasterMonitor::rules[];
+
 MasterMonitor& MasterMonitor::instance()
 {
 	static MasterMonitor inst;

@@ -1,5 +1,7 @@
 #include "LowerMonitor.hpp"
 
+constexpr HealthRule LowerMonitor::rules[];
+
 LowerMonitor& LowerMonitor::instance() {
 	static LowerMonitor inst;
 	return inst;

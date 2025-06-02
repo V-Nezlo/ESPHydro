@@ -185,6 +185,7 @@ lv_obj_t *settingsPageTime;
 lv_obj_t *alarmSoundEnableButton;
 lv_obj_t *tapSountEnableButton;
 lv_obj_t *brightnessSlider;
+lv_obj_t *buzzerVolumeSlider;
 // Штуки для сервиса
 lv_obj_t *lowerCalibButton;
 lv_obj_t *loggingTextarea;
@@ -273,6 +274,14 @@ void sendNewBrightnessToEventBus(uint8_t aDuty)
 	Event ev;
 	ev.type = EventType::NewBrightness;
 	ev.data.brightness = aDuty;
+	EventBus::throwEvent(&ev, observer);
+}
+
+void sendNewVolumeToEventBus(uint8_t aDuty)
+{
+	Event ev;
+	ev.type = EventType::NewBuzVolume;
+	ev.data.volume = aDuty;
 	EventBus::throwEvent(&ev, observer);
 }
 
@@ -538,6 +547,12 @@ void brightnessSliderEventHandler(lv_event_t *)
 {
 	uint8_t newSliderValue = lv_slider_get_value(brightnessSlider);
 	sendNewBrightnessToEventBus(newSliderValue);
+}
+
+void volumeSliderEventHandler(lv_event_t *)
+{
+	uint8_t newSliderValue = lv_slider_get_value(buzzerVolumeSlider);
+	sendNewVolumeToEventBus(newSliderValue);
 }
 
 void actuatorPressedEventHandler(lv_event_t *e)
@@ -867,6 +882,9 @@ void enterParameters(struct Settings *aParams)
 	// Установим новое значение яркости
 	lv_slider_set_value(brightnessSlider, aParams->common.displayBrightness, LV_ANIM_OFF);
 	lv_event_send(brightnessSlider, LV_EVENT_VALUE_CHANGED, NULL);
+	// Установим новое значение громкости
+	lv_slider_set_value(buzzerVolumeSlider, aParams->common.buzzerVolume, LV_ANIM_OFF);
+	lv_event_send(buzzerVolumeSlider, LV_EVENT_VALUE_CHANGED, NULL);
 
 	// В конце обновим главную страницу
 	updateMainPagePumpTypeLabel();
@@ -904,6 +922,7 @@ struct Settings *saveParameters()
 	currentSettings.common.tapSoundEnabled = lv_obj_has_state(tapSountEnableButton, LV_STATE_CHECKED);
 	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
+	currentSettings.common.buzzerVolume = lv_slider_get_value(buzzerVolumeSlider);
 
 	return &currentSettings;
 }
@@ -1662,9 +1681,12 @@ void menuCreate(lv_obj_t *parent)
 	alarmSoundEnableButton = createSwitch(section, LV_SYMBOL_AUDIO, "Alarm sound", false);
 	lv_obj_add_event_cb(tapSountEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL); // ?
 	lv_obj_add_event_cb(alarmSoundEnableButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
-
+	// Настройка яркости экрана
 	brightnessSlider = createSlider(section, NULL, "Display brightness", 30, 255, 50);
 	lv_obj_add_event_cb(brightnessSlider, brightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
+	// Настройка громкости бузёра
+	buzzerVolumeSlider = createSlider(section, NULL, "Buzzer volume", 0, 100, 50);
+	lv_obj_add_event_cb(buzzerVolumeSlider, volumeSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_menu_separator_create(section);
 
 	// Настройка  текущего времени

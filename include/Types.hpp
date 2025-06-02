@@ -77,6 +77,7 @@ struct CommonConfiguration {
 	bool alarmSoundEnabled;
 	bool loggingEnabled;
 	uint8_t displayBrightness;
+	uint8_t buzzerVolume;
 };
 
 struct Settings {

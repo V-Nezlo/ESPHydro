@@ -1,5 +1,7 @@
 #include "UpperMonitor.hpp"
 
+constexpr HealthRule UpperMonitor::rules[];
+
 UpperMonitor& UpperMonitor::instance()
 {
 	static UpperMonitor inst;

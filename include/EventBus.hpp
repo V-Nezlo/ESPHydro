@@ -36,7 +36,7 @@ enum class EventType : uint8_t {
 	ActionRequest,
 	SettingsUpdated,
 	NewBrightness,
-	BuzzerSignal,
+	NewBuzVolume,
 	ToneBuzzerSignal,
 	RsDeviceDetached,
 	RsDeviceAttached,
@@ -57,12 +57,6 @@ enum class Action : uint8_t {
 	CloseDam,
 	OpenDam,
 	ECCalibSens
-};
-
-enum class BuzzerSignal {
-	Disable,
-	Short,
-	Long
 };
 
 enum class ToneBuzzerSignal {
@@ -86,7 +80,7 @@ struct Event{
 		Action action;
 		Settings settings;
 		uint8_t brightness;
-		BuzzerSignal buzSignal;
+		uint8_t volume;
 		ToneBuzzerSignal buzToneSignal;
 		SystemData systemData;
 		DeviceType device;

@@ -111,7 +111,6 @@ void app_main()
 	TaskHandle_t displayTask;
 	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &lvglMutex, 5, &displayTask, 1);
 	esp_task_wdt_add(displayTask);
-	buzzController.setVolume(10);
 
 	Event ev;
 	ev.type = EventType::ToneBuzzerSignal;
