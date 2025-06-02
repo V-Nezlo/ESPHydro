@@ -48,10 +48,6 @@ struct LowerInternalData {
 	uint16_t ppm;
 };
 
-struct SystemData {
-	uint8_t flags;
-};
-
 struct AuxData {
 	uint8_t flags;
 };

@@ -78,21 +78,8 @@ void MasterMonitor::updateHealth()
 
 	if (newHealth != health) {
 		health = newHealth;
-		ESP_LOGE("MasterMonitor", "New health: %d", static_cast<int>(newHealth));
 		sendNewHealthToEventBus();
 	}
-
-	sendDataToEventBus();
-}
-
-
-void MasterMonitor::sendDataToEventBus()
-{
-	// Отправим новые флаги в обсерверы
-	Event ev;
-	ev.type = EventType::UpdateSystemData;
-	ev.data.systemData.flags = flags;
-	EventBus::throwEvent(&ev, nullptr);
 }
 
 void MasterMonitor::sendNewHealthToEventBus()

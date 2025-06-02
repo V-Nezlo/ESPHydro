@@ -43,7 +43,6 @@ private:
 	MasterMonitor();
 	void updateHealth();
 
-	void sendDataToEventBus();
 	void sendNewHealthToEventBus();
 
 	uint32_t flags;

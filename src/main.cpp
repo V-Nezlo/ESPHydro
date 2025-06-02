@@ -77,7 +77,7 @@ void app_main()
 	LightController lightController;
 	ToneBuzzer buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
-	LedController ledController{&greenLed, &blueLed, &redLed};
+	LedController ledController{&greenLed, &blueLed, &redLed, false};
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);

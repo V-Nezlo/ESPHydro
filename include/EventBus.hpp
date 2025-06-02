@@ -30,7 +30,6 @@ using namespace std;
 enum class EventType : uint8_t {
 	SetCurrentTime,
 	GetCurrentTime,
-	UpdateSystemData,
 	UpdateUpperData,
 	UpdateLowerData,
 	ActionRequest,
@@ -82,7 +81,6 @@ struct Event{
 		uint8_t brightness;
 		uint8_t volume;
 		ToneBuzzerSignal buzToneSignal;
-		SystemData systemData;
 		DeviceType device;
 		UpdateHealth updateHealth;
 	} data;

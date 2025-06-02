@@ -31,18 +31,20 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 		LedState state;
 		AbstractGpio *gpio;
 		bool active;
+		bool level;
 		const bool present;
 
 	public:
-		SmartLed(AbstractGpio *aGpio):
+		SmartLed(AbstractGpio *aGpio, bool aLevel):
 			lastActionTime{0},
 			state{LedState::Disabled},
 			gpio{aGpio},
 			active{false},
+			level{aLevel},
 			present{aGpio != nullptr}
 		{
 			if (gpio != nullptr) {
-				gpio->reset();
+				level ? gpio->reset() : gpio->set();
 			}
 		}
 
@@ -56,13 +58,13 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 				case LedState::Disabled:
 					if (active) {
 						active = false;
-						gpio->reset();
+						level ? gpio->reset() : gpio->set();
 					}
 					break;
 				case LedState::Stably:
 					if (!active) {
 						active = true;
-						gpio->set();
+						level ? gpio->set() : gpio->reset();
 					}
 					break;
 				case LedState::FastBlinking:
@@ -94,10 +96,10 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 	};
 
 public:
-	LedController(AbstractGpio *aGreen, AbstractGpio *aBlue, AbstractGpio *aRed):
-		green{aGreen},
-		blue{aBlue},
-		red{aRed}
+	LedController(AbstractGpio *aGreen, AbstractGpio *aBlue, AbstractGpio *aRed, bool aLevel):
+		green{aGreen, aLevel},
+		blue{aBlue, aLevel},
+		red{aRed, aLevel}
 	{
 		green.setState(SmartLed::LedState::LongBlinking);
 	}
@@ -112,15 +114,27 @@ public:
 	EventResult handleEvent(Event *e) override
 	{
 		switch(e->type) {
-			case EventType::UpdateSystemData:
-				if (e->data.systemData.flags != 0) {
-					red.setState(SmartLed::LedState::LongBlinking);
-					green.setState(SmartLed::LedState::FastBlinking);
-				} else {
-					red.setState(SmartLed::LedState::Disabled);
-					green.setState(SmartLed::LedState::LongBlinking);
-				}
-				return EventResult::PASS_ON;
+			case EventType::UpdateDeviceHealth:
+				if (e->data.updateHealth.type == DeviceType::Master) {
+					switch(e->data.updateHealth.health) {
+						case DeviceHealth::DeviceWorking:
+							green.setState(SmartLed::LedState::LongBlinking);
+							red.setState(SmartLed::LedState::Disabled);
+							break;
+						case DeviceHealth::DeviceWarning:
+							green.setState(SmartLed::LedState::FastBlinking);
+							red.setState(SmartLed::LedState::Disabled);
+							break;
+						case DeviceHealth::DeviceError:
+							// Fallthrough
+						case DeviceHealth::DeviceCritical:
+							red.setState(SmartLed::LedState::FastBlinking);
+							green.setState(SmartLed::LedState::Disabled);
+							break;
+						default:
+							break;
+					}
+				} return EventResult::PASS_ON;
 			default:
 				return EventResult::IGNORED;
 		}
