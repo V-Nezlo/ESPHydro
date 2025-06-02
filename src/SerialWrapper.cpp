@@ -20,7 +20,7 @@ SerialWrapper::SerialWrapper(int8_t aPort, size_t aTxBufSize, size_t aRxBufSize,
 		UART_HW_FLOWCTRL_DISABLE,
 		122,
 		static_cast<uart_sclk_t>(4),
-		0
+		{0,0}
 	},
 	latch{aLatch},
 	mutex{xSemaphoreCreateMutex()}

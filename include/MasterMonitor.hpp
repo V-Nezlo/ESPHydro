@@ -9,9 +9,7 @@
 #ifndef SOURCES_MASTERMONITOR_HPP_
 #define SOURCES_MASTERMONITOR_HPP_
 
-#include "EventBus.hpp"
-#include "Types.hpp"
-#include <cstdint>
+#include "BaseMonitor.hpp"
 
 enum class MasterFlags : uint32_t {
 	RTCError               = 0x01,
@@ -24,29 +22,18 @@ enum class MasterFlags : uint32_t {
 	DeviceMismatch         = 0x80
 };
 
-class MasterMonitor : public AbstractEventObserver {
+class MasterMonitor : public BaseMonitor<MasterFlags> {
 public:
 	static MasterMonitor& instance();
-
-	void setFlag(MasterFlags flag);
-	void clearFlag(MasterFlags flag);
-	bool hasFlag(MasterFlags flag) const;
-
-	uint32_t getFlags() const;
-	DeviceHealth getHealth() const;
-	bool isPresent() const;
+	EventResult handleEvent(Event *e) override;
 	void invoke();
 
-	EventResult handleEvent(Event *e) override;
+protected:
+	const HealthRule* getRules() const override { return rules; }
+	size_t getRulesCount() const override { return sizeof(rules) / sizeof(rules[0]); }
 
 private:
 	MasterMonitor();
-	void updateHealth();
-
-	void sendNewHealthToEventBus();
-
-	uint32_t flags;
-	DeviceHealth health;
 
 	static constexpr HealthRule rules[] = {
 		{ DeviceHealth::DeviceCritical,
