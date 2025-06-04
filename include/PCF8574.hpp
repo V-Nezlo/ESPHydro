@@ -47,11 +47,12 @@ public:
 	void write(uint8_t aId, bool aState)
 	{
 		mask = aState ? (mask | (1 << aId)) : (mask & ~(1 << aId));
+		updated = true;
 	}
 
 	void process(std::chrono::milliseconds aCurrentTime) override
 	{
-		if (present && aCurrentTime >= nextUpdateTime) {
+		if (present && updated && aCurrentTime >= nextUpdateTime) {
 			nextUpdateTime = aCurrentTime + updateTime;
 			pcf8574_port_write(&dev, mask);
 		}
@@ -65,6 +66,7 @@ private:
 	bool present;
 
 	uint8_t mask;
+	bool updated;
 };
 
 #endif // INCLUDE_PCF8574_HPP_

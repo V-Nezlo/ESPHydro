@@ -18,12 +18,14 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 	using milliseconds = std::chrono::milliseconds;
 
 	class SmartLed {
+		static constexpr milliseconds kFastBlinkingInterval{200};
+		static constexpr milliseconds kSlowBlinkingInterval{1000};
 	public:
 		enum class LedState {
 			Disabled,
-			Stably,
+			Steady,
 			FastBlinking,
-			LongBlinking
+			SlowBlinking
 		};
 
 	private:
@@ -31,8 +33,7 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 		LedState state;
 		AbstractGpio *gpio;
 		bool active;
-		bool level;
-		const bool present;
+		const bool level;
 
 	public:
 		SmartLed(AbstractGpio *aGpio, bool aLevel):
@@ -40,20 +41,14 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 			state{LedState::Disabled},
 			gpio{aGpio},
 			active{false},
-			level{aLevel},
-			present{aGpio != nullptr}
+			level{aLevel}
 		{
-			if (gpio != nullptr) {
-				level ? gpio->reset() : gpio->set();
-			}
+			assert(aGpio);
+			level ? gpio->reset() : gpio->set();
 		}
 
 		void process(milliseconds aCurrentTime)
 		{
-			if (!present) {
-				return;
-			}
-
 			switch(state) {
 				case LedState::Disabled:
 					if (active) {
@@ -61,21 +56,21 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 						level ? gpio->reset() : gpio->set();
 					}
 					break;
-				case LedState::Stably:
+				case LedState::Steady:
 					if (!active) {
 						active = true;
 						level ? gpio->set() : gpio->reset();
 					}
 					break;
 				case LedState::FastBlinking:
-					if (aCurrentTime > lastActionTime + milliseconds{200}) {
+					if (aCurrentTime > lastActionTime + kFastBlinkingInterval) {
 						lastActionTime = aCurrentTime;
 						active = !active;
 						gpio->setState(active);
 					}
 					break;
-				case LedState::LongBlinking:
-					if (aCurrentTime > lastActionTime + milliseconds{1000}) {
+				case LedState::SlowBlinking:
+					if (aCurrentTime > lastActionTime + kSlowBlinkingInterval) {
 						lastActionTime = aCurrentTime;
 						active = !active;
 						gpio->setState(active);
@@ -88,11 +83,6 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 		{
 			state = aState;
 		}
-
-		bool isPresent()
-		{
-			return present;
-		}
 	};
 
 public:
@@ -101,14 +91,14 @@ public:
 		blue{aBlue, aLevel},
 		red{aRed, aLevel}
 	{
-		green.setState(SmartLed::LedState::LongBlinking);
+		green.setState(SmartLed::LedState::SlowBlinking);
 	}
 
 	void process(milliseconds aCurrentTime) override
 	{
-		if (green.isPresent()) green.process(aCurrentTime);
-		if (blue.isPresent()) blue.process(aCurrentTime);
-		if (red.isPresent()) red.process(aCurrentTime);
+		green.process(aCurrentTime);
+		blue.process(aCurrentTime);
+		red.process(aCurrentTime);
 	}
 
 	EventResult handleEvent(Event *e) override
@@ -118,7 +108,7 @@ public:
 				if (e->data.updateHealth.type == DeviceType::Master) {
 					switch(e->data.updateHealth.health) {
 						case DeviceHealth::DeviceWorking:
-							green.setState(SmartLed::LedState::LongBlinking);
+							green.setState(SmartLed::LedState::SlowBlinking);
 							red.setState(SmartLed::LedState::Disabled);
 							break;
 						case DeviceHealth::DeviceWarning:

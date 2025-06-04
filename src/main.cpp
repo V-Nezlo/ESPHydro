@@ -98,6 +98,7 @@ void app_main()
 	sched.registerTask(&buzzController);
 	sched.registerTask(&smartBus);
 	sched.registerTask(&ledController);
+	sched.registerTask(&pcf);
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
