@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "Options.hpp"
 #include "ToneBuzzer.hpp"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
@@ -41,8 +42,13 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 EventResult ToneBuzzer::handleEvent(Event *e)
 {
 	if (e->type == EventType::ToneBuzzerSignal) {
-		currentSignal = e->data.buzToneSignal;
-		noteCounter = 0;
+		if (currentSignal == ToneBuzzerSignal::Disabled) {
+			currentSignal = e->data.buzToneSignal;
+			noteCounter = 0;
+		} else {
+			signalQueue.push(e->data.buzToneSignal);
+		}
+
 		return EventResult::HANDLED;
 	} else if (e->type == EventType::NewBuzVolume) {
 		setVolume(e->data.volume);
@@ -54,7 +60,11 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 
 void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)
 {
-	if (currentSignal != ToneBuzzerSignal::Disabled && aCurrentTime >= nextActionTime) {
+	if (aCurrentTime < nextActionTime) {
+		return;
+	}
+
+	if (currentSignal != ToneBuzzerSignal::Disabled) {
 		switch (currentSignal) {
 			case ToneBuzzerSignal::Enabling:
 				playEnablingSound(aCurrentTime);
@@ -81,8 +91,14 @@ void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)
 				playInformationSignal(aCurrentTime);
 				break;
 			default:
-				mute();
+				mute(aCurrentTime);
 				break;
+		}
+	} else if (!signalQueue.isEmpty()) {
+		ToneBuzzerSignal nextSignal;
+		if (signalQueue.pop(nextSignal)) {
+			currentSignal = nextSignal;
+			noteCounter = 0;
 		}
 	}
 }
@@ -100,11 +116,12 @@ void ToneBuzzer::setTone(Tones aTone, std::chrono::milliseconds aCurrentTime, st
 	++noteCounter;
 }
 
-void ToneBuzzer::mute()
+void ToneBuzzer::mute(std::chrono::milliseconds aCurrentTime)
 {
 	ledc_set_duty_and_update(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(ledcChannel), 0, 0);
 	currentSignal = ToneBuzzerSignal::Disabled;
 	noteCounter = 0;
+	nextActionTime = aCurrentTime + Options::kTimeBetweenSignals;
 }
 
 void ToneBuzzer::playSequence(const TonePeriod* sequence, size_t length, std::chrono::milliseconds aCurrentTime)
@@ -112,7 +129,7 @@ void ToneBuzzer::playSequence(const TonePeriod* sequence, size_t length, std::ch
 	if (noteCounter < length) {
 		setTone(sequence[noteCounter].tone, aCurrentTime, sequence[noteCounter].duration);
 	} else {
-		mute();
+		mute(aCurrentTime);
 	}
 }
 

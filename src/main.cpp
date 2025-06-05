@@ -55,6 +55,8 @@ void displayTaskFunc(void *pvParameters)
 extern "C"
 void app_main()
 {
+	EventBus::init();
+
 	ConfigStorage paramStorage;
 	DisplayDriver displayDriver;
 

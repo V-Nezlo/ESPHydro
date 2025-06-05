@@ -1,15 +1,19 @@
 /*!
 @file
-@brief Шина событий-данных
+@brief Шина событий-данных с очередью внутри
 @author V-Nezlo (vlladimirka@gmail.com)
-@date 09.04.2024
+@date 04.06.2025
 @version 1.0
 */
 
-#ifndef INCLUDE_EVENTBUS_HPP_
-#define INCLUDE_EVENTBUS_HPP_
+#ifndef INCLUDE_EVENTBUSV2_HPP_
+#define INCLUDE_EVENTBUSV2_HPP_
 
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "HydroRSTypes.hpp"
 #include "Types.hpp"
 
@@ -70,7 +74,9 @@ enum class ToneBuzzerSignal {
 	Information
 };
 
-struct Event{
+class AbstractEventObserver;
+
+struct Event {
 	EventType type;
 	union {
 		Time time;
@@ -84,6 +90,8 @@ struct Event{
 		DeviceType device;
 		UpdateHealth updateHealth;
 	} data;
+
+	AbstractEventObserver *sender = nullptr;
 };
 
 class AbstractEventObserver {
@@ -91,35 +99,71 @@ public:
 	virtual EventResult handleEvent(Event *e) = 0;
 };
 
-class EventBus {
+class EventBus
+{
 public:
-	static void throwEvent(Event *aEvent, AbstractEventObserver *aOwner)
+	static bool init()
 	{
-		for (auto &pos : observers) {
-			// Для вызывающего throwEvent событие обработано не будет, в случае nullptr не проверяется
-			if (aOwner != nullptr && pos == aOwner) {
-				continue;
-			} else {
-				const auto result = pos->handleEvent(aEvent);
-				// If result == PASS_ON or IGNORED - continue
-				if (result == EventResult::HANDLED) {
-					break;
+		if (queue)
+			return true;
+
+		queue = xQueueCreate(16, sizeof(Event));
+		if (!queue)
+			return false;
+
+		xTaskCreate(eventTask, "EventBusTask", 2048, nullptr, 5, nullptr);
+		return true;
+	}
+
+	static void registerObserver(AbstractEventObserver *observer)
+	{
+		observers.push_back(observer);
+	}
+
+	static void unregisterObserver(AbstractEventObserver *observer)
+	{
+		observers.erase(std::remove(observers.begin(), observers.end(), observer), observers.end());
+	}
+
+	static bool throwEvent(Event *e, AbstractEventObserver *sender = nullptr)
+	{
+		e->sender = sender;
+		return xQueueSend(queue, e, 0) == pdTRUE;
+	}
+
+	static bool throwEventFromISR(Event *e, AbstractEventObserver *sender = nullptr)
+	{
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		e->sender = sender;
+		bool result = xQueueSendFromISR(queue, e, &xHigherPriorityTaskWoken) == pdTRUE;
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		return result;
+	}
+
+private:
+	static inline QueueHandle_t queue = nullptr;
+	static inline std::vector<AbstractEventObserver *> observers;
+
+	static void eventTask(void *)
+	{
+		Event event;
+
+		while (true)
+		{
+			if (xQueueReceive(queue, &event, portMAX_DELAY) == pdTRUE)
+			{
+				for (auto observer : observers)
+				{
+					if (event.sender == observer)
+						continue;
+
+					auto result = observer->handleEvent(&event);
+					if (result == EventResult::HANDLED)
+						break;
 				}
 			}
 		}
 	}
-
-	static void registerObserver(AbstractEventObserver *aObserver)
-	{
-		const auto iter = std::find(observers.begin(), observers.end(), aObserver);
-
-		if (iter == observers.end()) {
-			observers.push_back(aObserver);
-		}
-	}
-
-private:
-	static std::vector<AbstractEventObserver *> observers;
 };
 
-#endif // INCLUDE_EVENTBUS_HPP_
+#endif
