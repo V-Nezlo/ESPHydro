@@ -21,6 +21,7 @@ static constexpr std::chrono::seconds kMaxTimeForFullFlooding{30}; ///< Врем
 static constexpr uint8_t kMinWaterLevelForWork{20}; ///< Минимальный уровень воды для работы
 
 static constexpr std::chrono::milliseconds kTimeBetweenSignals{500}; ///< Время между сигналами
+static constexpr std::chrono::milliseconds kTimeBetweenTaps{250}; 
 
 }
 

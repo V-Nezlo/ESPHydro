@@ -5,6 +5,8 @@
 #include "LowerMonitor.hpp"
 #include "UpperMonitor.hpp"
 #include "MasterMonitor.hpp"
+#include "TimeWrapper.hpp"
+#include "Options.hpp"
 
 #include "UITextConsts.hpp"
 #include "EventBus.hpp"
@@ -298,10 +300,16 @@ void writeToLoggingPanel(const char *aData, int aSize)
 
 void sendTapSoundToEventBus()
 {
-	Event ev;
-	ev.type = EventType::ToneBuzzerSignal;
-	ev.data.buzToneSignal = ToneBuzzerSignal::Touch;
-	EventBus::throwEvent(&ev, observer);
+	static std::chrono::milliseconds lastTapTime = std::chrono::milliseconds{0};
+
+	if (TimeWrapper::milliseconds() > lastTapTime + Options::kTimeBetweenTaps) {
+		lastTapTime = TimeWrapper::milliseconds();
+
+		Event ev;
+		ev.type = EventType::ToneBuzzerSignal;
+		ev.data.buzToneSignal = ToneBuzzerSignal::Touch;
+		EventBus::throwEvent(&ev, observer);
+	}
 }
 
 #ifdef __cplusplus
