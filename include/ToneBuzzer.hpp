@@ -9,6 +9,7 @@
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
 #include "TimeWrapper.hpp"
+#include "Utils/StaticQueue.hpp"
 #include <chrono>
 
 #ifndef SOURCES_TONEBUZZER_HPP_
@@ -59,8 +60,10 @@ private:
 	uint32_t noteCounter;
 	uint8_t volume;
 
+	StaticQueue<ToneBuzzerSignal, 8> signalQueue;
+
 	void setTone(Tones aTone, std::chrono::milliseconds aCurrentTime, std::chrono::milliseconds aPeriod);
-	void mute();
+	void mute(std::chrono::milliseconds aCurrentTime);
 
 	// Sound sequences
 	void playEnablingSound(std::chrono::milliseconds aCurrentTime);
