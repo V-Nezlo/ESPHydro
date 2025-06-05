@@ -9,6 +9,17 @@
 #include "MasterMonitor.hpp"
 #include "DS3231.hpp"
 
+#ifndef AUTO_YEAR
+  #define AUTO_YEAR "2025"
+  #define AUTO_MONTH "7"
+  #define AUTO_MDAY "3"
+  #define AUTO_WDAY "2"
+
+  #define AUTO_HOUR "10"
+  #define AUTO_MIN "11"
+  #define AUTO_SEC "12"
+#endif
+
 DS3231::DS3231(uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin) : 
 	dev{}, 
 	lastReadTime{0},

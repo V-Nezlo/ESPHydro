@@ -15,6 +15,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef AUTO_VERSION
+  #define AUTO_VERSION "Debug build"
+#endif
+
 /**********************
  *      Типы
  **********************/
