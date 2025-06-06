@@ -34,8 +34,7 @@ public:
 	void doTasks()
 	{
 		for (auto &task : tasks) {
-			const auto time = TimeWrapper::milliseconds();
-			task->process(time);
+			task->process(TimeWrapper::milliseconds());
 		}
 	}
 
