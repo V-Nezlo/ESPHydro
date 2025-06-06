@@ -1699,7 +1699,6 @@ void menuCreate(lv_obj_t *parent)
 	// Настройка громкости бузёра
 	buzzerVolumeSlider = createSlider(section, NULL, "Buzzer volume", 0, 100, 50);
 	lv_obj_add_event_cb(buzzerVolumeSlider, volumeSliderEventHandler, LV_EVENT_VALUE_CHANGED, NULL);
-	lv_menu_separator_create(section);
 
 	// Настройка  текущего времени
 	lv_obj_t *setTimeBaseText = createText(section, NULL, "Current time", LV_MENU_ITEM_BUILDER_VARIANT_1);
@@ -1718,16 +1717,6 @@ void menuCreate(lv_obj_t *parent)
 	lv_label_set_text_static(setTimeLabel, "Configure current time");
 	lv_obj_center(setTimeLabel);
 
-	lv_menu_separator_create(section);
-
-	lv_obj_t *mqttConfigureButton = lv_btn_create(section);
-	lv_obj_set_size(mqttConfigureButton, 314, 35);
-	lv_obj_add_state(mqttConfigureButton, LV_STATE_DISABLED);
-
-	lv_obj_t *mqttConfigureLabel = lv_label_create(mqttConfigureButton);
-	lv_label_set_text_static(mqttConfigureLabel, "Configure connections");
-	lv_obj_center(mqttConfigureLabel);
-
 	// ******************************** МЕНЮ СЕРВИСА **********************************
 	subManualPage = lv_menu_page_create(menu, NULL);
 	lv_obj_set_style_pad_hor(subManualPage, lv_obj_get_style_pad_left(lv_menu_get_main_header(menu), 0), 0);
@@ -1739,10 +1728,20 @@ void menuCreate(lv_obj_t *parent)
 	lowerCalibButton = lv_btn_create(section);
 	lv_obj_set_size(lowerCalibButton, 314, 35);
 	lv_obj_t *lowerCalibButtonLabel = lv_label_create(lowerCalibButton);
-	lv_label_set_text_static(lowerCalibButtonLabel, "Calibrate LOWER");
+	lv_label_set_text_static(lowerCalibButtonLabel, "Calibrate menu");
 	lv_obj_align_to(lowerCalibButtonLabel, lowerCalibButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(lowerCalibButton, serviceEventHandler, LV_EVENT_CLICKED, NULL);
 	lv_obj_add_event_cb(lowerCalibButton, processTap, LV_EVENT_CLICKED, NULL);
+
+	lv_menu_separator_create(section);
+
+	lv_obj_t *mqttConfigureButton = lv_btn_create(section);
+	lv_obj_set_size(mqttConfigureButton, 314, 35);
+	lv_obj_add_state(mqttConfigureButton, LV_STATE_DISABLED);
+
+	lv_obj_t *mqttConfigureLabel = lv_label_create(mqttConfigureButton);
+	lv_label_set_text_static(mqttConfigureLabel, "Configure connections");
+	lv_obj_center(mqttConfigureLabel);
 
 	// Включение - выключение логгирования
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
