@@ -91,7 +91,6 @@ public:
 		blue{aBlue, aLevel},
 		red{aRed, aLevel}
 	{
-		green.setState(SmartLed::LedState::SlowBlinking);
 	}
 
 	void process(milliseconds aCurrentTime) override

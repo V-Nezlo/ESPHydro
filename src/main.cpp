@@ -89,6 +89,7 @@ void app_main()
 	EventBus::registerObserver(&pumpController);
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&buzzController);
+	EventBus::registerObserver(&ledController);
 	EventBus::registerObserver(&LowerMonitor::instance());
 	EventBus::registerObserver(&UpperMonitor::instance());
 	EventBus::registerObserver(&MasterMonitor::instance());

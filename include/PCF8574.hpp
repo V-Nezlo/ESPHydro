@@ -20,7 +20,7 @@
 class PCF8574 : public AbstractLinearTask {
 public:
 	PCF8574(uint8_t aAddr, uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin):
-	updateTime{250},
+	updateTime{100},
 	dev{},
 	present{false}
 	{
