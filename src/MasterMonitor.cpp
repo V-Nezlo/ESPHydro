@@ -11,13 +11,12 @@ MasterMonitor &MasterMonitor::instance()
 }
 
 MasterMonitor::MasterMonitor():
-	BaseMonitor(DeviceType::Master, DeviceHealth::DeviceWarning),
+	BaseMonitor(DeviceType::Master, DeviceHealth::DeviceDisabled),
 	nextSignalTime{0}
 {}
 
 void MasterMonitor::invoke()
 {
-	health = DeviceHealth::DeviceWorking;
 	updateHealth();
 }
 
