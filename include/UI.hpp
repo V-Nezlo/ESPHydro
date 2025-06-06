@@ -79,8 +79,7 @@ public:
 	{
 		assert(mutex != nullptr);
 
-		switch (e->type) 
-		{
+		switch (e->type) {
 		case EventType::UpdateUpperData: {
 			MutexLock lock(*mutex);
 			updateUpperData(&e->data.upperData);

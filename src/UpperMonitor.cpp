@@ -16,6 +16,9 @@ EventResult UpperMonitor::handleEvent(Event *e) {
 		case EventType::RsDeviceDetached:
 			handleDeviceDetached(e->data.device);
 			return EventResult::PASS_ON;
+		case EventType::RsDeviceAttached:
+			handleDeviceAttached(e->data.device);
+			return EventResult::PASS_ON;
 		default:
 			return EventResult::IGNORED;
 	}

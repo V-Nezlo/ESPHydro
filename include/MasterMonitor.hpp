@@ -10,6 +10,7 @@
 #define SOURCES_MASTERMONITOR_HPP_
 
 #include "BaseMonitor.hpp"
+#include "LinearSched.hpp"
 
 enum class MasterFlags : uint32_t {
 	RTCError               = 0x01,
@@ -22,10 +23,12 @@ enum class MasterFlags : uint32_t {
 	DeviceMismatch         = 0x80
 };
 
-class MasterMonitor : public BaseMonitor<MasterFlags> {
+class MasterMonitor : public BaseMonitor<MasterFlags>, public AbstractLinearTask {
+	std::chrono::seconds nextSignalTime;
 public:
 	static MasterMonitor& instance();
 	EventResult handleEvent(Event *e) override;
+	void process(std::chrono::milliseconds aCurrentTime) override;
 	void invoke();
 
 protected:

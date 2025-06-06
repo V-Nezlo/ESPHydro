@@ -19,7 +19,7 @@ class BaseMonitor : public AbstractEventObserver {
 private:
 	using FlagValueType = std::underlying_type_t<FlagType>;
 public:
-	void setFlag(FlagType aFlag) 
+	void setFlag(FlagType aFlag)
 	{
 		flags |= static_cast<FlagValueType>(aFlag);
 		updateHealth();
@@ -31,17 +31,17 @@ public:
 		updateHealth();
 	}
 
-	bool hasFlag(FlagType aFlag) const 
+	bool hasFlag(FlagType aFlag) const
 	{
 		return flags & static_cast<FlagValueType>(aFlag);
 	}
 
-	FlagValueType getFlags() const 
+	FlagValueType getFlags() const
 	{
 		return flags;
 	}
 
-	DeviceHealth getHealth() const 
+	DeviceHealth getHealth() const
 	{
 		return health;
 	}
@@ -50,15 +50,15 @@ public:
 		return health != DeviceHealth::DeviceDisabled;
 	}
 
-	void updateFromTelemetry(FlagValueType aTelemetryFlags) 
+	void updateFromTelemetry(FlagValueType aTelemetryFlags)
 	{
 		flags = aTelemetryFlags;
 		updateHealth();
 	}
 
 protected:
-	BaseMonitor(DeviceType aDeviceType, DeviceHealth aInitialHealth = DeviceHealth::DeviceDisabled): 
-		flags(0), 
+	BaseMonitor(DeviceType aDeviceType, DeviceHealth aInitialHealth = DeviceHealth::DeviceDisabled):
+		flags(0),
 		health(aInitialHealth),
 		deviceType(aDeviceType)
 	{}
@@ -66,13 +66,13 @@ protected:
 	virtual const HealthRule* getRules() const = 0;
 	virtual size_t getRulesCount() const = 0;
 
-	void updateHealth() 
+	void updateHealth()
 	{
 		DeviceHealth newHealth = DeviceHealth::DeviceWorking;
-		
+
 		const HealthRule* rules = getRules();
 		size_t rulesCount = getRulesCount();
-		
+
 		for (size_t i = 0; i < rulesCount; ++i) {
 			if (flags & rules[i].mask) {
 				newHealth = rules[i].health;
@@ -86,7 +86,7 @@ protected:
 		}
 	}
 
-	void handleDeviceDetached(DeviceType aDetachedDeviceType) 
+	void handleDeviceDetached(DeviceType aDetachedDeviceType)
 	{
 		if (aDetachedDeviceType == deviceType) {
 			flags = 0;
@@ -95,21 +95,14 @@ protected:
 		}
 	}
 
-private:
-	void sendNewHealthToEventBus() 
+	void handleDeviceAttached(DeviceType aAttachedDeviceType)
 	{
-		// Отправим новый health
-		Event ev;
-		ev.type = EventType::UpdateDeviceHealth;
-		ev.data.updateHealth.type = deviceType;
-		ev.data.updateHealth.health = health;
-		EventBus::throwEvent(&ev, nullptr);
-
-		// Отправим звуковой сигнал исходя из нового health
-		Event ev2;
-		ev2.type = EventType::ToneBuzzerSignal;
-		ev2.data.buzToneSignal = getSignalForHealth(health);
-		EventBus::throwEvent(&ev2, nullptr);
+		if (aAttachedDeviceType == deviceType) {
+			Event ev2;
+			ev2.type = EventType::ToneBuzzerSignal;
+			ev2.data.buzToneSignal = ToneBuzzerSignal::Connected;
+			EventBus::throwEvent(&ev2, nullptr);
+		}
 	}
 
 	static inline ToneBuzzerSignal getSignalForHealth(DeviceHealth aHealth)
@@ -128,6 +121,23 @@ private:
 		}
 
 		return ToneBuzzerSignal::Information;
+	}
+
+private:
+	void sendNewHealthToEventBus()
+	{
+		// Отправим новый health
+		Event ev;
+		ev.type = EventType::UpdateDeviceHealth;
+		ev.data.updateHealth.type = deviceType;
+		ev.data.updateHealth.health = health;
+		EventBus::throwEvent(&ev, nullptr);
+
+		// Отправим звуковой сигнал исходя из нового health
+		Event ev2;
+		ev2.type = EventType::ToneBuzzerSignal;
+		ev2.data.buzToneSignal = getSignalForHealth(health);
+		EventBus::throwEvent(&ev2, nullptr);
 	}
 
 protected:
