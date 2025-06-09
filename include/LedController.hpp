@@ -12,6 +12,8 @@
 #include "AbstractClasses.hpp"
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
+#include "MasterMonitor.hpp"
+#include "Types.hpp"
 #include <chrono>
 
 class LedController : public AbstractEventObserver, public AbstractLinearTask {
@@ -89,7 +91,8 @@ public:
 	LedController(AbstractGpio *aGreen, AbstractGpio *aBlue, AbstractGpio *aRed, bool aLevel):
 		green{aGreen, aLevel},
 		blue{aBlue, aLevel},
-		red{aRed, aLevel}
+		red{aRed, aLevel},
+		pumpMode{PumpModes::EBBNormal}
 	{
 	}
 
@@ -105,25 +108,12 @@ public:
 		switch(e->type) {
 			case EventType::UpdateDeviceHealth:
 				if (e->data.updateHealth.type == DeviceType::Master) {
-					switch(e->data.updateHealth.health) {
-						case DeviceHealth::DeviceWorking:
-							green.setState(SmartLed::LedState::SlowBlinking);
-							red.setState(SmartLed::LedState::Disabled);
-							break;
-						case DeviceHealth::DeviceWarning:
-							green.setState(SmartLed::LedState::FastBlinking);
-							red.setState(SmartLed::LedState::Disabled);
-							break;
-						case DeviceHealth::DeviceError:
-							// Fallthrough
-						case DeviceHealth::DeviceCritical:
-							red.setState(SmartLed::LedState::FastBlinking);
-							green.setState(SmartLed::LedState::Disabled);
-							break;
-						default:
-							break;
-					}
+					update();
 				} return EventResult::PASS_ON;
+			case EventType::SettingsUpdated:
+				pumpMode = e->data.settings.pump.mode;
+				update();
+				return EventResult::PASS_ON;
 			default:
 				return EventResult::IGNORED;
 		}
@@ -133,6 +123,35 @@ private:
 	SmartLed green;
 	SmartLed blue;
 	SmartLed red;
+
+	PumpModes pumpMode;
+
+	void update()
+	{
+		switch(MasterMonitor::instance().getHealth()) {
+			case DeviceHealth::DeviceWorking:
+				if (pumpMode == PumpModes::Maintance) {
+					green.setState(SmartLed::LedState::SlowBlinking);
+				} else {
+					green.setState(SmartLed::LedState::Steady);
+				}
+
+				red.setState(SmartLed::LedState::Disabled);
+				break;
+			case DeviceHealth::DeviceWarning:
+				green.setState(SmartLed::LedState::FastBlinking);
+				red.setState(SmartLed::LedState::Disabled);
+			break;
+				case DeviceHealth::DeviceError:
+				// Fallthrough
+			case DeviceHealth::DeviceCritical:
+				red.setState(SmartLed::LedState::FastBlinking);
+				green.setState(SmartLed::LedState::Disabled);
+				break;
+			default:
+				break;
+		}
+	}
 };
 
 #endif // INCLUDE_LEDCONTROLLER_HPP_
