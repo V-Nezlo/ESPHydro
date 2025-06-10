@@ -46,6 +46,11 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 			currentSignal = e->data.buzToneSignal;
 			noteCounter = 0;
 		} else {
+			// Если в очереди уже есть тап - не добавляем новый
+			if (e->data.buzToneSignal == ToneBuzzerSignal::Touch && signalQueue.front() == ToneBuzzerSignal::Touch) {
+				return EventResult::HANDLED;
+			}
+			// Остальные добавляем без проверок
 			signalQueue.push(e->data.buzToneSignal);
 		}
 

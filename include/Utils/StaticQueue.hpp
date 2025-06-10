@@ -55,6 +55,22 @@ public:
 		head = tail = count = 0;
 	}
 
+	bool contains(const T& item) const 
+	{
+		for (size_t i = 0; i < count; ++i) {
+			if (buffer[(head + i) % Size] == item) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	T front() const 
+	{
+		return buffer[head];
+	}
+
 private:
 	std::array<T, Size> buffer;
 	size_t head;
