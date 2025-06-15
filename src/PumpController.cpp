@@ -140,7 +140,7 @@ bool PumpController::permitForAction() const
 	return currentWaterLevel > Options::kMinWaterLevelForWork;
 }
 
-/// @brief EBB режим, вкл выкл насоса по времени и проверки на флудинг
+/// @brief EBB режим, вкл выкл насоса по времени
 void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime)
 {
 	switch (pumpState) {
@@ -153,26 +153,15 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 			break;
 		case PumpState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
-				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;
-	}
-
-	if (aCurrentTime > lastChecksTime + std::chrono::milliseconds{200}) {
-		lastChecksTime = aCurrentTime;
-		if (pumpState == PumpState::PumpOn && aCurrentTime > waterFillingTimer) {
-			setPumpState(PumpState::PumpOff);
-			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-		} else if (pumpState == PumpState::PumpOn && !permitForAction()) {
-			setPumpState(PumpState::PumpOff);
-			MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
-		}
 	}
 }
 
@@ -251,6 +240,7 @@ void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
