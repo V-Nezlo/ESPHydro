@@ -11,6 +11,7 @@
 
 #include "EventBus.hpp"
 #include "LinearSched.hpp"
+#include "MutexLock.hpp"
 #include "TimeWrapper.hpp"
 #include "Types.hpp"
 #include "HydroRSTypes.hpp"
@@ -46,10 +47,12 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 	};
 
 	std::array<TelemetryUnit, 2> devices;
+	SemaphoreHandle_t mutex;	
 public:
 	HydroRS(Interface &aInterface, uint8_t aNodeUID):
 		BaseType{aInterface, aNodeUID},
-		devices{TelemetryUnit{DeviceType::Lower}, TelemetryUnit{DeviceType::Upper}}
+		devices{TelemetryUnit{DeviceType::Lower}, TelemetryUnit{DeviceType::Upper}},
+		mutex{xSemaphoreCreateMutex()}
 	{
 	}
 
@@ -114,6 +117,7 @@ public:
 		static uint8_t deviceToCall{0};
 
 		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{100}) {
+			MutexLock lock(mutex);
 			processDevice(devices[deviceToCall], aCurrentTime);
 
 			if (deviceToCall == (devices.size() - 1)){
@@ -261,7 +265,8 @@ public:
 	EventResult handleEvent(Event *e) override
 	{
 		switch (e->type) {
-			case EventType::ActionRequest:
+			case EventType::ActionRequest: {
+				MutexLock lock(mutex);
 				switch (e->data.action) {
 					case Action::TurnPumpOn:
 						sendCommand(DeviceType::Lower, Commands::SetPumpState, 1);
@@ -293,6 +298,7 @@ public:
 
 					default:
 						return EventResult::IGNORED;
+					}
 				}
 
 			default:
