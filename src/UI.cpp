@@ -1411,7 +1411,7 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(pumpOnTa, "123");
 	lv_obj_set_size(pumpOnTa, 200, 40);
 	lv_obj_add_event_cb(pumpOnTa, textAreaCommonCallback, LV_EVENT_ALL, pumpSettingsScr);
-	lv_obj_add_event_cb(pumpOnTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(pumpOnTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	// Панель для установки времени PumpOff
 	pumpOffTa = lv_textarea_create(pumpSettingsScr);
@@ -1422,7 +1422,7 @@ void createAdditionalPanels()
 	lv_textarea_set_placeholder_text(pumpOffTa, "456");
 	lv_obj_set_size(pumpOffTa, 200, 40);
 	lv_obj_add_event_cb(pumpOffTa, textAreaCommonCallback, LV_EVENT_ALL, pumpSettingsScr);
-	lv_obj_add_event_cb(pumpOffTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(pumpOffTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	lv_obj_t *pumpOnSetText = lv_label_create(pumpSettingsScr);
 	lv_label_set_text_static(pumpOnSetText, "Pump on time: ");
@@ -1462,7 +1462,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOnHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOnHourTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
 	lv_obj_add_event_cb(lampOnHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
-	lv_obj_add_event_cb(lampOnHourTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(lampOnHourTa, processTap, LV_EVENT_CLICKED, NULL);
 	// Панель минут
 	lampOnMinTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOnMinTa, "0123456789");
@@ -1474,7 +1474,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOnMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOnMinTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
 	lv_obj_add_event_cb(lampOnMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
-	lv_obj_add_event_cb(lampOnMinTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(lampOnMinTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	lampOffHourTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOffHourTa, "0123456789");
@@ -1486,7 +1486,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOffHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOffHourTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
 	lv_obj_add_event_cb(lampOffHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
-	lv_obj_add_event_cb(lampOffHourTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(lampOffHourTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	lampOffMinTa = lv_textarea_create(lampSettingsScr);
 	lv_textarea_set_accepted_chars(lampOffMinTa, "0123456789");
@@ -1498,7 +1498,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(lampOffMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(lampOffMinTa, textAreaCommonCallback, LV_EVENT_ALL, lampSettingsScr);
 	lv_obj_add_event_cb(lampOffMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
-	lv_obj_add_event_cb(lampOffMinTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(lampOffMinTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	// Align для всех элементов
 	lv_obj_align_to(lampSettingsOnLabel, lampSettingsScr, LV_ALIGN_TOP_LEFT, 10, 12);
@@ -1527,7 +1527,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeHourTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeHourTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
 	lv_obj_add_event_cb(setTimeHourTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingHourEnumerator);
-	lv_obj_add_event_cb(setTimeHourTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(setTimeHourTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	setTimeMinTa = lv_textarea_create(curTimeSettingsScr);
 	lv_textarea_set_accepted_chars(setTimeMinTa, "0123456789");
@@ -1539,7 +1539,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeMinTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeMinTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
 	lv_obj_add_event_cb(setTimeMinTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
-	lv_obj_add_event_cb(setTimeMinTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(setTimeMinTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	setTimeSecTa = lv_textarea_create(curTimeSettingsScr);
 	lv_textarea_set_accepted_chars(setTimeSecTa, "0123456789");
@@ -1551,7 +1551,7 @@ void createAdditionalPanels()
 	lv_obj_set_size(setTimeSecTa, CLOCK_SET_TA_WIDHT, CLOCK_SET_TA_HEIGH);
 	lv_obj_add_event_cb(setTimeSecTa, textAreaCommonCallback, LV_EVENT_ALL, curTimeSettingsScr);
 	lv_obj_add_event_cb(setTimeSecTa, formattedAreaCommonCallback, LV_EVENT_VALUE_CHANGED, &kFormattingMinSecEnumerator);
-	lv_obj_add_event_cb(setTimeSecTa, processTap, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(setTimeSecTa, processTap, LV_EVENT_CLICKED, NULL);
 
 	sendNewTimeButton = lv_btn_create(curTimeSettingsScr);
 	lv_obj_set_size(sendNewTimeButton, 120, 40);
@@ -1621,7 +1621,7 @@ void menuCreate(lv_obj_t *parent)
 	lv_label_set_text_static(pumpOnButtonLabel, "Configure pump timings");
 	lv_obj_align_to(pumpOnButtonLabel, pumpConfigButton, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_add_event_cb(pumpConfigButton, customTextAreaEvent, LV_EVENT_CLICKED, pumpSettingsScr);
-	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_VALUE_CHANGED, NULL);
+	lv_obj_add_event_cb(pumpConfigButton, processTap, LV_EVENT_CLICKED, NULL);
 
 	// Выпадающий список с типами гидропоник
 	createText(section, NULL, "Hydroponic type", LV_MENU_ITEM_BUILDER_VARIANT_1);
