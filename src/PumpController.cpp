@@ -23,10 +23,12 @@ PumpController::PumpController() :
 	lastSwingTime{0},
 	waterFillingTimer{0},
 	lastChecksTime{0},
+	fillingCheckEn{false},
 	enabled{false},
 	pumpOnTime{0},
 	pumpOffTime{0},
 	swingTime{0},
+	maxFloodingTime{0},
 	mutex{xSemaphoreCreateMutex()}
 {
 }
@@ -41,6 +43,7 @@ EventResult PumpController::handleEvent(Event *e)
 			pumpOnTime = std::chrono::seconds(e->data.settings.pump.onTime);
 			pumpOffTime = std::chrono::seconds(e->data.settings.pump.offTime);
 			swingTime = std::chrono::seconds(e->data.settings.pump.swingTime);
+			maxFloodingTime = std::chrono::seconds{e->data.settings.pump.maxFloodingTime};
 			updateMode(e->data.settings.pump.mode);
 			} return EventResult::PASS_ON;
 		case EventType::UpdateLowerData:
@@ -181,18 +184,24 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
+
+					// Проверим время заполнения бака один раз после осушения
+					waterFillingTimer = aCurrentTime + maxFloodingTime;
+					fillingCheckEn = true;
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
 			}
 			break;
-	}
+		}
 
 	if (aCurrentTime > lastChecksTime + std::chrono::milliseconds{200}) {
 		lastChecksTime = aCurrentTime;
 
 		// Проверка на наличие датчика поплавого уровня, если нет - будет работать как обычный режим
-		if (!UpperMonitor::instance().isPresent()) {
+		// Но проверка должна быть отложенной поскольку аппер не сразу появляется в системе
+		if (MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && !UpperMonitor::instance().isPresent()) {
 			MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
 
 			if (pumpState == PumpState::PumpOn) {
@@ -202,19 +211,23 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			return;
 		}
 
+		// Алгоритм свинга
 		if (pumpState == PumpState::PumpOn) {
 			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
 				setPumpState(PumpState::PumpOn);
 				swingState = SwingState::SwingOn;
-				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
 			} else if (swingState == SwingState::SwingOn && upperState == true) {
 				setPumpState(PumpState::PumpOff);
 				swingState = SwingState::SwingOff;
 				lastSwingTime = aCurrentTime;
-			} else if (swingState == SwingState::SwingOn && aCurrentTime > waterFillingTimer) {
-				MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-				setPumpState(PumpState::PumpOff);
-				swingState = SwingState::SwingOff;
+
+				// Вот тут считаем что бак заполнен, проверим за сколько он заполнился
+				if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
+					MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+				} else {
+					MasterMonitor::instance().clearFlag(MasterFlags::TankNotFloodedInTime);
+					fillingCheckEn = false;
+				}
 			} else if (swingState == SwingState::SwingOn && !permitForAction()) {
 				setPumpState(PumpState::PumpOff);
 				swingState = SwingState::SwingOff;
@@ -277,7 +290,7 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 		case PumpState::PumpOff:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
-				waterFillingTimer = aCurrentTime + Options::kMaxTimeForFullFlooding;
+				waterFillingTimer = aCurrentTime + maxFloodingTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
 				} else {

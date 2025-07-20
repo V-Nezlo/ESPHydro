@@ -92,7 +92,8 @@ public:
 		green{aGreen, aLevel},
 		blue{aBlue, aLevel},
 		red{aRed, aLevel},
-		pumpMode{PumpModes::EBBNormal}
+		pumpMode{PumpModes::EBBNormal},
+		recoverTime{0}
 	{
 	}
 
@@ -101,6 +102,12 @@ public:
 		green.process(aCurrentTime);
 		blue.process(aCurrentTime);
 		red.process(aCurrentTime);
+
+		// Обновим состояние светодиодов в любом случае для избежания залипаний
+		if (aCurrentTime > recoverTime) {
+			recoverTime = aCurrentTime + Options::kLedRecoverTime;
+			update();
+		}
 	}
 
 	EventResult handleEvent(Event *e) override
@@ -125,7 +132,8 @@ private:
 	SmartLed red;
 
 	PumpModes pumpMode;
-
+	milliseconds recoverTime;
+	
 	void update()
 	{
 		switch(MasterMonitor::instance().getHealth()) {

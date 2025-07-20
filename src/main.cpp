@@ -52,6 +52,13 @@ void displayTaskFunc(void *pvParameters)
 	}
 }
 
+void initTaskFunc(void *pvParameters)
+{
+	vTaskDelay(pdMS_TO_TICKS(15000));
+	MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
+	vTaskDelete(NULL);
+}
+
 extern "C"
 void app_main()
 {
@@ -116,6 +123,10 @@ void app_main()
 	TaskHandle_t displayTask;
 	xTaskCreatePinnedToCore(displayTaskFunc, "Display", 8 * 1024, &lvglMutex, 5, &displayTask, 1);
 	esp_task_wdt_add(displayTask);
+
+	// Таска чтобы делать какие либо init штуки
+	TaskHandle_t initTask;
+	xTaskCreate(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask);
 
 	Event ev;
 	ev.type = EventType::ToneBuzzerSignal;

@@ -17,8 +17,8 @@ namespace Options {
 static constexpr std::chrono::milliseconds kShortBeepDuraction{100};
 static constexpr std::chrono::milliseconds kLongBeepDuraction{500};
 
-static constexpr std::chrono::seconds kMaxTimeForFullFlooding{30}; ///< Время, за которое рабочий резервуар должен успеть полностью заполниться
-static constexpr uint8_t kMinWaterLevelForWork{20}; ///< Минимальный уровень воды для работы
+static constexpr uint8_t kMinWaterLevelForWork{10}; ///< Минимальный уровень воды для работы
+static constexpr std::chrono::milliseconds kLedRecoverTime{1000}; ///< Время восстановления светодиода
 
 static constexpr std::chrono::milliseconds kTimeBetweenSignals{500}; ///< Время между сигналами
 static constexpr std::chrono::milliseconds kTimeBetweenTaps{250}; 

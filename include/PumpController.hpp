@@ -51,11 +51,13 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	std::chrono::milliseconds lastSwingTime;
 	std::chrono::milliseconds waterFillingTimer;
 	std::chrono::milliseconds lastChecksTime;
+	bool fillingCheckEn;
 
 	bool enabled;
 	std::chrono::seconds pumpOnTime;
 	std::chrono::seconds pumpOffTime;
 	std::chrono::seconds swingTime;
+	std::chrono::seconds maxFloodingTime;
 
 	// Пояснение: некоторые поля этого класса являются разделяемым ресурсом
 	// Поэтому, пока ресуры класса модифицируются UI необходимо отключать работу контроллера насоса

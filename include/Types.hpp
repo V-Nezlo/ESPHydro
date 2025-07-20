@@ -58,6 +58,7 @@ struct PumpConfiguration {
 	uint16_t offTime;
 	PumpModes mode;
 	uint8_t swingTime;
+	uint16_t maxFloodingTime;
 };
 
 struct LampConfiguration {

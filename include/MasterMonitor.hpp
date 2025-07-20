@@ -13,14 +13,15 @@
 #include "LinearSched.hpp"
 
 enum class MasterFlags : uint32_t {
-	RTCError               = 0x01,
-	InternalMemError       = 0x02,
-	RSBusError             = 0x04,
-	PumpNotOperate         = 0x08,
-	TankNotFloodedInTime   = 0x10,
-	Leak                   = 0x20,
-	PCFError               = 0x40,
-	DeviceMismatch         = 0x80
+	RTCError               = 1 << 0,
+	InternalMemError       = 1 << 1,
+	RSBusError             = 1 << 2,
+	PumpNotOperate         = 1 << 3,
+	TankNotFloodedInTime   = 1 << 4,
+	Leak                   = 1 << 5,
+	PCFError               = 1 << 6,
+	DeviceMismatch         = 1 << 7,
+	SystemInitialized      = 1 << 8,
 };
 
 class MasterMonitor : public BaseMonitor<MasterFlags>, public AbstractLinearTask {
