@@ -11,10 +11,12 @@
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
+#include <esp_task_wdt.h>
 
-class Cli : public AbstractLinearTask, public AbstractEventObserver {
+class Cli : public AbstractEventObserver {
 	std::chrono::milliseconds nextCallTime;
 	static Settings settings;
+	static TaskHandle_t taskHandle;
 public:
 	Cli() : nextCallTime(std::chrono::milliseconds{0}) 
 	{
@@ -32,31 +34,33 @@ public:
 		}
 	}
 
-	void process(std::chrono::milliseconds aCurrentTime) override
+	static void task(void *pvParameters)
 	{
-		if (aCurrentTime < nextCallTime) {
-			return;
-		}
+		while(true) {
+			char* line = linenoise(">> ");
+			if (line == NULL) continue;
 
-		nextCallTime = aCurrentTime + std::chrono::milliseconds{50};
+			// RAII
+			std::unique_ptr<char, decltype(&free)> ptr(line, &free);
 
-		char* line = linenoise(">> ");
-		if (line == NULL) return;
+			int ret;
+			esp_err_t err = esp_console_run(line, &ret);
+			if (err == ESP_ERR_NOT_FOUND) {
+				printf("Unknown command\n");
+			} else if (err != ESP_OK) {
+				printf("Command execute error: %s\n", esp_err_to_name(err));
+			}
 
-		// RAII
-		std::unique_ptr<char, decltype(&free)> ptr(line, &free);
-
-		int ret;
-		esp_err_t err = esp_console_run(line, &ret);
-		if (err == ESP_ERR_NOT_FOUND) {
-			printf("Unknown command\n");
-		} else if (err != ESP_OK) {
-			printf("Command execute error: %s\n", esp_err_to_name(err));
+			vTaskDelay(50 / portTICK_PERIOD_MS);
 		}
 	}
 
 	static void init()
 	{
+		fflush(stdout);
+		fsync(fileno(stdout));
+		setvbuf(stdin, NULL, _IONBF, 0);
+
 		const uart_config_t uart_config = {
 			115200,
 			UART_DATA_8_BITS,
@@ -68,13 +72,24 @@ public:
 			{0, 0}
 			};
 
-		uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
+		uart_driver_install(UART_NUM_0, 148, 148, 0, NULL, 0);
 		uart_param_config(UART_NUM_0, &uart_config);
 		uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 		uart_vfs_dev_use_driver(UART_NUM_0);
 
+		uart_vfs_dev_port_set_rx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CR);
+		uart_vfs_dev_port_set_tx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CRLF);
+		linenoiseSetMultiLine(1);
+		linenoiseSetCompletionCallback(&esp_console_get_completion);
+		linenoiseSetHintsCallback((linenoiseHintsCallback *) &esp_console_get_hint);
+		linenoiseSetMaxLineLen(128);  // как в console_config
+		linenoiseAllowEmpty(false);
+
+		if (linenoiseProbe()) {
+			linenoiseSetDumbMode(1);
+		}
 			esp_console_config_t console_config = {
-				.max_cmdline_length = 256,
+				.max_cmdline_length = 128,
 				.max_cmdline_args = 8,
 				.heap_alloc_caps = MALLOC_CAP_SPIRAM,
 				.hint_color = 32,
@@ -82,9 +97,9 @@ public:
 
 		esp_console_init(&console_config);
 		linenoiseSetCompletionCallback(NULL);
-		linenoiseHistorySetMaxLen(100);
 
 		initCommandTable();
+		xTaskCreate(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle);
 	}
 private:
 
@@ -109,6 +124,7 @@ private:
 
 	static int reboot_func(int argc, char **argv)
 	{
+		vTaskDelete(taskHandle);  // Убить текущую задачу
 		esp_restart();
 		return ESP_OK;
 	}
@@ -142,5 +158,6 @@ private:
 };
 
 Settings Cli::settings;
+TaskHandle_t Cli::taskHandle;
 
 #endif

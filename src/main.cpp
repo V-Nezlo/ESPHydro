@@ -112,7 +112,6 @@ void app_main()
 	sched.registerTask(&smartBus);
 	sched.registerTask(&ledController);
 	sched.registerTask(&pcf);
-	sched.registerTask(&cli);
 	sched.registerTask(&MasterMonitor::instance());
 
 	// Включаем и отрисовываем экран
