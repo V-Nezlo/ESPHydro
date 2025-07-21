@@ -9,6 +9,7 @@
 #ifndef INCLUDE_LEDCONTROLLER_HPP_
 #define INCLUDE_LEDCONTROLLER_HPP_
 
+#include "Options.hpp"
 #include "AbstractClasses.hpp"
 #include "EventBus.hpp"
 #include "LinearSched.hpp"

@@ -27,16 +27,19 @@ public:
 
 	bool firstLoad()
 	{
+		Event ev;
+		ev.type = EventType::SettingsUpdated;
+		ev.data.settings = getDefault();
+
 		Settings loaded;
 		if (NVStorage::readSettings(&loaded)) {
-			Event ev;
-			ev.type = EventType::SettingsUpdated;
 			ev.data.settings = loaded;
-			EventBus::throwEvent(&ev, this);
-			return true;
 		} else {
-			return false;
+			ESP_LOGI("Params", "Applying defaults...");
 		}
+
+		EventBus::throwEvent(&ev, this);
+		return true;
 	}
 
 	EventResult handleEvent(Event *e) override
@@ -48,6 +51,31 @@ public:
 			default:
 				return EventResult::IGNORED;
 		}
+	}
+private:
+	Settings getDefault()
+	{
+		Settings def;
+		def.pump.enabled = false;
+		def.pump.maxFloodingTime = 2000;
+		def.pump.mode = PumpModes::Maintance;
+		def.pump.onTime = 1000;
+		def.pump.offTime = 2000;
+		def.pump.swingTime = 5;
+
+		def.lamp.enabled = true;
+		def.lamp.lampOnHour = 10;
+		def.lamp.lampOnMin = 0;
+		def.lamp.lampOffHour = 21;
+		def.lamp.lampOffMin = 0;
+
+		def.common.alarmSoundEnabled = true;
+		def.common.tapSoundEnabled = true;
+		def.common.loggingEnabled = false;
+		def.common.displayBrightness = 100;
+		def.common.buzzerVolume = 100;
+
+		return def;
 	}
 };
 

@@ -1,4 +1,5 @@
 #include "ConfigStorage.hpp"
+#include "CLI.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
 #include "Gpio.hpp"
@@ -87,6 +88,7 @@ void app_main()
 	ToneBuzzer buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
 	LedController ledController{&greenLed, &blueLed, &redLed, false};
+	Cli cli;
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
@@ -97,6 +99,7 @@ void app_main()
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&buzzController);
 	EventBus::registerObserver(&ledController);
+	EventBus::registerObserver(&cli);
 	EventBus::registerObserver(&LowerMonitor::instance());
 	EventBus::registerObserver(&UpperMonitor::instance());
 	EventBus::registerObserver(&MasterMonitor::instance());
@@ -109,12 +112,16 @@ void app_main()
 	sched.registerTask(&smartBus);
 	sched.registerTask(&ledController);
 	sched.registerTask(&pcf);
+	sched.registerTask(&cli);
 	sched.registerTask(&MasterMonitor::instance());
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();
 	displayDriver.setupLvgl();
 	uiInit(&uiObserver);
+
+	// Включаем CLI
+	Cli::init();
 
 	// Загружаем параметры во все модули
 	paramStorage.firstLoad();
