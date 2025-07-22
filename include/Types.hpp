@@ -77,10 +77,16 @@ struct CommonConfiguration {
 	uint8_t buzzerVolume;
 };
 
+struct Modules {
+	bool phSensor;
+	bool ppmSensor;
+};
+
 struct Settings {
 	struct PumpConfiguration pump;
 	struct LampConfiguration lamp;
 	struct CommonConfiguration common; 
+	struct Modules modules;
 };
 
 struct Time {

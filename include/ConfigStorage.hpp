@@ -75,6 +75,9 @@ private:
 		def.common.displayBrightness = 100;
 		def.common.buzzerVolume = 100;
 
+		def.modules.phSensor = false;
+		def.modules.ppmSensor = false;
+
 		return def;
 	}
 };

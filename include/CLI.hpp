@@ -18,7 +18,7 @@ class Cli : public AbstractEventObserver {
 	static Settings settings;
 	static TaskHandle_t taskHandle;
 public:
-	Cli() : nextCallTime(std::chrono::milliseconds{0}) 
+	Cli() : nextCallTime(std::chrono::milliseconds{0})
 	{
 
 	}
@@ -57,9 +57,22 @@ public:
 
 	static void init()
 	{
+		initPeriph();
+		initLib();
+
+		esp_console_register_help_command();
+		initCommandTable();
+
+		xTaskCreate(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle);
+	}
+
+	static void initPeriph()
+	{
 		fflush(stdout);
 		fsync(fileno(stdout));
-		setvbuf(stdin, NULL, _IONBF, 0);
+
+		uart_vfs_dev_port_set_rx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CR);
+		uart_vfs_dev_port_set_tx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CRLF);
 
 		const uart_config_t uart_config = {
 			115200,
@@ -68,41 +81,43 @@ public:
 			UART_STOP_BITS_1,
 			UART_HW_FLOWCTRL_DISABLE,
 			122,
-			static_cast<uart_sclk_t>(4),
-			{0, 0}
-			};
+			UART_SCLK_REF_TICK,
+			{0, 0}};
 
-		uart_driver_install(UART_NUM_0, 148, 148, 0, NULL, 0);
-		uart_param_config(UART_NUM_0, &uart_config);
-		uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+		ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 148, 148, 0, NULL, 0));
+		ESP_ERROR_CHECK(uart_param_config(UART_NUM_0, &uart_config));
 		uart_vfs_dev_use_driver(UART_NUM_0);
 
-		uart_vfs_dev_port_set_rx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CR);
-		uart_vfs_dev_port_set_tx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CRLF);
+		setvbuf(stdin, NULL, _IONBF, 0);
+	}
+
+	static void initLib()
+	{
+		esp_console_config_t console_config = {
+			.max_cmdline_length = 128,
+			.max_cmdline_args = 8,
+			.heap_alloc_caps = MALLOC_CAP_SPIRAM,
+			.hint_color = 32,
+			.hint_bold = 0};
+
+		ESP_ERROR_CHECK(esp_console_init(&console_config));
+
 		linenoiseSetMultiLine(1);
+
 		linenoiseSetCompletionCallback(&esp_console_get_completion);
 		linenoiseSetHintsCallback((linenoiseHintsCallback *) &esp_console_get_hint);
-		linenoiseSetMaxLineLen(128);  // как в console_config
+
+		linenoiseHistorySetMaxLen(100);
+
+		linenoiseSetMaxLineLen(console_config.max_cmdline_length);
 		linenoiseAllowEmpty(false);
 
 		if (linenoiseProbe()) {
 			linenoiseSetDumbMode(1);
 		}
-			esp_console_config_t console_config = {
-				.max_cmdline_length = 128,
-				.max_cmdline_args = 8,
-				.heap_alloc_caps = MALLOC_CAP_SPIRAM,
-				.hint_color = 32,
-				.hint_bold = 0};
-
-		esp_console_init(&console_config);
-		linenoiseSetCompletionCallback(NULL);
-
-		initCommandTable();
-		xTaskCreate(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle);
 	}
 private:
-
+	// Функции
 	static int setFilTimerFunc(int argc, char **argv)
 	{
 		if (argc < 2) {
@@ -124,8 +139,44 @@ private:
 
 	static int reboot_func(int argc, char **argv)
 	{
-		vTaskDelete(taskHandle);  // Убить текущую задачу
+		vTaskDelete(taskHandle);
 		esp_restart();
+		return ESP_OK;
+	}
+
+	static int ph_sensor_state(int argc, char **argv)
+	{
+		if (argc < 2) {
+			printf("Usage: ph_sensor_state <bool>\n");
+			return ESP_ERR_INVALID_ARG;
+		}
+
+		int value = atoi(argv[1]);
+		bool state = static_cast<bool>(value);
+
+		Event ev;
+		ev.type = EventType::SettingsUpdated;
+		ev.data.settings = settings;
+		ev.data.settings.modules.phSensor = state;
+		EventBus::throwEvent(&ev);
+		return ESP_OK;
+	}
+
+	static int ppm_sensor_state(int argc, char **argv)
+	{
+		if (argc < 2) {
+			printf("Usage: ppm_sensor_state <bool>\n");
+			return ESP_ERR_INVALID_ARG;
+		}
+
+		int value = atoi(argv[1]);
+		bool state = static_cast<bool>(value);
+
+		Event ev;
+		ev.type = EventType::SettingsUpdated;
+		ev.data.settings = settings;
+		ev.data.settings.modules.ppmSensor = state;
+		EventBus::throwEvent(&ev);
 		return ESP_OK;
 	}
 
@@ -149,10 +200,29 @@ private:
 				NULL,
 				NULL,
 				NULL
-			}};
+			},
+			{
+				"ph_sensor_state",
+				"Set PH sensor state",
+				"<bool>",
+				&ph_sensor_state,
+				NULL,
+				NULL,
+				NULL
+			},
+			{
+				"ppm_sensor_state",
+				"Set PPM sensor state",
+				"<bool>",
+				&ppm_sensor_state,
+				NULL,
+				NULL,
+				NULL
+			}
+		};
 
 		for (auto &cmd : cmd_table) {
-			esp_console_cmd_register(&cmd);
+			ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 		}
 	}
 };
