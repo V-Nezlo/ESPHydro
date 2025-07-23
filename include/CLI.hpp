@@ -17,6 +17,9 @@ class Cli : public AbstractEventObserver {
 	std::chrono::milliseconds nextCallTime;
 	static Settings settings;
 	static TaskHandle_t taskHandle;
+	static std::string inputBuffer;
+	static bool commandReady;
+
 public:
 	Cli() : nextCallTime(std::chrono::milliseconds{0})
 	{
@@ -36,22 +39,54 @@ public:
 
 	static void task(void *pvParameters)
 	{
+		char buffer[256];
+
 		while(true) {
-			char* line = linenoise(">> ");
-			if (line == NULL) continue;
+			int len = uart_read_bytes(UART_NUM_0, buffer, sizeof(buffer) - 1, 10 / portTICK_PERIOD_MS);
 
-			// RAII
-			std::unique_ptr<char, decltype(&free)> ptr(line, &free);
+			if (len > 0) {
+				buffer[len] = '\0';
 
-			int ret;
-			esp_err_t err = esp_console_run(line, &ret);
-			if (err == ESP_ERR_NOT_FOUND) {
-				printf("Unknown command\n");
-			} else if (err != ESP_OK) {
-				printf("Command execute error: %s\n", esp_err_to_name(err));
+				for (int i = 0; i < len; i++) {
+					char c = buffer[i];
+
+					if (c == '\r' || c == '\n') {
+						if (!inputBuffer.empty()) {
+							processCommand(inputBuffer.c_str());
+							inputBuffer.clear();
+							printf(">> ");
+							fflush(stdout);
+						}
+					} else if (c == '\b' || c == 127) {
+						if (!inputBuffer.empty()) {
+							inputBuffer.pop_back();
+							printf("\b \b");
+							fflush(stdout);
+						}
+					} else if (c >= 32 && c <= 126) {
+						inputBuffer += c;
+						printf("%c", c);
+						fflush(stdout);
+					}
+				}
 			}
 
 			vTaskDelay(50 / portTICK_PERIOD_MS);
+		}
+	}
+
+	static void processCommand(const char* line)
+	{
+		if (line == nullptr || strlen(line) == 0) {
+			return;
+		}
+
+		int ret;
+		esp_err_t err = esp_console_run(line, &ret);
+		if (err == ESP_ERR_NOT_FOUND) {
+			printf("Unknown command\n");
+		} else if (err != ESP_OK) {
+			printf("Command execute error: %s\n", esp_err_to_name(err));
 		}
 	}
 
@@ -86,7 +121,6 @@ public:
 
 		ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 148, 148, 0, NULL, 0));
 		ESP_ERROR_CHECK(uart_param_config(UART_NUM_0, &uart_config));
-		uart_vfs_dev_use_driver(UART_NUM_0);
 
 		setvbuf(stdin, NULL, _IONBF, 0);
 	}
@@ -96,25 +130,11 @@ public:
 		esp_console_config_t console_config = {
 			.max_cmdline_length = 128,
 			.max_cmdline_args = 8,
-			.heap_alloc_caps = MALLOC_CAP_SPIRAM,
+			.heap_alloc_caps = MALLOC_CAP_DEFAULT,
 			.hint_color = 32,
 			.hint_bold = 0};
 
 		ESP_ERROR_CHECK(esp_console_init(&console_config));
-
-		linenoiseSetMultiLine(1);
-
-		linenoiseSetCompletionCallback(&esp_console_get_completion);
-		linenoiseSetHintsCallback((linenoiseHintsCallback *) &esp_console_get_hint);
-
-		linenoiseHistorySetMaxLen(100);
-
-		linenoiseSetMaxLineLen(console_config.max_cmdline_length);
-		linenoiseAllowEmpty(false);
-
-		if (linenoiseProbe()) {
-			linenoiseSetDumbMode(1);
-		}
 	}
 private:
 	// Функции
@@ -229,5 +249,7 @@ private:
 
 Settings Cli::settings;
 TaskHandle_t Cli::taskHandle;
+std::string Cli::inputBuffer;
+bool Cli::commandReady;
 
 #endif
