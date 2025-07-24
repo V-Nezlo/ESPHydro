@@ -27,18 +27,17 @@ public:
 
 	bool firstLoad()
 	{
+		Settings settings;
+		const bool loaded = NVStorage::readSettings(&settings);
+		asm volatile("" ::: "memory");
+		if (!loaded) settings = getDefault();
+
 		Event ev;
 		ev.type = EventType::SettingsUpdated;
-		ev.data.settings = getDefault();
-
-		Settings loaded;
-		if (NVStorage::readSettings(&loaded)) {
-			ev.data.settings = loaded;
-		} else {
-			ESP_LOGI("Params", "Applying defaults...");
-		}
-
+		ev.data.settings = settings;
 		EventBus::throwEvent(&ev, this);
+
+		if (!loaded) ESP_LOGI("Params", "Applying defaults...");
 		return true;
 	}
 
@@ -53,7 +52,7 @@ public:
 		}
 	}
 private:
-	Settings getDefault()
+	static constexpr Settings getDefault()
 	{
 		Settings def;
 		def.pump.enabled = false;

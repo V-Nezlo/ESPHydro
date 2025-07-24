@@ -97,8 +97,15 @@ public:
 
 		esp_console_register_help_command();
 		initCommandTable();
+	}
 
+	static void start()
+	{
 		xTaskCreate(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle);
+
+		printf("CLI ready!\r\n");
+		printf(">> ");
+		fflush(stdout);
 	}
 
 	static void initPeriph()
