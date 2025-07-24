@@ -111,7 +111,7 @@ public:
 		if (!queue)
 			return false;
 
-		xTaskCreate(eventTask, "EventBusTask", 2048, nullptr, 5, nullptr);
+		xTaskCreatePinnedToCore(eventTask, "EventBusTask", 4 * 1024, nullptr, 5, nullptr, 0);
 		return true;
 	}
 

@@ -134,7 +134,7 @@ void app_main()
 
 	// Таска чтобы делать какие либо init штуки
 	TaskHandle_t initTask;
-	xTaskCreate(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask);
+	xTaskCreatePinnedToCore(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask, 0);
 
 	Event ev;
 	ev.type = EventType::ToneBuzzerSignal;

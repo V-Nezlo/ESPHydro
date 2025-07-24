@@ -101,7 +101,7 @@ public:
 
 	static void start()
 	{
-		xTaskCreate(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle);
+		xTaskCreatePinnedToCore(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle, 0);
 
 		printf("CLI ready!\r\n");
 		printf(">> ");
