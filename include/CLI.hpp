@@ -40,6 +40,7 @@ public:
 	static void task(void *pvParameters)
 	{
 		char buffer[256];
+		esp_task_wdt_add(NULL);
 
 		while(true) {
 			int len = uart_read_bytes(UART_NUM_0, buffer, sizeof(buffer) - 1, 10 / portTICK_PERIOD_MS);
@@ -71,6 +72,7 @@ public:
 				}
 			}
 
+			esp_task_wdt_reset();
 			vTaskDelay(50 / portTICK_PERIOD_MS);
 		}
 	}

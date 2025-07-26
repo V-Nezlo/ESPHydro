@@ -432,14 +432,6 @@ void pumpTypeEventHandler(lv_event_t *aEvent)
 			lv_obj_add_flag(pumpSwingTimeBase, LV_OBJ_FLAG_HIDDEN);
 		}
 	}
-
-	if (lowerCalibButton != NULL) {
-		if (mode == PumpModes::Maintance) {
-			lv_obj_clear_state(lowerCalibButton, LV_STATE_DISABLED);
-		} else {
-			lv_obj_add_state(lowerCalibButton, LV_STATE_DISABLED);
-		}
-	}
 }
 
 void formattedAreaCommonCallback(lv_event_t *aEvent)

@@ -32,16 +32,6 @@ void displayTaskFunc(void *pvParameters)
 	SemaphoreHandle_t *mutex = reinterpret_cast<SemaphoreHandle_t *>(pvParameters);
 
 	while(true) {
-		static bool inited{false};
-
-		if (!inited) {
-			const auto time = TimeWrapper::seconds();
-			if (time > std::chrono::seconds{1}) {
-				displayMainPage();
-				inited = true;
-			}
-		}
-
 		{
 			MutexLock lock(*mutex);
 			lv_timer_handler();
@@ -55,8 +45,10 @@ void displayTaskFunc(void *pvParameters)
 
 void initTaskFunc(void *pvParameters)
 {
-	vTaskDelay(pdMS_TO_TICKS(5000));
-	Cli::start();
+	vTaskDelay(pdMS_TO_TICKS(2000));
+	displayMainPage();
+	vTaskDelay(pdMS_TO_TICKS(3000));
+	// Cli::start();
 	vTaskDelay(pdMS_TO_TICKS(10000));
 	MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
 	vTaskDelete(NULL);
