@@ -19,7 +19,7 @@ SerialWrapper::SerialWrapper(int8_t aPort, size_t aTxBufSize, size_t aRxBufSize,
 		UART_STOP_BITS_1,
 		UART_HW_FLOWCTRL_DISABLE,
 		122,
-		static_cast<uart_sclk_t>(4),
+		UART_SCLK_DEFAULT,
 		{0,0}
 	},
 	latch{aLatch},

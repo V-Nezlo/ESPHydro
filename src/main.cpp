@@ -1,4 +1,5 @@
 #include "ConfigStorage.hpp"
+#include "CLI.hpp"
 #include "DS3231.hpp"
 #include "Display.hpp"
 #include "Gpio.hpp"
@@ -54,7 +55,9 @@ void displayTaskFunc(void *pvParameters)
 
 void initTaskFunc(void *pvParameters)
 {
-	vTaskDelay(pdMS_TO_TICKS(15000));
+	vTaskDelay(pdMS_TO_TICKS(5000));
+	Cli::start();
+	vTaskDelay(pdMS_TO_TICKS(10000));
 	MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
 	vTaskDelete(NULL);
 }
@@ -87,6 +90,7 @@ void app_main()
 	ToneBuzzer buzzController{Hardware::Buzzer::kPwmPin, Hardware::Buzzer::kPwmChannel};
 
 	LedController ledController{&greenLed, &blueLed, &redLed, false};
+	Cli cli;
 
 	EventBus::registerObserver(&paramStorage);
 	EventBus::registerObserver(&displayDriver);
@@ -97,6 +101,7 @@ void app_main()
 	EventBus::registerObserver(&lightController);
 	EventBus::registerObserver(&buzzController);
 	EventBus::registerObserver(&ledController);
+	EventBus::registerObserver(&cli);
 	EventBus::registerObserver(&LowerMonitor::instance());
 	EventBus::registerObserver(&UpperMonitor::instance());
 	EventBus::registerObserver(&MasterMonitor::instance());
@@ -116,6 +121,9 @@ void app_main()
 	displayDriver.setupLvgl();
 	uiInit(&uiObserver);
 
+	// Включаем CLI
+	Cli::init();
+
 	// Загружаем параметры во все модули
 	paramStorage.firstLoad();
 
@@ -126,7 +134,7 @@ void app_main()
 
 	// Таска чтобы делать какие либо init штуки
 	TaskHandle_t initTask;
-	xTaskCreate(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask);
+	xTaskCreatePinnedToCore(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask, 0);
 
 	Event ev;
 	ev.type = EventType::ToneBuzzerSignal;

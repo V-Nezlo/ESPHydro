@@ -47,6 +47,7 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 	};
 
 	std::array<TelemetryUnit, 2> devices;
+	ModulesConfiguration modules;
 	SemaphoreHandle_t mutex;	
 public:
 	HydroRS(Interface &aInterface, uint8_t aNodeUID):
@@ -209,8 +210,16 @@ public:
 		ev.data.lowerData.waterLevel = aTelem.waterLevelPerc;
 		ev.data.lowerData.flags = aTelem.deviceFlags;
 
+		// Снимем флаги ошибок модулей если они выключены через CLI
+		if (aTelem.deviceFlags & static_cast<uint8_t>(LowerFlags::PHSensorError) && !modules.phSensor) {
+			ev.data.lowerData.flags &= ~static_cast<uint8_t>(LowerFlags::PHSensorError);
+		}
+		if (aTelem.deviceFlags & static_cast<uint8_t>(LowerFlags::PPMSensorError) && !modules.ppmSensor) {
+			ev.data.lowerData.flags &= ~static_cast<uint8_t>(LowerFlags::PPMSensorError);
+		}
+
 		// Обновим синглтон без учатия EventBus
-		LowerMonitor::instance().updateFromTelemetry(aTelem.deviceFlags);
+		LowerMonitor::instance().updateFromTelemetry(ev.data.lowerData.flags);
 		// Внутри автоматически считается Health
 		EventBus::throwEvent(&ev, this);
 	}
@@ -300,6 +309,12 @@ public:
 						return EventResult::IGNORED;
 					}
 				}
+
+			case EventType::SettingsUpdated: {
+				MutexLock lock(mutex);
+				modules = e->data.settings.modules;
+				return EventResult::PASS_ON;
+			}
 
 			default:
 				return EventResult::IGNORED;

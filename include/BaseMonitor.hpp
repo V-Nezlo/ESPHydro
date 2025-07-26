@@ -46,7 +46,8 @@ public:
 		return health;
 	}
 
-	bool isPresent() const {
+	bool isPresent() const
+	{
 		return health != DeviceHealth::DeviceDisabled;
 	}
 
