@@ -84,8 +84,10 @@ public:
 		int ret;
 		esp_err_t err = esp_console_run(line, &ret);
 		if (err == ESP_ERR_NOT_FOUND) {
+			printf("\r\n");
 			printf("Unknown command\n");
 		} else if (err != ESP_OK) {
+			printf("\r\n");
 			printf("Command execute error: %s\n", esp_err_to_name(err));
 		}
 	}

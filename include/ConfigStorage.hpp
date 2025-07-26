@@ -56,20 +56,20 @@ private:
 	{
 		Settings def;
 		def.pump.enabled = false;
-		def.pump.maxFloodingTime = 2000;
-		def.pump.mode = PumpModes::Maintance;
+		def.pump.maxFloodingTime = 0;
+		def.pump.mode = PumpModes::EBBNormal;
 		def.pump.onTime = 1000;
 		def.pump.offTime = 2000;
 		def.pump.swingTime = 5;
 
 		def.lamp.enabled = true;
-		def.lamp.lampOnHour = 10;
+		def.lamp.lampOnHour = 0;
 		def.lamp.lampOnMin = 0;
-		def.lamp.lampOffHour = 21;
+		def.lamp.lampOffHour = 0;
 		def.lamp.lampOffMin = 0;
 
-		def.common.alarmSoundEnabled = true;
-		def.common.tapSoundEnabled = true;
+		def.common.alarmSoundEnabled = false;
+		def.common.tapSoundEnabled = false;
 		def.common.loggingEnabled = false;
 		def.common.displayBrightness = 100;
 		def.common.buzzerVolume = 100;

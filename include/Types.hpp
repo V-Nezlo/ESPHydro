@@ -59,7 +59,7 @@ struct PumpConfiguration {
 	PumpModes mode;
 	uint8_t swingTime;
 	uint16_t maxFloodingTime;
-};
+} __attribute__((packed));
 
 struct LampConfiguration {
 	bool enabled;
@@ -67,7 +67,7 @@ struct LampConfiguration {
 	uint8_t lampOnMin;
 	uint8_t lampOffHour;
 	uint8_t lampOffMin;
-};
+} __attribute__((packed));;
 
 struct CommonConfiguration {
 	bool tapSoundEnabled;
@@ -75,19 +75,19 @@ struct CommonConfiguration {
 	bool loggingEnabled;
 	uint8_t displayBrightness;
 	uint8_t buzzerVolume;
-};
+} __attribute__((packed));;
 
-struct Modules {
+struct ModulesConfiguration {
 	bool phSensor;
 	bool ppmSensor;
-};
+} __attribute__((packed));;
 
 struct Settings {
 	struct PumpConfiguration pump;
 	struct LampConfiguration lamp;
 	struct CommonConfiguration common; 
-	struct Modules modules;
-};
+	struct ModulesConfiguration modules;
+} __attribute__((packed));;
 
 struct Time {
 	uint8_t hour;
