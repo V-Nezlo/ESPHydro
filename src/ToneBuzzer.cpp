@@ -18,7 +18,8 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	ledcChannel{aPwmChannel},
 	ledcTimer{static_cast<uint8_t>((aPwmChannel >> 1) & 3)},
 	noteCounter{0},
-	volume{0x3F}
+	volume{0x3F},
+	alarmEnabled{false}
 {
 	ledc_fade_func_install(0);
 
@@ -42,7 +43,9 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 EventResult ToneBuzzer::handleEvent(Event *e)
 {
 	if (e->type == EventType::ToneBuzzerSignal) {
-		if (currentSignal == ToneBuzzerSignal::Disabled) {
+		if (e->data.buzToneSignal != ToneBuzzerSignal::Touch && !alarmEnabled && e->data.buzToneSignal != ToneBuzzerSignal::Disabled) {
+			return EventResult::IGNORED;
+		} else if (currentSignal == ToneBuzzerSignal::Disabled) {
 			currentSignal = e->data.buzToneSignal;
 			noteCounter = 0;
 		} else {
@@ -57,6 +60,9 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 		return EventResult::HANDLED;
 	} else if (e->type == EventType::NewBuzVolume) {
 		setVolume(e->data.volume);
+		return EventResult::PASS_ON;
+	} else if (e->type == EventType::SettingsUpdated) {
+		alarmEnabled = e->data.settings.common.alarmSoundEnabled;
 		return EventResult::PASS_ON;
 	} else {
 		return EventResult::IGNORED;
