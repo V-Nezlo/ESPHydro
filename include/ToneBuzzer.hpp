@@ -59,6 +59,7 @@ private:
 	const uint8_t ledcTimer;
 	uint32_t noteCounter;
 	uint8_t volume;
+	bool enabled;
 
 	StaticQueue<ToneBuzzerSignal, 8> signalQueue;
 
