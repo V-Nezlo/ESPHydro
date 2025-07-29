@@ -171,7 +171,6 @@ private:
 
 	static int reboot_func(int argc, char **argv)
 	{
-		vTaskDelete(taskHandle);
 		esp_restart();
 		return ESP_OK;
 	}
