@@ -55,7 +55,6 @@ void initTaskFunc(void *pvParameters)
 	displayMainPage();
 
 	vTaskDelay(pdMS_TO_TICKS(3000));
-	Cli::start();
 	vTaskDelay(pdMS_TO_TICKS(10000));
 	MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
 	vTaskDelete(NULL);
@@ -136,6 +135,9 @@ void app_main()
 	xTaskCreatePinnedToCore(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask, 0);
 
 	MasterMonitor::instance().invoke();
+
+	vTaskDelay(pdMS_TO_TICKS(1000));
+	cli.start();
 
 	while(true) {
 		// Обработка SmartBus

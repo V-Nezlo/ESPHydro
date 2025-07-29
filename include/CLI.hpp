@@ -17,13 +17,12 @@ class Cli : public AbstractEventObserver {
 	std::chrono::milliseconds nextCallTime;
 	static Settings settings;
 	static TaskHandle_t taskHandle;
-	static std::string inputBuffer;
-	static bool commandReady;
+	std::string inputBuffer;
 
 public:
 	Cli() : nextCallTime(std::chrono::milliseconds{0})
 	{
-
+		inputBuffer.reserve(64);
 	}
 
 	EventResult handleEvent(Event *e) override
@@ -42,6 +41,8 @@ public:
 		char buffer[256];
 		esp_task_wdt_add(NULL);
 
+		std::string *inBuffer = reinterpret_cast<std::string *>(pvParameters);
+
 		while(true) {
 			int len = uart_read_bytes(UART_NUM_0, buffer, sizeof(buffer) - 1, 10 / portTICK_PERIOD_MS);
 
@@ -52,20 +53,20 @@ public:
 					char c = buffer[i];
 
 					if (c == '\r' || c == '\n') {
-						if (!inputBuffer.empty()) {
-							processCommand(inputBuffer.c_str());
-							inputBuffer.clear();
+						if (!inBuffer->empty()) {
+							processCommand(inBuffer->c_str());
+							inBuffer->clear();
 							printf(">> ");
 							fflush(stdout);
 						}
 					} else if (c == '\b' || c == 127) {
-						if (!inputBuffer.empty()) {
-							inputBuffer.pop_back();
+						if (!inBuffer->empty()) {
+							inBuffer->pop_back();
 							printf("\b \b");
 							fflush(stdout);
 						}
 					} else if (c >= 32 && c <= 126) {
-						inputBuffer += c;
+						*inBuffer += c;
 						printf("%c", c);
 						fflush(stdout);
 					}
@@ -103,9 +104,9 @@ public:
 		initCommandTable();
 	}
 
-	static void start()
+	void start()
 	{
-		xTaskCreatePinnedToCore(task, "CommandLine", 8 * 1024, nullptr, 5, &taskHandle, 0);
+		xTaskCreatePinnedToCore(task, "CommandLine", 12 * 1024, &inputBuffer, 5, &taskHandle, 0);
 
 		printf("CLI ready!\r\n");
 		printf(">> ");
@@ -130,7 +131,7 @@ public:
 			UART_SCLK_REF_TICK,
 			{0, 0}};
 
-		ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 148, 148, 0, NULL, 0));
+		ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 512, 512, 0, NULL, 0));
 		ESP_ERROR_CHECK(uart_param_config(UART_NUM_0, &uart_config));
 
 		setvbuf(stdin, NULL, _IONBF, 0);
@@ -170,7 +171,6 @@ private:
 
 	static int reboot_func(int argc, char **argv)
 	{
-		vTaskDelete(taskHandle);
 		esp_restart();
 		return ESP_OK;
 	}
@@ -213,7 +213,7 @@ private:
 
 	static void initCommandTable()
 	{
-		esp_console_cmd_t cmd_table[] = {
+		static const esp_console_cmd_t cmd_table[] = {
 			{
 				"set_filtimer",
 				"Set water filling timer",
@@ -260,7 +260,5 @@ private:
 
 Settings Cli::settings;
 TaskHandle_t Cli::taskHandle;
-std::string Cli::inputBuffer;
-bool Cli::commandReady;
 
 #endif
