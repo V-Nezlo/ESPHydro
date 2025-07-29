@@ -23,6 +23,8 @@ static constexpr std::chrono::milliseconds kLedRecoverTime{1000}; ///< Врем�
 static constexpr std::chrono::milliseconds kTimeBetweenSignals{500}; ///< Время между сигналами
 static constexpr std::chrono::milliseconds kTimeBetweenTaps{250}; 
 
+static constexpr std::chrono::milliseconds kPumpValidationTime{1000};
+
 static constexpr std::chrono::seconds kMasterErrorSignalTimeout{30};
 static constexpr std::chrono::seconds kMasterCriticalSignalTimeout{10};
 static constexpr std::chrono::seconds kMasterWarningSignalTimeout{60};

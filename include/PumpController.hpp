@@ -40,17 +40,19 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	PumpModes mode;
 
 	// Телеметрируемые переменные
-	PumpState pumpState;
+	PumpState actualPumpState;
 	DamTankState damTankState;
 	uint8_t currentWaterLevel;
 	bool upperState;
 
 	SwingState swingState;
+	PumpState desiredPumpState;
 
 	std::chrono::milliseconds lastActionTime;
 	std::chrono::milliseconds lastSwingTime;
 	std::chrono::milliseconds waterFillingTimer;
 	std::chrono::milliseconds lastChecksTime;
+	std::chrono::milliseconds lastValidatorTime;
 	bool fillingCheckEn;
 
 	bool enabled;
