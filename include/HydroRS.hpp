@@ -48,7 +48,7 @@ class HydroRS : public RS::RsHandler<Interface, Crc, ParserSize>, public Abstrac
 
 	std::array<TelemetryUnit, 2> devices;
 	ModulesConfiguration modules;
-	SemaphoreHandle_t mutex;	
+	SemaphoreHandle_t mutex;
 public:
 	HydroRS(Interface &aInterface, uint8_t aNodeUID):
 		BaseType{aInterface, aNodeUID},
@@ -117,7 +117,8 @@ public:
 		static std::chrono::milliseconds lastDeviceCallTime{0};
 		static uint8_t deviceToCall{0};
 
-		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{100}) {
+		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{250}) {
+			lastDeviceCallTime = aCurrentTime;
 			MutexLock lock(mutex);
 			processDevice(devices[deviceToCall], aCurrentTime);
 
