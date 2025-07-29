@@ -8,21 +8,25 @@
 
 #include "MutexLock.hpp"
 #include "PumpController.hpp"
+#include "Options.hpp"
 #include "UpperMonitor.hpp"
+#include "LowerMonitor.hpp"
 #include "MasterMonitor.hpp"
 #include "freertos/semphr.h"
 
 PumpController::PumpController() :
 	mode{PumpModes::EBBNormal},
-	pumpState{PumpState::PumpOff},
+	actualPumpState{PumpState::PumpOff},
 	damTankState{DamTankState::DamUnlocked},
 	currentWaterLevel{0},
 	upperState{false},
 	swingState{SwingState::SwingOff},
+	desiredPumpState{PumpState::PumpOff},
 	lastActionTime{0},
 	lastSwingTime{0},
 	waterFillingTimer{0},
 	lastChecksTime{0},
+	lastValidatorTime{0},
 	fillingCheckEn{false},
 	enabled{false},
 	pumpOnTime{0},
@@ -48,7 +52,7 @@ EventResult PumpController::handleEvent(Event *e)
 			} return EventResult::PASS_ON;
 		case EventType::UpdateLowerData:
 			currentWaterLevel = e->data.lowerData.waterLevel;
-			pumpState = e->data.lowerData.pumpState ? PumpState::PumpOn : PumpState::PumpOff;
+			actualPumpState = e->data.lowerData.pumpState ? PumpState::PumpOn : PumpState::PumpOff;
 			return EventResult::PASS_ON;
 		case EventType::UpdateUpperData:
 			upperState = e->data.upperData.swingLevelState;
@@ -66,7 +70,8 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 	// Используем мутекс как гарантию что переходы будут корректными
 	MutexLock lock(mutex);
 
-	if (enabled) {
+	// Если ловера нет - то и управлять нечем
+	if (enabled && LowerMonitor::instance().isPresent()) {
 		switch(mode) {
 			case PumpModes::EBBNormal:
 				processEBBNormalMode(aCurrentTime);
@@ -83,9 +88,19 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 			case PumpModes::EBBDam:
 				processEBBDumMode(aCurrentTime);
 				break;
+			default:
+				break;
+		}
+		// Валидация состояния насоса чтобы точно быть защищенным от потери пакета управления
+		if (aCurrentTime > lastValidatorTime + Options::kPumpValidationTime) {
+			lastValidatorTime = aCurrentTime;
+
+			if (actualPumpState != desiredPumpState) {
+				setPumpState(desiredPumpState);
+			}
 		}
 	} else {
-		if (pumpState == PumpState::PumpOn) {
+		if (desiredPumpState == PumpState::PumpOn) {
 			setPumpState(PumpState::PumpOff);
 			setDamState(DamTankState::DamUnlocked);
 		}
@@ -106,6 +121,8 @@ void PumpController::updateMode(PumpModes aNewMode)
 
 void PumpController::setPumpState(PumpState aState)
 {
+	desiredPumpState = aState;
+
 	if (aState == PumpState::PumpOff) {
 		sendCommandToPump(false);
 	} else {
@@ -146,7 +163,7 @@ bool PumpController::permitForAction() const
 /// @brief EBB режим, вкл выкл насоса по времени
 void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
+	switch (desiredPumpState) {
 		case PumpState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
@@ -171,7 +188,7 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 /// @brief Расширенный EBB режим, вкл выкл насоса по времени и отработка "качелей"
 void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
+	switch (desiredPumpState) {
 		case PumpState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
@@ -204,7 +221,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 		if (MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && !UpperMonitor::instance().isPresent()) {
 			MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
 
-			if (pumpState == PumpState::PumpOn) {
+			if (desiredPumpState == PumpState::PumpOn) {
 				setPumpState(PumpState::PumpOff);
 			}
 
@@ -212,7 +229,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 		}
 
 		// Алгоритм свинга
-		if (pumpState == PumpState::PumpOn) {
+		if (desiredPumpState == PumpState::PumpOn) {
 			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
 				setPumpState(PumpState::PumpOn);
 				swingState = SwingState::SwingOn;
@@ -240,7 +257,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 /// @brief Самый простой режим, просто вкл-выкл насоса по времени
 void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
+	switch (desiredPumpState) {
 		case PumpState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
@@ -269,7 +286,7 @@ void PumpController::processMaintanceMode()
 
 void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (pumpState) {
+	switch (desiredPumpState) {
 		case PumpState::PumpOn:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
