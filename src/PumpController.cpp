@@ -236,7 +236,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 		}
 
 		// Алгоритм свинга
-		if (desiredPumpState == PumpState::PumpOn) {
+		if (workingState == PlainType::Irrigation) {
 			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
 				setPumpState(PumpState::PumpOn);
 				swingState = SwingState::SwingOn;
