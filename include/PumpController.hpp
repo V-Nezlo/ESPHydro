@@ -27,6 +27,11 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 		PumpOff
 	};
 
+	enum class PlainType : uint8_t {
+		Drainage,
+		Irrigation
+	};
+
 	enum class SwingState : uint8_t {
 		SwingOn,
 		SwingOff
@@ -38,6 +43,7 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	};
 
 	PumpModes mode;
+	PlainType workingState;
 
 	// Телеметрируемые переменные
 	PumpState actualPumpState;
