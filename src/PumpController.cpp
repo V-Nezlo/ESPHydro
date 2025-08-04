@@ -16,6 +16,7 @@
 
 PumpController::PumpController() :
 	mode{PumpModes::EBBNormal},
+	workingState{PlainType::Drainage},
 	actualPumpState{PumpState::PumpOff},
 	damTankState{DamTankState::DamUnlocked},
 	currentWaterLevel{0},
@@ -92,11 +93,13 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 				break;
 		}
 		// Валидация состояния насоса чтобы точно быть защищенным от потери пакета управления
-		if (aCurrentTime > lastValidatorTime + Options::kPumpValidationTime) {
-			lastValidatorTime = aCurrentTime;
+		if (mode != PumpModes::Maintance) {
+			if (aCurrentTime > lastValidatorTime + Options::kPumpValidationTime) {
+				lastValidatorTime = aCurrentTime;
 
-			if (actualPumpState != desiredPumpState) {
-				setPumpState(desiredPumpState);
+				if (actualPumpState != desiredPumpState) {
+					setPumpState(desiredPumpState);
+				}
 			}
 		}
 	} else {
@@ -163,19 +166,21 @@ bool PumpController::permitForAction() const
 /// @brief EBB режим, вкл выкл насоса по времени
 void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (desiredPumpState) {
-		case PumpState::PumpOn:
+	switch (workingState) {
+		case PlainType::Irrigation:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
 				setPumpState(PumpState::PumpOff);
+				workingState = PlainType::Drainage;
 			}
 			break;
-		case PumpState::PumpOff:
+		case PlainType::Drainage:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					workingState = PlainType::Irrigation;
 					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
@@ -188,19 +193,21 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 /// @brief Расширенный EBB режим, вкл выкл насоса по времени и отработка "качелей"
 void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (desiredPumpState) {
-		case PumpState::PumpOn:
+	switch (workingState) {
+		case PlainType::Irrigation:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
 				setPumpState(PumpState::PumpOff);
+				workingState = PlainType::Drainage;
 			}
 			break;
-		case PumpState::PumpOff:
+		case PlainType::Drainage:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					workingState = PlainType::Irrigation;
 					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 
 					// Проверим время заполнения бака один раз после осушения
@@ -257,19 +264,21 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 /// @brief Самый простой режим, просто вкл-выкл насоса по времени
 void PumpController::processDripMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (desiredPumpState) {
-		case PumpState::PumpOn:
+	switch (workingState) {
+		case PlainType::Irrigation:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
 				setPumpState(PumpState::PumpOff);
+				workingState = PlainType::Drainage;
 			}
 			break;
-		case PumpState::PumpOff:
+		case PlainType::Drainage:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					workingState = PlainType::Irrigation;
 					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
@@ -286,13 +295,14 @@ void PumpController::processMaintanceMode()
 
 void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (desiredPumpState) {
-		case PumpState::PumpOn:
+	switch (workingState) {
+		case PlainType::Irrigation:
 		// Если насос сейчас включен - смотрим, не пора ли выключать
 			if (aCurrentTime > lastActionTime + pumpOnTime) {
 				lastActionTime = aCurrentTime;
 				setDamState(DamTankState::DamUnlocked); // Открываем дамбу при выключении
 				setPumpState(PumpState::PumpOff);
+				workingState = PlainType::Drainage;
 			} else {
 				if (upperState) { // При срабатывании поплавкового датчика закрываем дамбу и выключаем насос
 					setPumpState(PumpState::PumpOff);
@@ -304,12 +314,14 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 				}
 			}
 			break;
-		case PumpState::PumpOff:
+		case PlainType::Drainage:
 			if (aCurrentTime > lastActionTime + pumpOffTime) {
 				lastActionTime = aCurrentTime;
 				waterFillingTimer = aCurrentTime + maxFloodingTime;
 				if (permitForAction()) {
 					setPumpState(PumpState::PumpOn);
+					workingState = PlainType::Irrigation;
+					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
 				} else {
 					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 				}
