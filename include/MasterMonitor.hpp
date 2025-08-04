@@ -24,12 +24,10 @@ enum class MasterFlags : uint32_t {
 	SystemInitialized      = 1 << 8,
 };
 
-class MasterMonitor : public BaseMonitor<MasterFlags>, public AbstractLinearTask {
-	std::chrono::seconds nextSignalTime;
+class MasterMonitor : public BaseMonitor<MasterFlags> {
 public:
 	static MasterMonitor& instance();
 	EventResult handleEvent(Event *e) override;
-	void process(std::chrono::milliseconds aCurrentTime) override;
 	void invoke();
 
 protected:
