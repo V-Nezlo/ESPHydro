@@ -116,6 +116,7 @@ void PumpController::updateMode(PumpModes aNewMode)
 	lastActionTime = currentTime;
 	lastSwingTime = currentTime;
 	waterFillingTimer = std::chrono::milliseconds{0};
+	workingState = PlainType::Drainage;
 
 	mode = aNewMode;
 	setPumpState(PumpState::PumpOff);
