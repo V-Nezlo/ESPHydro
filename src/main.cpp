@@ -112,7 +112,11 @@ void app_main()
 	sched.registerTask(&smartBus);
 	sched.registerTask(&ledController);
 	sched.registerTask(&pcf);
+
+	// Научим все девайс мониторы пиликать при ошибках
 	sched.registerTask(&MasterMonitor::instance());
+	sched.registerTask(&LowerMonitor::instance());
+	sched.registerTask(&UpperMonitor::instance());
 
 	// Включаем и отрисовываем экран
 	displayDriver.setupDisplay();

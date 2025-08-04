@@ -9,14 +9,17 @@
 #ifndef SOURCES_BASEMONITOR_HPP_
 #define SOURCES_BASEMONITOR_HPP_
 
+#include "Options.hpp"
+#include "LinearSched.hpp"
 #include "EventBus.hpp"
 #include "Types.hpp"
 #include <cstdint>
 #include <type_traits>
 
 template<typename FlagType>
-class BaseMonitor : public AbstractEventObserver {
+class BaseMonitor : public AbstractEventObserver, public AbstractLinearTask {
 private:
+	std::chrono::seconds nextSignalTime;
 	using FlagValueType = std::underlying_type_t<FlagType>;
 public:
 	void setFlag(FlagType aFlag)
@@ -55,6 +58,35 @@ public:
 	{
 		flags = aTelemetryFlags;
 		updateHealth();
+	}
+
+	void process(std::chrono::milliseconds aCurrentTime) override
+	{
+		if (health == DeviceHealth::DeviceDisabled || health == DeviceHealth::DeviceWorking) {
+			return;
+		}
+		if (aCurrentTime < nextSignalTime) {
+			return;
+		}
+
+		Event ev;
+		ev.type = EventType::ToneBuzzerSignal;
+		ev.data.buzToneSignal = getSignalForHealth(health);
+		EventBus::throwEvent(&ev, this);
+
+		switch (health) {
+			case DeviceHealth::DeviceWarning:
+				nextSignalTime = std::chrono::duration_cast<std::chrono::seconds>(aCurrentTime) + Options::kMasterWarningSignalTimeout;
+				break;
+			case DeviceHealth::DeviceCritical:
+				nextSignalTime = std::chrono::duration_cast<std::chrono::seconds>(aCurrentTime) + Options::kMasterCriticalSignalTimeout;
+				break;
+			case DeviceHealth::DeviceError:
+				nextSignalTime = std::chrono::duration_cast<std::chrono::seconds>(aCurrentTime) + Options::kMasterErrorSignalTimeout;
+				break;
+			default:
+				break;
+		}
 	}
 
 protected:
