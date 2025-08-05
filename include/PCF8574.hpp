@@ -9,6 +9,7 @@
 #ifndef INCLUDE_PCF8574_HPP_
 #define INCLUDE_PCF8574_HPP_
 
+#include "Options.hpp"
 #include "LinearSched.hpp"
 #include <pcf8574/pcf8574.h>
 #include <i2cdev/i2cdev.h>
@@ -21,6 +22,8 @@ class PCF8574 : public AbstractLinearTask {
 public:
 	PCF8574(uint8_t aAddr, uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin):
 	updateTime{100},
+	nextUpdateTime{0},
+	nextRecoverTime{0},
 	dev{},
 	present{false}
 	{
@@ -52,7 +55,16 @@ public:
 
 	void process(std::chrono::milliseconds aCurrentTime) override
 	{
-		if (present && updated && aCurrentTime >= nextUpdateTime) {
+		if (!present) {
+			return;
+		}
+		// Принудительное обновление светодиодов раз в секунду
+		if (aCurrentTime >= nextRecoverTime) {
+			nextRecoverTime = aCurrentTime + Options::kLedRecoverTime;
+			pcf8574_port_write(&dev, mask);
+		}
+		// Event-based обновление
+		if (updated && aCurrentTime >= nextUpdateTime) {
 			nextUpdateTime = aCurrentTime + updateTime;
 			pcf8574_port_write(&dev, mask);
 		}
@@ -61,6 +73,7 @@ public:
 private:
 	const std::chrono::milliseconds updateTime;
 	std::chrono::milliseconds nextUpdateTime;
+	std::chrono::milliseconds nextRecoverTime;
 
 	i2c_dev_t dev;
 	bool present;
