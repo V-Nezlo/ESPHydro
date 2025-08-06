@@ -68,7 +68,7 @@ public:
 		switch(state) {
 			case DeviceState::Probing:
 				// Раз в секунду отправляем probe до момента получения первого ack
-				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{1000}) {
+				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{250}) {
 					lastCallTime = aCurrentTime;
 
 					if (lastAckTime == std::chrono::milliseconds{0}) {
@@ -85,7 +85,7 @@ public:
 
 			case DeviceState::Working:
 				// Отправляем запрос телеметрии каждые 500мс
-				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{500}) {
+				if (aCurrentTime > lastCallTime + std::chrono::milliseconds{100}) {
 					lastCallTime = aCurrentTime;
 
 					if (type == DeviceType::Lower) {
@@ -117,7 +117,7 @@ public:
 		static std::chrono::milliseconds lastDeviceCallTime{0};
 		static uint8_t deviceToCall{0};
 
-		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{250}) {
+		if (aCurrentTime > lastDeviceCallTime + std::chrono::milliseconds{50}) {
 			lastDeviceCallTime = aCurrentTime;
 			MutexLock lock(mutex);
 			processDevice(devices[deviceToCall], aCurrentTime);

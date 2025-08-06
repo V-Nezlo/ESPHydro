@@ -154,6 +154,5 @@ void app_main()
 		}
 
 		sched.doTasks();
-		lgfx::delay(5);
 	}
 }
