@@ -161,7 +161,7 @@ void PumpController::sendCommandToDam(bool aNewDamState)
 
 bool PumpController::permitForAction() const
 {
-	return currentWaterLevel > Options::kMinWaterLevelForWork;
+	return LowerMonitor::instance().isPresent() && (currentWaterLevel > Options::kMinWaterLevelForWork);
 }
 
 /// @brief EBB режим, вкл выкл насоса по времени
@@ -234,6 +234,9 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			}
 
 			return;
+		} else {
+			// Сброс ошибки на тот случай если устройство перезагрузится
+			MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
 		}
 
 		// Алгоритм свинга

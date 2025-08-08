@@ -49,8 +49,6 @@ size_t SerialWrapper::read(uint8_t *aBuffer, size_t aLength)
 	}
 
 	ESP_LOGV("SW", "%.*s", readed, aBuffer);
-
-	ESP_ERROR_CHECK(uart_flush(port));
 	return readed;
 }
 
