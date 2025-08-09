@@ -9,17 +9,17 @@
 #ifndef SOURCES_BASEMONITOR_HPP_
 #define SOURCES_BASEMONITOR_HPP_
 
-#include "Options.hpp"
-#include "LinearSched.hpp"
 #include "EventBus.hpp"
+#include "LinearSched.hpp"
+#include "Options.hpp"
 #include "Types.hpp"
+
 #include <cstdint>
 #include <type_traits>
 
 template<typename FlagType>
 class BaseMonitor : public AbstractEventObserver, public AbstractLinearTask {
 private:
-	std::chrono::seconds nextSignalTime;
 	using FlagValueType = std::underlying_type_t<FlagType>;
 public:
 	void setFlag(FlagType aFlag)
@@ -91,9 +91,10 @@ public:
 
 protected:
 	BaseMonitor(DeviceType aDeviceType, DeviceHealth aInitialHealth = DeviceHealth::DeviceDisabled):
-		flags(0),
-		health(aInitialHealth),
-		deviceType(aDeviceType)
+		flags{0},
+		health{aInitialHealth},
+		deviceType{aDeviceType},
+		nextSignalTime{0}
 	{}
 
 	virtual const HealthRule* getRules() const = 0;
@@ -179,6 +180,7 @@ protected:
 
 private:
 	DeviceType deviceType;
+	std::chrono::seconds nextSignalTime;
 };
 
 #endif // SOURCES_BASEMONITOR_HPP_

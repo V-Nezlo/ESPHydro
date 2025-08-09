@@ -9,6 +9,7 @@
 #ifndef INCLUDE_PCF8574_HPP_
 #define INCLUDE_PCF8574_HPP_
 
+#include "Options.hpp"
 #include "LinearSched.hpp"
 #include <pcf8574/pcf8574.h>
 #include <i2cdev/i2cdev.h>
@@ -21,6 +22,7 @@ class PCF8574 : public AbstractLinearTask {
 public:
 	PCF8574(uint8_t aAddr, uint8_t aPort, uint8_t aSdaPin, uint8_t aSclPin):
 	updateTime{100},
+	nextUpdateTime{0},
 	dev{},
 	present{false}
 	{
@@ -52,7 +54,11 @@ public:
 
 	void process(std::chrono::milliseconds aCurrentTime) override
 	{
-		if (present && updated && aCurrentTime >= nextUpdateTime) {
+		if (!present) {
+			return;
+		}
+
+		if (updated && aCurrentTime >= nextUpdateTime) {
 			nextUpdateTime = aCurrentTime + updateTime;
 			pcf8574_port_write(&dev, mask);
 		}

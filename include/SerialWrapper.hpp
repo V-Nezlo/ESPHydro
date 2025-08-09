@@ -19,7 +19,6 @@
 #include <string.h>
 #include <vector>
 
-
 class SerialWrapper {
 public:
 	SerialWrapper(const SerialWrapper &) = delete;
