@@ -22,6 +22,7 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 
 	class SmartLed {
 		static constexpr milliseconds kFastBlinkingInterval{200};
+		static constexpr milliseconds kCheckInterval{1000};
 		static constexpr milliseconds kSlowBlinkingInterval{1000};
 	public:
 		enum class LedState {
@@ -54,13 +55,15 @@ class LedController : public AbstractEventObserver, public AbstractLinearTask {
 		{
 			switch(state) {
 				case LedState::Disabled:
-					if (active) {
+					if (aCurrentTime > lastActionTime + kCheckInterval) {
+						lastActionTime = aCurrentTime;
 						active = false;
 						level ? gpio->reset() : gpio->set();
 					}
 					break;
 				case LedState::Steady:
-					if (!active) {
+					if (aCurrentTime > lastActionTime + kCheckInterval) {
+						lastActionTime = aCurrentTime;
 						active = true;
 						level ? gpio->set() : gpio->reset();
 					}
