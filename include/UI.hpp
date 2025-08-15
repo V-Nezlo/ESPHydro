@@ -61,6 +61,7 @@ struct Settings *saveParameters();
 bool getLoggingState();
 void updateMainPagePumpTypeLabel();
 void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth);
+void logDeviceState(DeviceType aType);
 void processTap(lv_event_t *);
 
 enum {
@@ -103,6 +104,7 @@ public:
 		case EventType::UpdateDeviceHealth: {
 			MutexLock lock(*mutex);
 			updateDeviceHealth(e->data.updateHealth.type, e->data.updateHealth.health);
+			logDeviceState(e->data.updateHealth.type);
 			} return EventResult::PASS_ON;
 
 		default:
