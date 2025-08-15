@@ -253,7 +253,7 @@ AbstractEventObserver *observer;
 // Логгирование
 size_t logLineCount;
 bool loggingEnabled;
-static constexpr size_t kMaxLogLines = 16;
+static constexpr size_t kMaxLogLines = 8;
 static constexpr size_t kMaxLogLength = 64;
 char logBuffer[kMaxLogLines * kMaxLogLength];
 
@@ -936,6 +936,8 @@ struct Settings *saveParameters()
 	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
 	currentSettings.common.buzzerVolume = lv_slider_get_value(buzzerVolumeSlider);
 
+	loggingEnabled = currentSettings.common.loggingEnabled;
+
 	return &currentSettings;
 }
 
@@ -1038,7 +1040,7 @@ void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 
 void logDeviceState(DeviceType aType)
 {
-	if (!loggingEnabled) {
+	if (!loggingEnabled || !MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized)) {
 		return;
 	}
 
@@ -1063,7 +1065,7 @@ void logDeviceState(DeviceType aType)
 	}
 
 	char newLine[64];
-	snprintf(newLine, sizeof(newLine), "%s : Device: %c, Flags: %lu", currentTimeLabelText, deviceTag, flags);
+	snprintf(newLine, sizeof(newLine), "%s : Device: %c, Flags: %lu\r\n", currentTimeLabelText, deviceTag, flags);
 
 	// Если достигли лимита строк — удаляем первую
 	if (logLineCount >= kMaxLogLines) {
@@ -1794,8 +1796,10 @@ void menuCreate(lv_obj_t *parent)
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
-	lv_obj_set_size(loggingTextarea, 315, 150);
+	lv_obj_set_size(loggingTextarea, 315, 170);
 	lv_textarea_set_text(loggingTextarea, "");
+	lv_obj_clear_flag(loggingTextarea, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+	lv_obj_clear_flag(loggingTextarea, LV_OBJ_FLAG_CLICKABLE);
 
 	// ******************************** МЕНЮ ABOUT **********************************
 	subAboutPage = lv_menu_page_create(menu, NULL);

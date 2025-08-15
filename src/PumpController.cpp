@@ -102,6 +102,9 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 				}
 			}
 		}
+	// Если ловера нет но мы пытаемся им управлять - ставим ошибку
+	} else if (enabled && !LowerMonitor::instance().isPresent() && MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized)) {
+		MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 	} else {
 		if (desiredPumpState == PumpState::PumpOn) {
 			setPumpState(PumpState::PumpOff);
