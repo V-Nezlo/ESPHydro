@@ -54,7 +54,6 @@ void initTaskFunc(void *pvParameters)
 
 	displayMainPage();
 
-	vTaskDelay(pdMS_TO_TICKS(3000));
 	vTaskDelay(pdMS_TO_TICKS(10000));
 	MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
 	vTaskDelete(NULL);

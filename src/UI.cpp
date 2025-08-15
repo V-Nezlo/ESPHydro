@@ -250,6 +250,12 @@ LV_IMG_DECLARE(FloatActuator);
 
 // Обсервер UI для EventBus
 AbstractEventObserver *observer;
+// Логгирование
+size_t logLineCount;
+bool loggingEnabled;
+static constexpr size_t kMaxLogLines = 8;
+static constexpr size_t kMaxLogLength = 64;
+char logBuffer[kMaxLogLines * kMaxLogLength];
 
 void sendParametersToEventBus(Settings * aSettings)
 {
@@ -854,7 +860,7 @@ void enterParameters(struct Settings *aParams)
 	if (aParams->lamp.enabled) {
 		lv_obj_add_state(lampEnableButton, LV_STATE_CHECKED);
 	} else {
-		lv_obj_clear_state(pumpEnableButton, LV_STATE_CHECKED);
+		lv_obj_clear_state(lampEnableButton, LV_STATE_CHECKED);
 	}
 
 	sprintf(settingsLampOnTime, "%02u:%02u:00", aParams->lamp.lampOnHour, aParams->lamp.lampOnMin);
@@ -889,6 +895,8 @@ void enterParameters(struct Settings *aParams)
 	// Установим новое значение громкости
 	lv_slider_set_value(buzzerVolumeSlider, aParams->common.buzzerVolume, LV_ANIM_OFF);
 	lv_event_send(buzzerVolumeSlider, LV_EVENT_VALUE_CHANGED, NULL);
+
+	loggingEnabled = aParams->common.loggingEnabled;
 
 	// В конце обновим главную страницу
 	updateMainPagePumpTypeLabel();
@@ -927,6 +935,8 @@ struct Settings *saveParameters()
 	currentSettings.common.loggingEnabled = lv_obj_has_state(loggingSwitch, LV_STATE_CHECKED);
 	currentSettings.common.displayBrightness = lv_slider_get_value(brightnessSlider);
 	currentSettings.common.buzzerVolume = lv_slider_get_value(buzzerVolumeSlider);
+
+	loggingEnabled = currentSettings.common.loggingEnabled;
 
 	return &currentSettings;
 }
@@ -1026,6 +1036,53 @@ void updateDeviceHealth(DeviceType aType, DeviceHealth aHealth)
 		default:
 			break;
 	}
+}
+
+void logDeviceState(DeviceType aType)
+{
+	if (!loggingEnabled || !MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized)) {
+		return;
+	}
+
+	char deviceTag;
+	uint32_t flags = 0;
+	switch(aType) {
+		case DeviceType::Lower:
+			deviceTag = 'L';
+			flags = LowerMonitor::instance().getFlags();
+			break;
+		case DeviceType::Upper:
+			deviceTag = 'U';
+			flags = UpperMonitor::instance().getFlags();
+			break;
+		case DeviceType::Master:
+			deviceTag = 'M';
+			flags = MasterMonitor::instance().getFlags();
+			break;
+		default:
+			deviceTag = 'E';
+			break;
+	}
+
+	char newLine[64];
+	snprintf(newLine, sizeof(newLine), "%s : Device: %c, Flags: %lu\r\n", currentTimeLabelText, deviceTag, flags);
+
+	// Если достигли лимита строк — удаляем первую
+	if (logLineCount >= kMaxLogLines) {
+		char *firstNewline = strchr(logBuffer, '\n');
+		if (firstNewline) {
+			memmove(logBuffer, firstNewline + 1, strlen(firstNewline + 1) + 1);
+		}
+	} else {
+		logLineCount++;
+	}
+
+	// Добавляем в конец
+	strncat(logBuffer, newLine, sizeof(logBuffer) - strlen(logBuffer) - 1);
+
+	// Обновляем textarea
+	lv_textarea_set_text(loggingTextarea, logBuffer);
+	lv_textarea_set_cursor_pos(loggingTextarea, LV_TEXTAREA_CURSOR_LAST); // автоскролл вниз
 }
 
 void processTap(lv_event_t *)
@@ -1739,8 +1796,10 @@ void menuCreate(lv_obj_t *parent)
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
-	lv_obj_set_size(loggingTextarea, 315, 150);
+	lv_obj_set_size(loggingTextarea, 315, 170);
 	lv_textarea_set_text(loggingTextarea, "");
+	lv_obj_clear_flag(loggingTextarea, LV_OBJ_FLAG_SCROLLABLE); // Отключаем скроллинг
+	lv_obj_clear_flag(loggingTextarea, LV_OBJ_FLAG_CLICKABLE);
 
 	// ******************************** МЕНЮ ABOUT **********************************
 	subAboutPage = lv_menu_page_create(menu, NULL);
