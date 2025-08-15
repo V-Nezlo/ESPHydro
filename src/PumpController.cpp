@@ -242,6 +242,11 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
 		}
 
+		// Проверим время заполнения бака
+		if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
+			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+		}
+
 		// Алгоритм свинга
 		if (workingState == PlainType::Irrigation) {
 			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
@@ -252,13 +257,11 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 				swingState = SwingState::SwingOff;
 				lastSwingTime = aCurrentTime;
 
-				// Вот тут считаем что бак заполнен, проверим за сколько он заполнился
-				if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
-					MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-				} else {
+				if (fillingCheckEn) {
 					MasterMonitor::instance().clearFlag(MasterFlags::TankNotFloodedInTime);
 					fillingCheckEn = false;
 				}
+
 			} else if (swingState == SwingState::SwingOn && !permitForAction()) {
 				setPumpState(PumpState::PumpOff);
 				swingState = SwingState::SwingOff;
