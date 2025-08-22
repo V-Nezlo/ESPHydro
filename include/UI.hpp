@@ -127,7 +127,6 @@ void sendActionCommandToEventBus(Action aAction);
 void sendNewTimeToEventBus(Time aTime);
 void sendNewBrightnessToEventBus(uint8_t aDuty);
 void sendNewVolumeToEventBus(uint8_t aDuty);
-void writeToLoggingPanel(const char *aData, int aSize);
 void sendTapSoundToEventBus();
 
 static inline bool isPlaceholder(const char *aText)

@@ -256,6 +256,7 @@ bool loggingEnabled;
 static constexpr size_t kMaxLogLines = 8;
 static constexpr size_t kMaxLogLength = 64;
 char logBuffer[kMaxLogLines * kMaxLogLength];
+SemaphoreHandle_t logMutex = xSemaphoreCreateMutex();
 
 void sendParametersToEventBus(Settings * aSettings)
 {
@@ -295,13 +296,6 @@ void sendNewVolumeToEventBus(uint8_t aDuty)
 	ev.type = EventType::NewBuzVolume;
 	ev.data.volume = aDuty;
 	EventBus::throwEvent(&ev, observer);
-}
-
-void writeToLoggingPanel(const char *aData, int aSize)
-{
-	if (getLoggingState() && loggingTextarea != NULL) {
-		lv_textarea_add_text(loggingTextarea, aData);
-	}
 }
 
 void sendTapSoundToEventBus()
@@ -1044,6 +1038,7 @@ void logDeviceState(DeviceType aType)
 		return;
 	}
 
+	MutexLock lock(logMutex);
 	char deviceTag;
 	uint32_t flags = 0;
 	switch(aType) {
@@ -1085,11 +1080,25 @@ void logDeviceState(DeviceType aType)
 	lv_textarea_set_cursor_pos(loggingTextarea, LV_TEXTAREA_CURSOR_LAST); // автоскролл вниз
 }
 
+void clearLog()
+{
+	// Обязательно мутексуем потому что запись лога идет в другом потоке
+	MutexLock lock(logMutex);
+	logBuffer[0] = '\0';
+	logLineCount = 0;
+	lv_textarea_set_text(loggingTextarea, "");
+}
+
 void processTap(lv_event_t *)
 {
 	if (currentSettings.common.tapSoundEnabled) {
 		sendTapSoundToEventBus();
 	}
+}
+
+void logSwitchEvent(lv_event_t *)
+{
+	clearLog();
 }
 
 void fillDevicePlaceholders(DeviceType aDevice)
@@ -1794,6 +1803,7 @@ void menuCreate(lv_obj_t *parent)
 
 	// Включение - выключение логгирования
 	loggingSwitch = createSwitch(section, LV_SYMBOL_WARNING, "Logging", false);
+	lv_obj_add_event_cb(loggingSwitch, logSwitchEvent, LV_EVENT_VALUE_CHANGED, NULL);
 	lv_obj_add_event_cb(loggingSwitch, processTap, LV_EVENT_VALUE_CHANGED, NULL);
 	loggingTextarea = lv_textarea_create(section);
 	lv_obj_set_size(loggingTextarea, 315, 170);
