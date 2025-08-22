@@ -120,6 +120,7 @@ void PumpController::updateMode(PumpModes aNewMode)
 	lastSwingTime = currentTime;
 	waterFillingTimer = std::chrono::milliseconds{0};
 	workingState = PlainType::Drainage;
+	fillingCheckEn = false;
 
 	mode = aNewMode;
 	setPumpState(PumpState::PumpOff);
@@ -207,6 +208,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 					lastActionTime = aCurrentTime;
 					setPumpState(PumpState::PumpOff);
 					workingState = PlainType::Drainage;
+					fillingCheckEn = false;
 				}
 
 				// Проверим состояние водички во время состояния ирригации
