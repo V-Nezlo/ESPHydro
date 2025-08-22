@@ -102,6 +102,8 @@ private:
 
 	/// @brief
 	void processMaintanceMode();
+
+	bool isSystemWorking() const;
 };
 
 #endif // INCLUDE_PUMPCONTROLLER_HPP_

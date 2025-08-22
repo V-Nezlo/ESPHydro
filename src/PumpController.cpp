@@ -197,77 +197,62 @@ void PumpController::processEBBNormalMode(std::chrono::milliseconds aCurrentTime
 /// @brief Расширенный EBB режим, вкл выкл насоса по времени и отработка "качелей"
 void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 {
-	switch (workingState) {
-		case PlainType::Irrigation:
-		// Если насос сейчас включен - смотрим, не пора ли выключать
-			if (aCurrentTime > lastActionTime + pumpOnTime) {
-				lastActionTime = aCurrentTime;
-				setPumpState(PumpState::PumpOff);
-				workingState = PlainType::Drainage;
-			}
-			break;
-		case PlainType::Drainage:
-			if (aCurrentTime > lastActionTime + pumpOffTime) {
-				lastActionTime = aCurrentTime;
-				if (permitForAction()) {
-					setPumpState(PumpState::PumpOn);
-					workingState = PlainType::Irrigation;
-					MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
-
-					// Проверим время заполнения бака один раз после осушения
-					waterFillingTimer = aCurrentTime + maxFloodingTime;
-					fillingCheckEn = true;
-				} else {
-					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
-				}
-			}
-			break;
-		}
-
 	if (aCurrentTime > lastChecksTime + std::chrono::milliseconds{200}) {
 		lastChecksTime = aCurrentTime;
 
-		// Проверка на наличие датчика поплавого уровня, если нет - будет работать как обычный режим
-		// Но проверка должна быть отложенной поскольку аппер не сразу появляется в системе
-		if (MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && !UpperMonitor::instance().isPresent()) {
-			MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
+		switch (workingState) {
+			case PlainType::Irrigation:
+				// Если насос сейчас включен - смотрим, не пора ли выключать
+				if (aCurrentTime > lastActionTime + pumpOnTime) {
+					lastActionTime = aCurrentTime;
+					setPumpState(PumpState::PumpOff);
+					workingState = PlainType::Drainage;
+				}
 
-			if (desiredPumpState == PumpState::PumpOn) {
-				setPumpState(PumpState::PumpOff);
-			}
+				// Проверим состояние водички во время состояния ирригации
+				if (!permitForAction() || !isSystemWorking()) {
+					setPumpState(PumpState::PumpOff);
+					workingState = PlainType::Drainage;
+					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+					return;
+				} else if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
+					setPumpState(PumpState::PumpOff);
+					workingState = PlainType::Drainage;
+					MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+					fillingCheckEn = false;
+					return;
+				}
 
-			return;
-		} else {
-			// Сброс ошибки на тот случай если устройство перезагрузится
-			MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
-		}
-
-		// Проверим время заполнения бака
-		if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
-			MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-		}
-
-		// Алгоритм свинга
-		if (workingState == PlainType::Irrigation) {
-			if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
-				setPumpState(PumpState::PumpOn);
-				swingState = SwingState::SwingOn;
-			} else if (swingState == SwingState::SwingOn && upperState == true) {
-				setPumpState(PumpState::PumpOff);
-				swingState = SwingState::SwingOff;
-				lastSwingTime = aCurrentTime;
-
-				if (fillingCheckEn) {
+				// Обработка свинга
+				if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
+					setPumpState(PumpState::PumpOn);
+					swingState = SwingState::SwingOn;
+				} else if (swingState == SwingState::SwingOn && upperState == true) {
+					setPumpState(PumpState::PumpOff);
+					swingState = SwingState::SwingOff;
+					lastSwingTime = aCurrentTime;
 					MasterMonitor::instance().clearFlag(MasterFlags::TankNotFloodedInTime);
 					fillingCheckEn = false;
 				}
+				break;
 
-			} else if (swingState == SwingState::SwingOn && !permitForAction()) {
-				setPumpState(PumpState::PumpOff);
-				swingState = SwingState::SwingOff;
-				MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+			case PlainType::Drainage:
+				if (aCurrentTime > lastActionTime + pumpOffTime) {
+					lastActionTime = aCurrentTime;
+					if (permitForAction()) {
+						setPumpState(PumpState::PumpOn);
+						workingState = PlainType::Irrigation;
+						MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
+
+						// Проверим время заполнения бака один раз после осушения
+						waterFillingTimer = aCurrentTime + maxFloodingTime;
+						fillingCheckEn = true;
+					} else {
+						MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+					}
+				}
+				break;
 			}
-		}
 	}
 }
 
@@ -317,7 +302,6 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 				if (upperState) { // При срабатывании поплавкового датчика закрываем дамбу и выключаем насос
 					setPumpState(PumpState::PumpOff);
 					setDamState(DamTankState::DamLocked);
-					// Как телеметрировать здесь пока непонятно
 				} else if (aCurrentTime > waterFillingTimer) {
 					setPumpState(PumpState::PumpOff);
 					setDamState(DamTankState::DamUnlocked);
@@ -337,6 +321,28 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 				}
 			}
 			break;
+	}
+}
+
+bool PumpController::isSystemWorking() const
+{
+	switch (mode) {
+		case PumpModes::EBBSwing:
+			// Проверка на наличие датчика поплавого уровня, если нет - будет работать как обычный режим
+			// Но проверка должна быть отложенной поскольку аппер не сразу появляется в системе
+			if (MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && !UpperMonitor::instance().isPresent()) {
+				MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
+
+				return false;
+			} else {
+				// Сброс ошибки на тот случай если устройство перезагрузится
+				MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
+				return true;
+			}
+			break;
+
+		default:
+			return true;
 	}
 }
 
