@@ -209,42 +209,43 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 					setPumpState(PumpState::PumpOff);
 					workingState = PlainType::Drainage;
 					fillingCheckEn = false;
-				}
+				} else {
+					// Проверим состояние водички во время состояния ирригации
+					if (!permitForAction() || !isSystemWorking()) {
+						setPumpState(PumpState::PumpOff);
+						workingState = PlainType::Drainage;
+						MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
+						return;
+					} else if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
+						setPumpState(PumpState::PumpOff);
+						workingState = PlainType::Drainage;
+						MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
+						fillingCheckEn = false;
+						return;
+					}
 
-				// Проверим состояние водички во время состояния ирригации
-				if (!permitForAction() || !isSystemWorking()) {
-					setPumpState(PumpState::PumpOff);
-					workingState = PlainType::Drainage;
-					MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
-					return;
-				} else if (fillingCheckEn && aCurrentTime > waterFillingTimer) {
-					setPumpState(PumpState::PumpOff);
-					workingState = PlainType::Drainage;
-					MasterMonitor::instance().setFlag(MasterFlags::TankNotFloodedInTime);
-					fillingCheckEn = false;
-					return;
-				}
-
-				// Обработка свинга
-				if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
-					setPumpState(PumpState::PumpOn);
-					swingState = SwingState::SwingOn;
-				} else if (swingState == SwingState::SwingOn && upperState == true) {
-					setPumpState(PumpState::PumpOff);
-					swingState = SwingState::SwingOff;
-					lastSwingTime = aCurrentTime;
-					MasterMonitor::instance().clearFlag(MasterFlags::TankNotFloodedInTime);
-					fillingCheckEn = false;
+					// Обработка свинга
+					if (swingState == SwingState::SwingOff && aCurrentTime > lastSwingTime + swingTime) {
+						setPumpState(PumpState::PumpOn);
+						swingState = SwingState::SwingOn;
+					} else if (swingState == SwingState::SwingOn && upperState == true) {
+						setPumpState(PumpState::PumpOff);
+						swingState = SwingState::SwingOff;
+						lastSwingTime = aCurrentTime;
+						MasterMonitor::instance().clearFlag(MasterFlags::TankNotFloodedInTime);
+						fillingCheckEn = false;
+					}
 				}
 				break;
 
 			case PlainType::Drainage:
 				if (aCurrentTime > lastActionTime + pumpOffTime) {
 					lastActionTime = aCurrentTime;
-					if (permitForAction()) {
+					if (permitForAction() && isSystemWorking()) {
 						setPumpState(PumpState::PumpOn);
 						workingState = PlainType::Irrigation;
 						MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
+						swingState = SwingState::SwingOn;
 
 						// Проверим время заполнения бака один раз после осушения
 						waterFillingTimer = aCurrentTime + maxFloodingTime;
