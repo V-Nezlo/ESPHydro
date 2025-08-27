@@ -253,6 +253,9 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 					} else {
 						MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 					}
+				} else {
+					// Проверим состояние водички во время состояния осушения
+					isSystemWorking();
 				}
 				break;
 			}
