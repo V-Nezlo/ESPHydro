@@ -62,6 +62,10 @@ void initTaskFunc(void *pvParameters)
 extern "C"
 void app_main()
 {
+	esp_task_wdt_config_t tWdtConfig {3000, 0, true};
+	ESP_ERROR_CHECK(esp_task_wdt_reconfigure(&tWdtConfig));
+	esp_task_wdt_add(NULL);
+
 	EventBus::init();
 
 	ConfigStorage paramStorage;
@@ -139,7 +143,6 @@ void app_main()
 
 	MasterMonitor::instance().invoke();
 
-	vTaskDelay(pdMS_TO_TICKS(1000));
 	cli.start();
 
 	while(true) {
@@ -152,6 +155,7 @@ void app_main()
 			smartBus.update(buffer, finLen);
 		}
 
+		esp_task_wdt_reset();
 		sched.doTasks();
 		lgfx::delay(5);
 	}
