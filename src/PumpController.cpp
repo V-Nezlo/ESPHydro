@@ -102,8 +102,8 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 				}
 			}
 		}
-	// Если ловера нет но мы пытаемся им управлять - ставим ошибку
-	} else if (enabled && !LowerMonitor::instance().isPresent() && MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized)) {
+	// Если ловера нет но мы пытаемся им управлять - ставим ошибку (в режиме maintance не проверяем)
+	} else if (enabled && !LowerMonitor::instance().isPresent() && MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && mode != PumpModes::Maintance) {
 		MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 	} else {
 		if (desiredPumpState == PumpState::PumpOn) {
@@ -125,6 +125,11 @@ void PumpController::updateMode(PumpModes aNewMode)
 	mode = aNewMode;
 	setPumpState(PumpState::PumpOff);
 	setDamState(DamTankState::DamUnlocked);
+
+	if (aNewMode == PumpModes::Maintance) {
+		MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
+		MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
+	}
 }
 
 void PumpController::setPumpState(PumpState aState)
