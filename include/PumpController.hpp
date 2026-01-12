@@ -62,6 +62,7 @@ class PumpController : public AbstractEventObserver, public AbstractLinearTask {
 	bool fillingCheckEn;
 
 	bool enabled;
+
 	std::chrono::seconds pumpOnTime;
 	std::chrono::seconds pumpOffTime;
 	std::chrono::seconds swingTime;
@@ -102,8 +103,6 @@ private:
 
 	/// @brief
 	void processMaintanceMode();
-
-	bool isSystemWorking() const;
 };
 
 #endif // INCLUDE_PUMPCONTROLLER_HPP_

@@ -70,6 +70,7 @@ namespace SerialRS {
 	static constexpr int8_t kUsartPort = 1;
 	static constexpr int8_t aRxPin = 27;
 	static constexpr int8_t aTxPin = 25;
+	static constexpr int8_t kRecoveryPin = 0;
 } // namespace SerialRS
 
 namespace I2CLeds {

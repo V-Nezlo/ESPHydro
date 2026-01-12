@@ -101,6 +101,10 @@ public:
 					// Отправляем событие отключения устройства
 					ESP_LOGI("RS", "Device %u detached", static_cast<uint8_t>(type));
 					sendDetachEventToBus(type);
+
+					if (modules.busRecovery) {
+						MasterMonitor::instance().setFlag(MasterFlags::BusNeedRecovery);
+					}
 				}
 				break;
 			case DeviceState::Suspended:
@@ -337,6 +341,11 @@ public:
 			default:
 				return false;
 		}
+	}
+
+	bool isRecoveryEnabled() const
+	{
+		return modules.busRecovery;
 	}
 };
 

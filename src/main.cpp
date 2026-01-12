@@ -59,6 +59,34 @@ void initTaskFunc(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
+void recoveryTaskFunc(void *pvParameters)
+{
+	std::pair<Gpio &, TaskHandle_t &> parameters = *reinterpret_cast<std::pair<Gpio &, TaskHandle_t &> *>(pvParameters);
+
+	auto &recovery = parameters.first;
+	auto &initTask = parameters.second;
+	(void)initTask;
+
+	while(true) {
+		if (MasterMonitor::instance().hasFlag(MasterFlags::BusNeedRecovery)) {
+			ESP_LOGE("RS", "Bus recovery started");
+
+			recovery.reset();
+			vTaskDelay(pdMS_TO_TICKS(5000));
+			recovery.set();
+
+			vTaskDelay(pdMS_TO_TICKS(10000));
+
+			// Сброс флагов системы
+			MasterMonitor::instance().clearWholeFlags();
+			vTaskDelay(pdMS_TO_TICKS(1000));
+			MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(5000));
+	}
+}
+
 extern "C"
 void app_main()
 {
@@ -78,6 +106,7 @@ void app_main()
 	Gpio rsLatch(Hardware::SerialRS::kLatchPin, GPIO_MODE_OUTPUT);
 	SerialWrapper serial(Hardware::SerialRS::kUsartPort, 148, 148, Hardware::SerialRS::aTxPin, Hardware::SerialRS::aRxPin, rsLatch);
 	HydroRS<SerialWrapper, Crc8, 64> smartBus(serial, DeviceType::Master);
+	Gpio busRecoveryPin(Hardware::SerialRS::kRecoveryPin, GPIO_MODE_OUTPUT, true);
 
 	DS3231 rtc(Hardware::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
 	PCF8574 pcf(0x20, Hardware ::RTCI2C::kI2CPort, Hardware::RTCI2C::kSdaPin, Hardware::RTCI2C::kSclPin);
@@ -140,6 +169,15 @@ void app_main()
 	// Таска чтобы делать какие либо init штуки
 	TaskHandle_t initTask;
 	xTaskCreatePinnedToCore(initTaskFunc, "Init", 1 * 1024, nullptr, 5, &initTask, 0);
+
+	// Таска которая перезагрузит шину если одно из устройств ушло в загрузчик
+	// Проявляется крайне редко, но может сломать работу системы
+	// Перезагружать БУ нет смысла
+	TaskHandle_t recoveryTask;
+	if (smartBus.isRecoveryEnabled()) {
+		std::pair<Gpio &, TaskHandle_t &> taskParameters = {busRecoveryPin, recoveryTask};
+		xTaskCreatePinnedToCore(recoveryTaskFunc, "Recovery", 1 * 1024, &taskParameters, 5, &recoveryTask, 0);
+	}
 
 	MasterMonitor::instance().invoke();
 

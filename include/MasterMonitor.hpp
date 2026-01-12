@@ -22,6 +22,7 @@ enum class MasterFlags : uint32_t {
 	PCFError               = 1 << 6,
 	DeviceMismatch         = 1 << 7,
 	SystemInitialized      = 1 << 8,
+	BusNeedRecovery        = 1 << 9
 };
 
 class MasterMonitor : public BaseMonitor<MasterFlags> {

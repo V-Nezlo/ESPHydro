@@ -194,6 +194,24 @@ private:
 		return ESP_OK;
 	}
 
+	static int bus_recovery_state(int argc, char **argv)
+	{
+		if (argc < 2) {
+			printf("Usage: bus_recovery_state <bool>\n");
+			return ESP_ERR_INVALID_ARG;
+		}
+
+		int value = atoi(argv[1]);
+		bool state = static_cast<bool>(value);
+
+		Event ev;
+		ev.type = EventType::SettingsUpdated;
+		ev.data.settings = settings;
+		ev.data.settings.modules.busRecovery = state;
+		EventBus::throwEvent(&ev);
+		return ESP_OK;
+	}
+
 	static int ppm_sensor_state(int argc, char **argv)
 	{
 		if (argc < 2) {
@@ -247,6 +265,15 @@ private:
 				"Set PPM sensor state",
 				"<bool>",
 				&ppm_sensor_state,
+				NULL,
+				NULL,
+				NULL
+			},
+			{
+				"bus_recovery_state",
+				"Set bus recovery state",
+				"<bool>",
+				&bus_recovery_state,
 				NULL,
 				NULL,
 				NULL

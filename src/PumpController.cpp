@@ -71,44 +71,55 @@ void PumpController::process(std::chrono::milliseconds aCurrentTime)
 	// Используем мутекс как гарантию что переходы будут корректными
 	MutexLock lock(mutex);
 
-	// Если ловера нет - то и управлять нечем
-	if (enabled && LowerMonitor::instance().isPresent()) {
-		switch(mode) {
-			case PumpModes::EBBNormal:
-				processEBBNormalMode(aCurrentTime);
-				break;
-			case PumpModes::EBBSwing:
-				processEBBSwingMode(aCurrentTime);
-				break;
-			case PumpModes::Dripping:
-				processDripMode(aCurrentTime);
-				break;
-			case PumpModes::Maintance:
-				processMaintanceMode();
-				break;
-			case PumpModes::EBBDam:
-				processEBBDumMode(aCurrentTime);
-				break;
-			default:
-				break;
-		}
-		// Валидация состояния насоса чтобы точно быть защищенным от потери пакета управления
-		if (mode != PumpModes::Maintance) {
-			if (aCurrentTime > lastValidatorTime + Options::kPumpValidationTime) {
-				lastValidatorTime = aCurrentTime;
+	// Если система не готова - скип
+	if (!MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized)) {
+		return;
+	}
 
-				if (actualPumpState != desiredPumpState) {
-					setPumpState(desiredPumpState);
-				}
-			}
-		}
-	// Если ловера нет но мы пытаемся им управлять - ставим ошибку (в режиме maintance не проверяем)
-	} else if (enabled && !LowerMonitor::instance().isPresent() && MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && mode != PumpModes::Maintance) {
-		MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
-	} else {
+	// Если насос отключен в настройках - скип
+	if (!enabled) {
 		if (desiredPumpState == PumpState::PumpOn) {
 			setPumpState(PumpState::PumpOff);
 			setDamState(DamTankState::DamUnlocked);
+		}
+
+		return;
+	}
+
+	// Основной обработчик
+	switch(mode) {
+		case PumpModes::EBBNormal:
+			processEBBNormalMode(aCurrentTime);
+			break;
+		case PumpModes::EBBSwing:
+			processEBBSwingMode(aCurrentTime);
+			break;
+		case PumpModes::Dripping:
+			processDripMode(aCurrentTime);
+			break;
+		case PumpModes::Maintance:
+			processMaintanceMode();
+			break;
+		case PumpModes::EBBDam:
+			processEBBDumMode(aCurrentTime);
+			break;
+		default:
+			break;
+	}
+
+	// Если мы вошли в Drainage по причине ошибки - попытаемся сбросить ошибку до перехода в Irrigation
+	if (workingState == PlainType::Drainage && permitForAction() && MasterMonitor::instance().hasFlag(MasterFlags::PumpNotOperate)) {
+		MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
+	}
+
+	// Валидация состояния насоса
+	if (mode != PumpModes::Maintance) {
+		if (aCurrentTime > lastValidatorTime + Options::kPumpValidationTime) {
+			lastValidatorTime = aCurrentTime;
+
+			if (actualPumpState != desiredPumpState) {
+				setPumpState(desiredPumpState);
+			}
 		}
 	}
 }
@@ -170,7 +181,30 @@ void PumpController::sendCommandToDam(bool aNewDamState)
 
 bool PumpController::permitForAction() const
 {
-	return LowerMonitor::instance().isPresent() && (currentWaterLevel > Options::kMinWaterLevelForWork);
+	const bool pumpReady = LowerMonitor::instance().isPresent();
+	const bool upperReady = UpperMonitor::instance().isPresent();
+	const bool systemReady = MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized);
+	const bool waterReady = currentWaterLevel > Options::kMinWaterLevelForWork;
+
+	switch (mode) {
+		case PumpModes::EBBNormal:
+			return pumpReady && systemReady && waterReady;
+			break;
+
+		case PumpModes::EBBSwing:
+			return pumpReady && upperReady && systemReady && waterReady;
+			break;
+
+		case PumpModes::Maintance:
+			return true;
+
+		case PumpModes::Dripping:
+			return pumpReady && waterReady;
+
+		default:
+			return false;
+	}
+
 }
 
 /// @brief EBB режим, вкл выкл насоса по времени
@@ -216,7 +250,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 					fillingCheckEn = false;
 				} else {
 					// Проверим состояние водички во время состояния ирригации
-					if (!permitForAction() || !isSystemWorking()) {
+					if (!permitForAction()) {
 						setPumpState(PumpState::PumpOff);
 						workingState = PlainType::Drainage;
 						MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
@@ -246,7 +280,7 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 			case PlainType::Drainage:
 				if (aCurrentTime > lastActionTime + pumpOffTime) {
 					lastActionTime = aCurrentTime;
-					if (permitForAction() && isSystemWorking()) {
+					if (permitForAction()) {
 						setPumpState(PumpState::PumpOn);
 						workingState = PlainType::Irrigation;
 						MasterMonitor::instance().clearFlag(MasterFlags::PumpNotOperate);
@@ -258,9 +292,6 @@ void PumpController::processEBBSwingMode(std::chrono::milliseconds aCurrentTime)
 					} else {
 						MasterMonitor::instance().setFlag(MasterFlags::PumpNotOperate);
 					}
-				} else {
-					// Проверим состояние водички во время состояния осушения
-					isSystemWorking();
 				}
 				break;
 			}
@@ -334,26 +365,3 @@ void PumpController::processEBBDumMode(std::chrono::milliseconds aCurrentTime)
 			break;
 	}
 }
-
-bool PumpController::isSystemWorking() const
-{
-	switch (mode) {
-		case PumpModes::EBBSwing:
-			// Проверка на наличие датчика поплавого уровня, если нет - будет работать как обычный режим
-			// Но проверка должна быть отложенной поскольку аппер не сразу появляется в системе
-			if (MasterMonitor::instance().hasFlag(MasterFlags::SystemInitialized) && !UpperMonitor::instance().isPresent()) {
-				MasterMonitor::instance().setFlag(MasterFlags::DeviceMismatch);
-
-				return false;
-			} else {
-				// Сброс ошибки на тот случай если устройство перезагрузится
-				MasterMonitor::instance().clearFlag(MasterFlags::DeviceMismatch);
-				return true;
-			}
-			break;
-
-		default:
-			return true;
-	}
-}
-

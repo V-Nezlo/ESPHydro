@@ -60,6 +60,12 @@ public:
 		updateHealth();
 	}
 
+	void clearWholeFlags()
+	{
+		flags = 0;
+		updateHealth();
+	}
+
 	void process(std::chrono::milliseconds aCurrentTime) override
 	{
 		if (health == DeviceHealth::DeviceDisabled || health == DeviceHealth::DeviceWorking) {

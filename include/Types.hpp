@@ -80,6 +80,7 @@ struct CommonConfiguration {
 struct ModulesConfiguration {
 	bool phSensor;
 	bool ppmSensor;
+	bool busRecovery;
 } __attribute__((packed));;
 
 struct Settings {

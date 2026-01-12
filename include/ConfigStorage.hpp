@@ -76,6 +76,7 @@ private:
 
 		def.modules.phSensor = false;
 		def.modules.ppmSensor = false;
+		def.modules.busRecovery = false;
 
 		return def;
 	}
