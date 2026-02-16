@@ -78,6 +78,12 @@ private:
 		def.modules.ppmSensor = false;
 		def.modules.busRecovery = false;
 
+		def.silentMode.enabled = false;
+		def.silentMode.startHour = 23;
+		def.silentMode.startMin = 0;
+		def.silentMode.endHour = 10;
+		def.silentMode.endMin = 0;
+
 		return def;
 	}
 };

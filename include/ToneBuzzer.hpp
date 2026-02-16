@@ -61,6 +61,14 @@ private:
 	uint8_t volume;
 	bool alarmEnabled;
 
+	bool silentModeActive;
+	bool silentModeEnabled;
+	Time silentModeOnTime;
+	Time silentModeOffTime;
+	Time currentTime;
+
+	std::chrono::milliseconds silentModeNextCheck;
+
 	StaticQueue<ToneBuzzerSignal, 8> signalQueue;
 
 	void setTone(Tones aTone, std::chrono::milliseconds aCurrentTime, std::chrono::milliseconds aPeriod);
