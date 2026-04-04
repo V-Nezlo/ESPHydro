@@ -47,6 +47,12 @@ public:
 			case EventType::SettingsUpdated:
 				sync(&e->data.settings);
 				return EventResult::PASS_ON;
+
+			case EventType::ResetConfig: {
+				auto settings = getDefault();
+				sync(&settings);
+				} return EventResult::HANDLED;
+
 			default:
 				return EventResult::IGNORED;
 		}
@@ -56,29 +62,29 @@ private:
 	{
 		Settings def;
 		def.pump.enabled = false;
-		def.pump.maxFloodingTime = 0;
-		def.pump.mode = PumpModes::EBBNormal;
+		def.pump.maxFloodingTime = 300;
+		def.pump.mode = PumpModes::EBBSwing;
 		def.pump.onTime = 1000;
-		def.pump.offTime = 2000;
+		def.pump.offTime = 3000;
 		def.pump.swingTime = 5;
 
 		def.lamp.enabled = true;
-		def.lamp.lampOnHour = 0;
+		def.lamp.lampOnHour = 10;
 		def.lamp.lampOnMin = 0;
-		def.lamp.lampOffHour = 0;
+		def.lamp.lampOffHour = 21;
 		def.lamp.lampOffMin = 0;
 
-		def.common.alarmSoundEnabled = false;
-		def.common.tapSoundEnabled = false;
-		def.common.loggingEnabled = false;
+		def.common.alarmSoundEnabled = true;
+		def.common.tapSoundEnabled = true;
+		def.common.loggingEnabled = true;
 		def.common.displayBrightness = 100;
 		def.common.buzzerVolume = 100;
 
 		def.modules.phSensor = false;
-		def.modules.ppmSensor = false;
-		def.modules.busRecovery = false;
+		def.modules.ppmSensor = true;
+		def.modules.busRecovery = true;
 
-		def.silentMode.enabled = false;
+		def.silentMode.enabled = true;
 		def.silentMode.startHour = 23;
 		def.silentMode.startMin = 0;
 		def.silentMode.endHour = 10;

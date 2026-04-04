@@ -43,7 +43,8 @@ enum class EventType : uint8_t {
 	ToneBuzzerSignal,
 	RsDeviceDetached,
 	RsDeviceAttached,
-	UpdateDeviceHealth
+	UpdateDeviceHealth,
+	ResetConfig
 };
 
 enum class EventResult : uint8_t {

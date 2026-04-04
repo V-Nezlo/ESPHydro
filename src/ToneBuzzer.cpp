@@ -11,6 +11,7 @@
 #include "ToneBuzzer.hpp"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include <esp_log.h>
 
 ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	nextActionTime{0},
@@ -26,7 +27,7 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	silentModeOnTime{0,0,0},
 	silentModeOffTime{0,0,0},
 	currentTime{0,0,0},
-	silentModeNextCheck{0}
+	silentModeNextCheck{2000}
 {
 	ledc_fade_func_install(0);
 

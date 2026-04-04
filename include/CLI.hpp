@@ -209,6 +209,8 @@ private:
 		ev.data.settings = settings;
 		ev.data.settings.modules.busRecovery = state;
 		EventBus::throwEvent(&ev);
+
+		printf("New recovery state is: %i\n", value);
 		return ESP_OK;
 	}
 
@@ -230,11 +232,22 @@ private:
 		return ESP_OK;
 	}
 
+	static int reset_config_cmd(int argc, char **argv)
+	{
+		Event ev;
+		ev.type = EventType::ResetConfig;
+		EventBus::throwEvent(&ev);
+
+		printf("Configs resetted!\n");
+		return ESP_OK;
+	}
+
 	static int silent_mode_time(int argc, char **argv)
 	{
 		// Сначала проверим первый буль
 		if (argc < 2) {
 			printf("Usage: silent_mode_time <bool> <HH> <MM> <HH> <MM>\n");
+			return ESP_ERR_INVALID_ARG;
 		}
 
 		int state = atoi(argv[1]);
@@ -269,7 +282,9 @@ private:
 		ev.data.settings.silentMode.startMin = minS;
 		ev.data.settings.silentMode.endHour = hourE;
 		ev.data.settings.silentMode.endMin = minE;
+
 		EventBus::throwEvent(&ev);
+		printf("Sleep mode enabled: %u:%u - %u:%u\n", hourS, minS, hourE, minE);
 		return ESP_OK;
 	}
 
@@ -329,7 +344,16 @@ private:
 				NULL,
 				NULL,
 				NULL
-			}
+			},
+			{
+				"reset_config",
+				"Reset internal config storage",
+				NULL,
+				&reset_config_cmd,
+				NULL,
+				NULL,
+				NULL
+			},
 		};
 
 		for (auto &cmd : cmd_table) {

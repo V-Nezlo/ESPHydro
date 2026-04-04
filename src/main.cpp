@@ -77,10 +77,8 @@ void recoveryTaskFunc(void *pvParameters)
 
 			vTaskDelay(pdMS_TO_TICKS(10000));
 
-			// Сброс флагов системы
-			MasterMonitor::instance().clearWholeFlags();
-			vTaskDelay(pdMS_TO_TICKS(1000));
-			MasterMonitor::instance().setFlag(MasterFlags::SystemInitialized);
+			// Рестарт всей системы
+			esp_restart();
 		}
 
 		vTaskDelay(pdMS_TO_TICKS(5000));
@@ -172,7 +170,6 @@ void app_main()
 
 	// Таска которая перезагрузит шину если одно из устройств ушло в загрузчик
 	// Проявляется крайне редко, но может сломать работу системы
-	// Перезагружать БУ нет смысла
 	TaskHandle_t recoveryTask;
 	if (smartBus.isRecoveryEnabled()) {
 		std::pair<Gpio &, TaskHandle_t &> taskParameters = {busRecoveryPin, recoveryTask};

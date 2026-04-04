@@ -95,7 +95,7 @@ public:
 					}
 				}
 				// Параллельно проверяем факт получения Ack, если ack не приходят - возвращаемся в Probing
-				if (aCurrentTime > lastAckTime + std::chrono::milliseconds{3000}) {
+				if (aCurrentTime > lastAckTime + std::chrono::milliseconds{5000}) {
 					lastAckTime = std::chrono::milliseconds{0};
 					state = DeviceState::Probing;
 					// Отправляем событие отключения устройства
