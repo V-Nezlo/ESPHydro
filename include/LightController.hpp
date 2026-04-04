@@ -37,13 +37,6 @@ private:
 	SemaphoreHandle_t mutex;
 
 	void sendCommandToEventBus(bool aNewLampState);
-
-	/// @brief Функция написана ChatGPT
-	/// @param currentTime
-	/// @param startTime
-	/// @param endTime
-	/// @return True если время находится в промежутке для включения, false - если для выключения
-	static inline bool isTimeForOn(const Time& currentTime, const Time& startTime, const Time& endTime);
 };
 
 #endif // INCLUDE_LIGHTCONTROLLER_HPP_

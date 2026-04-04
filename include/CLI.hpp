@@ -230,6 +230,49 @@ private:
 		return ESP_OK;
 	}
 
+	static int silent_mode_time(int argc, char **argv)
+	{
+		// Сначала проверим первый буль
+		if (argc < 2) {
+			printf("Usage: silent_mode_time <bool> <HH> <MM> <HH> <MM>\n");
+		}
+
+		int state = atoi(argv[1]);
+
+		if (!state) {
+			printf("Sleep mode disabled\n");
+
+			Event ev;
+			ev.type = EventType::SettingsUpdated;
+			ev.data.settings = settings;
+			ev.data.settings.silentMode.enabled = false;
+			EventBus::throwEvent(&ev);
+
+			return ESP_OK;
+		}
+
+		if (argc < 6) {
+			printf("Usage: silent_mode_time TRUE HH MM HH MM");
+			return ESP_ERR_INVALID_ARG;
+		}
+
+		int hourS = atoi(argv[2]);
+		int minS  = atoi(argv[3]);
+		int hourE = atoi(argv[4]);
+		int minE  = atoi(argv[5]);
+
+		Event ev;
+		ev.type = EventType::SettingsUpdated;
+		ev.data.settings = settings;
+		ev.data.settings.silentMode.enabled = true;
+		ev.data.settings.silentMode.startHour = hourS;
+		ev.data.settings.silentMode.startMin = minS;
+		ev.data.settings.silentMode.endHour = hourE;
+		ev.data.settings.silentMode.endMin = minE;
+		EventBus::throwEvent(&ev);
+		return ESP_OK;
+	}
+
 	static void initCommandTable()
 	{
 		static const esp_console_cmd_t cmd_table[] = {
@@ -274,6 +317,15 @@ private:
 				"Set bus recovery state",
 				"<bool>",
 				&bus_recovery_state,
+				NULL,
+				NULL,
+				NULL
+			},
+			{
+				"silent_mode_time",
+				"Set silent mode time",
+				"HH:MM start, HH::MM end",
+				&silent_mode_time,
 				NULL,
 				NULL,
 				NULL

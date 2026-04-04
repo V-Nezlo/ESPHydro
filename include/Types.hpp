@@ -9,6 +9,7 @@
 #ifndef INCLUDE_TYPES_HPP_
 #define INCLUDE_TYPES_HPP_
 
+#include "HydroRSTypes.hpp"
 #include <stdint.h>
 
 enum class PumpModes : uint8_t {
@@ -67,7 +68,7 @@ struct LampConfiguration {
 	uint8_t lampOnMin;
 	uint8_t lampOffHour;
 	uint8_t lampOffMin;
-} __attribute__((packed));;
+} __attribute__((packed));
 
 struct CommonConfiguration {
 	bool tapSoundEnabled;
@@ -75,20 +76,29 @@ struct CommonConfiguration {
 	bool loggingEnabled;
 	uint8_t displayBrightness;
 	uint8_t buzzerVolume;
-} __attribute__((packed));;
+} __attribute__((packed));
 
 struct ModulesConfiguration {
 	bool phSensor;
 	bool ppmSensor;
 	bool busRecovery;
-} __attribute__((packed));;
+} __attribute__((packed));
+
+struct SilentMode {
+	bool enabled;
+	uint8_t startHour;
+	uint8_t startMin;
+	uint8_t endHour;
+	uint8_t endMin;
+} __attribute__((packed));
 
 struct Settings {
 	struct PumpConfiguration pump;
 	struct LampConfiguration lamp;
 	struct CommonConfiguration common; 
 	struct ModulesConfiguration modules;
-} __attribute__((packed));;
+	struct SilentMode silentMode;
+} __attribute__((packed));
 
 struct Time {
 	uint8_t hour;

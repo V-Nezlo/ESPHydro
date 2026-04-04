@@ -6,6 +6,7 @@
 @version 1.0
 */
 
+#include "Helpers.hpp"
 #include "Options.hpp"
 #include "ToneBuzzer.hpp"
 #include "driver/gpio.h"
@@ -19,7 +20,13 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 	ledcTimer{static_cast<uint8_t>((aPwmChannel >> 1) & 3)},
 	noteCounter{0},
 	volume{0x3F},
-	alarmEnabled{false}
+	alarmEnabled{false},
+	silentModeActive{false},
+	silentModeEnabled{false},
+	silentModeOnTime{0,0,0},
+	silentModeOffTime{0,0,0},
+	currentTime{0,0,0},
+	silentModeNextCheck{0}
 {
 	ledc_fade_func_install(0);
 
@@ -43,7 +50,9 @@ ToneBuzzer::ToneBuzzer(uint8_t aPin, uint8_t aPwmChannel):
 EventResult ToneBuzzer::handleEvent(Event *e)
 {
 	if (e->type == EventType::ToneBuzzerSignal) {
-		if (e->data.buzToneSignal != ToneBuzzerSignal::Touch && !alarmEnabled && e->data.buzToneSignal != ToneBuzzerSignal::Disabled) {
+		if (silentModeActive) {
+			return EventResult::IGNORED;
+		} else if (e->data.buzToneSignal != ToneBuzzerSignal::Touch && !alarmEnabled && e->data.buzToneSignal != ToneBuzzerSignal::Disabled) {
 			return EventResult::IGNORED;
 		} else if (currentSignal == ToneBuzzerSignal::Disabled) {
 			currentSignal = e->data.buzToneSignal;
@@ -63,6 +72,16 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 		return EventResult::PASS_ON;
 	} else if (e->type == EventType::SettingsUpdated) {
 		alarmEnabled = e->data.settings.common.alarmSoundEnabled;
+
+		silentModeEnabled = e->data.settings.silentMode.enabled;
+		silentModeOnTime.hour = e->data.settings.silentMode.startHour;
+		silentModeOnTime.minutes = e->data.settings.silentMode.startMin;
+		silentModeOffTime.hour = e->data.settings.silentMode.endHour;
+		silentModeOffTime.minutes = e->data.settings.silentMode.endMin;
+
+		return EventResult::PASS_ON;
+	} else if (e->type == EventType::GetCurrentTime) {
+		currentTime = e->data.time;
 		return EventResult::PASS_ON;
 	} else {
 		return EventResult::IGNORED;
@@ -71,6 +90,16 @@ EventResult ToneBuzzer::handleEvent(Event *e)
 
 void ToneBuzzer::process(std::chrono::milliseconds aCurrentTime)
 {
+	if (aCurrentTime > silentModeNextCheck) {
+		silentModeNextCheck = aCurrentTime + std::chrono::milliseconds{10'000};
+
+		if (silentModeEnabled) {
+			silentModeActive = Helpers::isTimeForOn(currentTime, silentModeOnTime, silentModeOffTime);
+		} else {
+			silentModeActive = false;
+		}
+	}
+
 	if (aCurrentTime < nextActionTime) {
 		return;
 	}
